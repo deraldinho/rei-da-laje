@@ -192,6 +192,8 @@ export class LineContactManager {
         segmentIndexA:c.segmentIndexA,segmentIndexB:c.segmentIndexB,s:c.s,t:c.t,
         crossingAngle:c.crossingAngle,sinAngle:c.sinAngle,tensionA:c.tensionA,tensionB:c.tensionB,
         effectiveTension:c.effectiveTension,normalForce:c.normalForce,vSlide:c.vSlide,
+        cutResistanceA:Math.max(0,Number(c.kiteA?.rope?.material?.cutResistance)||0),
+        cutResistanceB:Math.max(0,Number(c.kiteB?.rope?.material?.cutResistance)||0),
         contactTime:c.contactTime,slidingDistance:c.slidingDistance,abrasionA:c.abrasionA,abrasionB:c.abrasionB,
         abrasionRateA:c.abrasionRateA,abrasionRateB:c.abrasionRateB,phase:c.phase,active:c.active,score:c.score });
     }

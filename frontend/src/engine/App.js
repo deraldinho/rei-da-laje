@@ -7,6 +7,7 @@ import { Physics } from './Physics.js';
 import { Wind } from './Wind.js';
 import { AudioManager } from './AudioManager.js';
 import { HUD } from '../ui/HUD.js';
+import { LineContactDebugOverlay } from '../ui/LineContactDebugOverlay.js';
 import { GiftShowcase } from './GiftShowcase.js';
 import { SkyScene } from '../ui/SkyScene.js';
 import { ThreeSkyScene } from '../ui/ThreeSkyScene.js';
@@ -50,6 +51,11 @@ export class GameApp {
 
     this.audio = new AudioManager();
     this.hud = new HUD();
+    const debugRelinho = typeof window !== 'undefined' && typeof URLSearchParams !== 'undefined'
+      ? new URLSearchParams(window.location?.search || '').get('debugRelinho') === '1'
+      : false;
+    this.lineContactDebugOverlay = new LineContactDebugOverlay({ enabled: debugRelinho });
+    this._lastRelinhoDebugUpdate = -Infinity;
 
     // Passo 1: PhysicsClock garante que a física rode sempre a 60 Hz fixos,
     // independente do FPS do renderer (30/60/120/144). Antes a corda usava
@@ -1134,6 +1140,14 @@ export class GameApp {
       if (bhr.isDead) this.brokenHandRopes.splice(i, 1);
     }
     this.runtimeProfiler.end('render2d');
+
+    if (this.lineContactDebugOverlay?.enabled) {
+      const now = typeof performance !== 'undefined' && performance?.now ? performance.now() : Date.now();
+      if (now - this._lastRelinhoDebugUpdate >= 100) {
+        this._lastRelinhoDebugUpdate = now;
+        this.lineContactDebugOverlay.update(this.relinhoContactSystem.manager.snapshot(8));
+      }
+    }
   }
 
 
@@ -1293,6 +1307,8 @@ export class GameApp {
     this._onWindowResize = null;
     this._onRendererResize = null;
     this._onCanvasPointerDown = null;
+    this.lineContactDebugOverlay?.destroy?.();
+    this.lineContactDebugOverlay = null;
 
     if (this.audio) {
       try { this.audio.destroy(); } catch (_) { }
