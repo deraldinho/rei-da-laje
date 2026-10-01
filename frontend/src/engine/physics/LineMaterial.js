@@ -16,6 +16,7 @@ export const LINE_MATERIALS = {
     friction: 0.65,          // Coeficiente de atrito cinético
     abrasiveness: 1.00,      // Poder de desgaste abrasivo
     abrasionResistance: 1.00,// Resistência a sofrer desgaste
+    cutResistance: 1.00,     // Energia abrasiva normalizada necessária para ruptura
     maxTension: 35.0         // Limite de ruptura por tração
   },
   cerol: {
@@ -28,6 +29,7 @@ export const LINE_MATERIALS = {
     friction: 0.74,
     abrasiveness: 1.50,
     abrasionResistance: 0.92,
+    cutResistance: 1.10,
     maxTension: 45.0
   },
   chile: {
@@ -40,6 +42,7 @@ export const LINE_MATERIALS = {
     friction: 0.80,
     abrasiveness: 1.85,
     abrasionResistance: 1.25,
+    cutResistance: 1.45,
     maxTension: 60.0
   },
   kevlar: {
@@ -52,6 +55,7 @@ export const LINE_MATERIALS = {
     friction: 0.58,
     abrasiveness: 0.95,
     abrasionResistance: 2.10,
+    cutResistance: 2.20,
     maxTension: 85.0
   },
   tornado: {
@@ -64,6 +68,7 @@ export const LINE_MATERIALS = {
     friction: 0.72,
     abrasiveness: 1.40,
     abrasionResistance: 1.50,
+    cutResistance: 1.65,
     maxTension: 70.0
   },
   mestre_do_ceu: {
@@ -76,6 +81,7 @@ export const LINE_MATERIALS = {
     friction: 0.82,
     abrasiveness: 1.70,
     abrasionResistance: 2.30,
+    cutResistance: 2.40,
     maxTension: 110.0
   }
 };

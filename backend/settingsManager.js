@@ -1,6 +1,30 @@
 const fs = require('fs');
 const path = require('path');
 
+const DEFAULT_RELINHO_PHYSICS_CONFIG = Object.freeze({
+  abrasionK: 0.04, frictionMultiplier: 1.0, minSlideSpeed: 0.75, tensionMultiplier: 1,
+  angleExponent: 1, minContactTime: 0.08, engagementRampSec: 0.20, releaseGraceSec: 0.22,
+  maxWearPerTick: 0.012, discoveryHz: 30, maxSolvedContacts: 3, maxContactsPerRope: 3,
+  maxTrackedContacts: 12, maxDiscoveryChecksPerScan: 96
+});
+const RELINHO_LIMITS = Object.freeze({
+  abrasionK:[0.001,1], frictionMultiplier:[0,4], minSlideSpeed:[0,50], tensionMultiplier:[0.1,4],
+  angleExponent:[0.25,4], minContactTime:[0,2], engagementRampSec:[0.01,3], releaseGraceSec:[0.02,2],
+  maxWearPerTick:[0.0001,0.05], discoveryHz:[1,60], maxSolvedContacts:[1,12], maxContactsPerRope:[1,6],
+  maxTrackedContacts:[3,64], maxDiscoveryChecksPerScan:[8,1024]
+});
+function sanitizeRelinhoPhysics(input = {}, base = DEFAULT_RELINHO_PHYSICS_CONFIG) {
+  const src = input && typeof input === 'object' ? input : {};
+  const out = {};
+  for (const [key, [min,max]] of Object.entries(RELINHO_LIMITS)) {
+    const fallback = Number.isFinite(Number(base?.[key])) ? Number(base[key]) : DEFAULT_RELINHO_PHYSICS_CONFIG[key];
+    const raw = Number(src[key]);
+    out[key] = Math.max(min, Math.min(max, Number.isFinite(raw) ? raw : fallback));
+  }
+  for (const key of ['discoveryHz','maxSolvedContacts','maxContactsPerRope','maxTrackedContacts','maxDiscoveryChecksPerScan']) out[key] = Math.round(out[key]);
+  return out;
+}
+
 const DEFAULT_SETTINGS = Object.freeze({
   // Visual & Cenário 3D
   kiteScale: 1.55,           // 0.8 a 2.5 (escala visual das pipas)
@@ -28,6 +52,7 @@ const DEFAULT_SETTINGS = Object.freeze({
   windIntensity: 'moderado',// 'fraco' | 'moderado' | 'forte' | 'tempestade'
   windDirection: 'auto',    // 'auto' | 'left' | 'right'
   relinhoPace: 'normal',    // 'calmo' | 'normal' | 'frenetico'
+  relinhoPhysics: { ...DEFAULT_RELINHO_PHYSICS_CONFIG },
 
   // Regras da Competição
   maxKites: 40,             // 10 | 20 | 30 | 40
@@ -128,6 +153,7 @@ class SettingsManager {
 
     const pace = String(input.relinhoPace || 'normal').trim().toLowerCase();
     if (['calmo', 'normal', 'frenetico'].includes(pace)) s.relinhoPace = pace;
+    s.relinhoPhysics = sanitizeRelinhoPhysics(input.relinhoPhysics, DEFAULT_RELINHO_PHYSICS_CONFIG);
 
     // Regras
     if (Number.isInteger(Number(input.maxKites))) {
@@ -150,19 +176,24 @@ class SettingsManager {
   }
 
   getSettings() {
-    return { ...this.settings };
+    return { ...this.settings, relinhoPhysics: { ...this.settings.relinhoPhysics } };
   }
 
   updateSettings(partial) {
-    this.settings = this.sanitize({ ...this.settings, ...(partial || {}) });
+    const patch = partial && typeof partial === 'object' ? partial : {};
+    const merged = { ...this.settings, ...patch };
+    if (patch.relinhoPhysics && typeof patch.relinhoPhysics === 'object') {
+      merged.relinhoPhysics = { ...this.settings.relinhoPhysics, ...patch.relinhoPhysics };
+    }
+    this.settings = this.sanitize(merged);
     this.save();
-    return { ...this.settings };
+    return this.getSettings();
   }
 
   resetSettings() {
-    this.settings = { ...DEFAULT_SETTINGS };
+    this.settings = this.sanitize(DEFAULT_SETTINGS);
     this.save();
-    return { ...this.settings };
+    return this.getSettings();
   }
 }
 

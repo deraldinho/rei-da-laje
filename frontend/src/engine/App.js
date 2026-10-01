@@ -23,6 +23,7 @@ import { KiteDynamics } from './physics/KiteDynamics.js';
 import { CombatContactAccumulator } from './physics/CombatContactAccumulator.js';
 import { selectCouplingJobs } from './physics/RopeCouplingLimiter.js';
 import { createRelinhoContactBudget } from './physics/RelinhoContactBudget.js';
+import { sanitizeRelinhoPhysicsConfig } from './physics/RelinhoPhysicsConfig.js';
 import { resolveAuthoritativeCombat } from './physics/CombatAuthorityGate.js';
 import { RuntimeProfiler } from './RuntimeProfiler.js';
 import { LifecycleBag } from './LifecycleBag.js';
@@ -841,6 +842,7 @@ export class GameApp {
 
     // 3. Vento e física
     Wind.setSettings(settings);
+    this.relinhoPhysicsConfig = sanitizeRelinhoPhysicsConfig(settings.relinhoPhysics, this.relinhoPhysicsConfig);
 
     // 4. Regras do jogo
     if (settings.maxKites) {

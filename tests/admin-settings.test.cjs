@@ -252,3 +252,31 @@ test('App.js: applySettings importa liveVisualScale para settings sync/reconnect
   const appSource=fs.readFileSync(path.join(__dirname,'../frontend/src/engine/App.js'),'utf8');
   assert.match(appSource,/import\s*\{\s*liveVisualScale\s*\}\s*from\s*['"]\.\.\/ui\/LiveLayout\.js['"]/);
 });
+
+test('SettingsManager: sanitiza configuração física de relinho aninhada sem NaN ou valores destrutivos', () => {
+  const tmpFile = path.join(os.tmpdir(), `test-relinho-settings-${Date.now()}-${Math.random().toString(36).slice(2)}.json`);
+  const mgr = new SettingsManager(tmpFile);
+  const initial = mgr.getSettings().relinhoPhysics;
+  assert.equal(initial.abrasionK, 0.04);
+  assert.equal(initial.frictionMultiplier, 1);
+  assert.equal(initial.minSlideSpeed, 0.75);
+  assert.equal(initial.maxWearPerTick, 0.012);
+  assert.equal(initial.discoveryHz, 30);
+  assert.equal(initial.maxSolvedContacts, 3);
+
+  const updated = mgr.updateSettings({ relinhoPhysics: {
+    abrasionK: 0.06,
+    frictionMultiplier: -5,
+    minSlideSpeed: 'invalid',
+    maxWearPerTick: 99,
+    discoveryHz: 0,
+    maxSolvedContacts: 999
+  }}).relinhoPhysics;
+  assert.equal(updated.abrasionK, 0.06);
+  assert.ok(updated.frictionMultiplier >= 0);
+  assert.ok(Number.isFinite(updated.minSlideSpeed));
+  assert.ok(updated.maxWearPerTick <= 0.05);
+  assert.ok(updated.discoveryHz >= 1);
+  assert.ok(updated.maxSolvedContacts <= 12);
+  try { fs.unlinkSync(tmpFile); } catch (_) {}
+});
