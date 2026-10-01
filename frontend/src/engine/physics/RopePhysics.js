@@ -243,6 +243,19 @@ export class RopePhysics {
     return this.segmentWear[idx];
   }
 
+  applyAbrasionEnergy(segmentIndex, energy, cutResistance = 1, maxWearPerTick = 0.012) {
+    const resistance = Math.max(0.001, Number(cutResistance) || 1);
+    const cap = Math.max(0, Number(maxWearPerTick) || 0);
+    const normalizedDelta = Math.min(cap, Math.max(0, Number(energy) || 0) / resistance);
+    const wear = this.applySegmentWear(segmentIndex, normalizedDelta);
+    return {
+      delta: normalizedDelta,
+      wear,
+      integrity: Math.max(0, 1 - wear),
+      broke: wear >= 1 - 1e-9
+    };
+  }
+
   /**
    * Retorna a integridade de um segmento específico [0, 1]
    */
