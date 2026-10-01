@@ -11,6 +11,7 @@ import { GiftShowcase } from './GiftShowcase.js';
 import { SkyScene } from '../ui/SkyScene.js';
 import { ThreeSkyScene } from '../ui/ThreeSkyScene.js';
 import { RooftopPlayer } from '../ui/RooftopPlayer.js';
+import { liveVisualScale } from '../ui/LiveLayout.js';
 import { rooftopSlotOrder, rooftopPlayerLayout, rooftopHandAnchor, rooftopAnchorY } from '../ui/RooftopLayout.js';
 import { applyManeuverMovement, maneuverStats, selectGiftManeuver } from './Maneuvers.js';
 import { applyLikeSpool, evolveRelinhoContact } from './RelinhoMechanics.js';
@@ -21,9 +22,11 @@ import { PhysicsClock } from './physics/PhysicsClock.js'; // Passo 1
 import { KiteDynamics } from './physics/KiteDynamics.js';
 import { CombatContactAccumulator } from './physics/CombatContactAccumulator.js';
 import { selectCouplingJobs } from './physics/RopeCouplingLimiter.js';
+import { resolveAuthoritativeCombat } from './physics/CombatAuthorityGate.js';
 import { RuntimeProfiler } from './RuntimeProfiler.js';
 import { LifecycleBag } from './LifecycleBag.js';
 import { SocketSubscriptionBag } from './SocketSubscriptionBag.js';
+import { AparoController } from './AparoController.js';
 
 export class GameApp {
   constructor(socket) {
@@ -39,6 +42,8 @@ export class GameApp {
     this.relinhoContacts = new Map(); // evita múltiplos cortes na mesma colisão
     this._ropeCollisionHints = new Map(); // par -> últimos segmentos em contato (hot path do check-hit)
     this._pendingCutLosers = new Set(); // loserId aguardando validação canônica do backend
+    this._pendingCatchFlyaways = new Set(); // voadas aguardando confirmação canônica de aparo
+    this.aparoController = new AparoController(socket, this._pendingCatchFlyaways);
     this.isCombatAuthority = false;
 
     this.audio = new AudioManager();
@@ -87,13 +92,18 @@ export class GameApp {
   saveArenaCheckpoint(force = true) {
     if (!this.socket?.connected) return;
     if (!force && !this._checkpointDirty) return;
-    this._checkpointDirty = false;
-    const checkpoint = captureArena(this.kites.values(), this.arenaSessionId || 'default');
-    try { localStorage.setItem(CHECKPOINT_KEY, JSON.stringify(checkpoint)); }
-    catch (_) { /* armazenamento local indisponível */ }
-    this.socket.emit('arena:checkpoint', {
-      width: this.app.screen.width, height: this.app.screen.height, kites: checkpoint.kites
-    });
+    this.runtimeProfiler.begin('serialization');
+    try {
+      this._checkpointDirty = false;
+      const checkpoint = captureArena(this.kites.values(), this.arenaSessionId || 'default');
+      try { localStorage.setItem(CHECKPOINT_KEY, JSON.stringify(checkpoint)); }
+      catch (_) { /* armazenamento local indispon?vel */ }
+      this.socket.emit('arena:checkpoint', {
+        width: this.app.screen.width, height: this.app.screen.height, kites: checkpoint.kites
+      });
+    } finally {
+      this.runtimeProfiler.end('serialization');
+    }
   }
 
   async syncArena() {
@@ -564,6 +574,7 @@ export class GameApp {
       }
     });
     this._socketSubscriptions.on('game:cut_occurred', data => {
+      this.hud.expandLeaderboardTemporarily(2400);
       setTimeout(() => this.refreshCompetitionStats(), 250);
       if (data?.loserId === this.hud.currentLeaderId) this.hud.currentLeaderId = null;
       const winnerId = String(data?.winnerId || '');
@@ -634,8 +645,35 @@ export class GameApp {
       this.hud.updateLeaderboard([...this.kites.values()]);
       this.markDirtyCheckpoint();
     });
+    this._socketSubscriptions.on('game:catch_occurred', data => {
+      this.hud.expandLeaderboardTemporarily(1800);
+      const caughtUserId = String(data?.caughtUserId || '');
+      const catcherId = String(data?.catcherId || '');
+      if (!caughtUserId || !catcherId) return;
+      this._pendingCatchFlyaways.delete(caughtUserId);
+      const catcher = this.kites.get(catcherId) || this.kites.get(data?.catcherId);
+      if (catcher) {
+        catcher.score = Number.isFinite(data?.catcherScore) ? data.catcherScore : catcher.score;
+        catcher.updateHPBar?.();
+      }
+      const flyaway = this.fallingKites.find(item => String(item?.userId || '') === caughtUserId && !item.isCaught);
+      if (flyaway) flyaway.catch?.(data.catcherNick || catcher?.nickname);
+      const catchX = Number.isFinite(data?.catchX) ? data.catchX : (flyaway?.x ?? catcher?.x ?? 0);
+      const catchY = Number.isFinite(data?.catchY) ? data.catchY : (flyaway?.y ?? catcher?.y ?? 0);
+      this.audio.playCatchSound?.();
+      this.sparks.emit(catchX, catchY, 22);
+      if (this.threeScene && !this.threeScene.disabled) {
+        const p3d = this.threeScene.screenToWorld(catchX, catchY, 130);
+        this.threeScene.triggerAparo3D?.(p3d.x, p3d.y, p3d.z);
+        this.threeScene.emitSpark3D(p3d.x, p3d.y, p3d.z, 22, 0x34d399);
+      }
+      this.hud.showNotice(`🎉 APARADA! ${data.catcherNick || catcher?.nickname || 'Jogador'} resgatou a pipa de ${data.caughtNick || 'Jogador'}! (+${data.points || 2} pts)`, 3500);
+      this.hud.updateLeaderboard([...this.kites.values()]);
+      this.markDirtyCheckpoint();
+    });
     this._socketSubscriptions.on('competition:milestone', data => this.hud.showMilestone(data?.nickname, data?.streak));
     this._socketSubscriptions.on('competition:leader_changed', data => {
+      this.hud.expandLeaderboardTemporarily(2600);
       setTimeout(() => this.refreshCompetitionStats(), 250);
       this.kites.forEach(kite => {
         kite.isLeader = Boolean(data?.userId && kite.userId === data.userId);
@@ -681,6 +719,7 @@ export class GameApp {
     this._socketSubscriptions.on('arena:authority_revoked', () => {
       this.isCombatAuthority = false;
       this._pendingCutLosers.clear();
+      this._pendingCatchFlyaways.clear();
       this.syncArena();
     });
     this._socketSubscriptions.on('arena:authority_available', () => {
@@ -702,6 +741,7 @@ export class GameApp {
     this._socketSubscriptions.on('disconnect', () => {
       this.isCombatAuthority = false;
       this._pendingCutLosers.clear();
+      this._pendingCatchFlyaways.clear();
       this.hud.setConnection(false);
     });
     this.hud.setConnection(this.socket.connected);
@@ -981,7 +1021,9 @@ export class GameApp {
     this.runtimeProfiler.frame(delta * (1000 / 60));
     this.windTime += delta / 60;
     const currentWind = Wind.sample(this.windTime);
+    this.runtimeProfiler.begin('hud');
     this.hud.updateWind(currentWind);
+    this.runtimeProfiler.end('hud');
     this.sync3DDisplay();
     const themeRotated = this.skyScene.update(delta);
     if (themeRotated && this.threeScene) {
@@ -998,6 +1040,12 @@ export class GameApp {
     // Física, dano e detecção de todos os relinhos continuam intactos.
     const runtimeQuality = this.runtimeProfiler.snapshot().quality;
     this._combatSparkBudget = runtimeQuality === 'low' ? 6 : runtimeQuality === 'medium' ? 12 : 24;
+    this.threeScene?.setRuntimeQuality(runtimeQuality, this.kites.size);
+    const webglRender = this.threeScene?.renderer?.info?.render;
+    if (webglRender) {
+      this.runtimeProfiler.gauge('drawCalls', Number(webglRender.calls) || 0);
+      this.runtimeProfiler.gauge('triangles', Number(webglRender.triangles) || 0);
+    }
 
     // P8/P15.1 — Fixed Simulation Completa (60 Hz determinístico):
     // manobras, cordas, relinho, voadas e linhas rompidas compartilham o mesmo relógio.
@@ -1047,6 +1095,7 @@ export class GameApp {
     this.runtimeProfiler.end('physics');
 
     // Render visual consistente pós-física ao final do frame
+    this.runtimeProfiler.begin('render2d');
     this.kites.forEach((kite) => {
       // Toda atualização visual ocorre UMA vez por frame, nunca por substep físico.
       kite.rooftopPlayer?.update(delta);
@@ -1075,13 +1124,17 @@ export class GameApp {
       bhr.draw(this.brokenLinesGraphic);
       if (bhr.isDead) this.brokenHandRopes.splice(i, 1);
     }
+    this.runtimeProfiler.end('render2d');
   }
 
 
 
   checkRelinhos(delta) {
     const activeList = Array.from(this.kites.values());
-    if (activeList.length < 2) return;
+    if (activeList.length < 2) {
+      this.hud.setCombatCompact(false);
+      return;
+    }
     // Alterna a prioridade dos pares por frame: a primeira pipa criada não ataca sempre primeiro.
     this.combatRotation = ((this.combatRotation || 0) + 1) % activeList.length;
     activeList.push(...activeList.splice(0, this.combatRotation));
@@ -1282,7 +1335,10 @@ export class GameApp {
           }
 
           // Resolve combate — aplica dano por frame nas duas pipas
-          const combat = Physics.resolveRelinhoCombat(kA, kB, inter, delta, contact);
+          const combat = resolveAuthoritativeCombat(
+            this.isCombatAuthority, Physics.resolveRelinhoCombat, kA, kB, inter, delta, contact
+          );
+          if (!combat) continue;
 
           if (combat.absorbedByShield) this.socket.emit('player:shield_used', {
             userId: combat.shieldUserId, remainingShields: combat.remainingShields
@@ -1319,93 +1375,17 @@ export class GameApp {
         this._ropeCollisionHints.delete(key);
       }
     }
+    this.hud.setCombatCompact(seenContacts.size > 0);
   }
 
   checkAparos(delta, currentWind) {
-    if (!this.fallingKites || !this.fallingKites.length) return;
-    const activeKites = Array.from(this.kites.values());
-    if (!activeKites.length) return;
-
-    for (const activeKite of activeKites) {
-      if (activeKite.isAscending || activeKite.spawnProtection > 0) continue;
-      const ax1 = Number.isFinite(activeKite.line?.visualBaseX) ? activeKite.line.visualBaseX : activeKite.baseX;
-      const ay1 = Number.isFinite(activeKite.line?.visualBaseY) ? activeKite.line.visualBaseY : activeKite.baseY;
-      const ax2 = activeKite.x;
-      const ay2 = activeKite.y;
-
-      for (const flyaway of this.fallingKites) {
-        if (flyaway.isCaught || flyaway.life <= 0) continue;
-        if (String(flyaway.userId) === String(activeKite.userId)) continue;
-
-        // Verifica cruzamento com os segmentos da linha pendurada da pipa voada
-        const catchableSegments = typeof flyaway.getCatchableSegments === 'function' ? flyaway.getCatchableSegments() : [];
-        const activeSegments = (activeKite.rope && typeof activeKite.rope.getSegments === 'function')
-          ? activeKite.rope.getSegments()
-          : null;
-        let caught = false;
-        let catchPoint = null;
-
-        for (const seg of catchableSegments) {
-          if (activeSegments && activeSegments.length > 0) {
-            for (const aSeg of activeSegments) {
-              const hit = Physics.checkLineIntersection(aSeg.p1.x, aSeg.p1.y, aSeg.p2.x, aSeg.p2.y, seg.x1, seg.y1, seg.x2, seg.y2);
-              if (hit.hit) {
-                caught = true;
-                catchPoint = hit;
-                break;
-              }
-            }
-          } else {
-            const hit = Physics.checkLineIntersection(ax1, ay1, ax2, ay2, seg.x1, seg.y1, seg.x2, seg.y2);
-            if (hit.hit) {
-              caught = true;
-              catchPoint = hit;
-              break;
-            }
-          }
-          if (caught) break;
-        }
-
-        // Fallback de proximidade com o corpo da pipa voada
-        if (!caught) {
-          const distToKite = Physics.distance(activeKite.x, activeKite.y, flyaway.x, flyaway.y);
-          if (distToKite < 38) {
-            caught = true;
-            catchPoint = { x: (activeKite.x + flyaway.x) / 2, y: (activeKite.y + flyaway.y) / 2 };
-          }
-        }
-
-        if (caught) {
-          if (typeof flyaway.catchBy === 'function') {
-            flyaway.catchBy(activeKite);
-          } else if (typeof flyaway.catch === 'function') {
-            flyaway.catch(activeKite.nickname);
-          }
-          activeKite.score = (activeKite.score || 0) + 2; // Bônus de Aparo!
-          activeKite.updateHPBar?.();
-
-          // Feedback audiovisual
-          this.audio.playLaunchSound?.();
-          this.sparks.emit(catchPoint.x, catchPoint.y, 22);
-          if (this.threeScene && !this.threeScene.disabled) {
-            const p3d = this.threeScene.screenToWorld(catchPoint.x, catchPoint.y, 130);
-            this.threeScene.triggerAparo3D?.(p3d.x, p3d.y, p3d.z);
-            this.threeScene.emitSpark3D(p3d.x, p3d.y, p3d.z, 22, 0x34d399);
-          }
-          this.hud.showNotice(`🎉 APARADA! ${activeKite.nickname} resgatou a pipa de ${flyaway.nickname}! (+2 pts)`, 3500);
-
-          if (this.socket?.connected) {
-            this.socket.emit('competition:catch', {
-              catcherId: activeKite.userId,
-              catcherNick: activeKite.nickname,
-              caughtUserId: flyaway.userId,
-              caughtNick: flyaway.nickname
-            });
-          }
-          break;
-        }
-      }
-    }
+    return this.aparoController.check({
+      isAuthority: this.isCombatAuthority,
+      activeKites: Array.from(this.kites.values()),
+      fallingKites: this.fallingKites,
+      delta,
+      currentWind
+    });
   }
 
   handleCutSuccess(winner, loser, cutX, cutY, breakInfo = null) {
@@ -1467,17 +1447,11 @@ export class GameApp {
     this._destroyed = true;
 
     this._socketSubscriptions.dispose();
-    if (this._onKeyDown) {
-      window.removeEventListener('keydown', this._onKeyDown);
-      this._onKeyDown = null;
-    }
-    if (this.arenaSyncTimer) clearInterval(this.arenaSyncTimer);
-    if (this.liveStatusTimer) clearInterval(this.liveStatusTimer);
-    if (this.statsTimer) clearInterval(this.statsTimer);
-    if (this.combatHeartbeatTimer) clearInterval(this.combatHeartbeatTimer);
-    if (this.checkpointTimer) clearInterval(this.checkpointTimer);
-    if (this.memoryGcTimer) clearInterval(this.memoryGcTimer);
     this._lifecycle.dispose();
+    this._onKeyDown = null;
+    this._onWindowResize = null;
+    this._onRendererResize = null;
+    this._onCanvasPointerDown = null;
 
     if (this.audio) {
       try { this.audio.destroy(); } catch (_) { }

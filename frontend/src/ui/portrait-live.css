@@ -130,6 +130,24 @@
     border-radius: 9px;
   }
 
+  /* Durante relinho, o ranking devolve céu ao gameplay; eventos canônicos expandem temporariamente. */
+  .leaderboard-card.combat-compact:not(.spotlight-expanded) {
+    width: clamp(190px, 19vw, 250px);
+    padding: clamp(8px, 0.8vw, 12px);
+  }
+  .leaderboard-card.combat-compact:not(.spotlight-expanded) .ranking-footer,
+  .leaderboard-card.combat-compact:not(.spotlight-expanded) .session-record,
+  .leaderboard-card.combat-compact:not(.spotlight-expanded) .hall-of-fame,
+  .leaderboard-card.combat-compact:not(.spotlight-expanded) .active-king {
+    display: none;
+  }
+  .leaderboard-card.combat-compact:not(.spotlight-expanded) #leaderboardList .leader-row:nth-child(n+4) {
+    display: none;
+  }
+  .leaderboard-card.spotlight-expanded {
+    transition: width 180ms ease, padding 180ms ease;
+  }
+
   /* Killfeed Compacto à Direita: inicia abaixo dos controles de transmissão */
   .killfeed-container {
     top: clamp(115px, 8.2vh, 190px);

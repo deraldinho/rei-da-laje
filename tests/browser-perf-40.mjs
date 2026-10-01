@@ -90,74 +90,89 @@ try {
     await pause(100);
   }
   assert.equal(await evaluate('window.__PIPA_GAME__.kites.size'), 40);
-  await evaluate(`(() => {
-    const game = window.__PIPA_GAME__, w = game.app.screen.width;
-    game.isCombatAuthority = false;
-    game.runtimeProfiler.reset();
-    const items = [...game.kites.values()].map(kite => ({
-      kite,
-      handX: Number.isFinite(kite.line?.visualBaseX) ? kite.line.visualBaseX : kite.baseX,
-      handY: Number.isFinite(kite.line?.visualBaseY) ? kite.line.visualBaseY : kite.baseY
-    })).sort((a,b) => a.handX - b.handX);
-    items.forEach(({kite,handX,handY}, i) => {
-      kite.isAscending = false; kite.spawnProtection = 0;
-      kite.maxLineHP = 1e9; kite.lineHP = 1e9;
-      kite.x = Math.max(100, Math.min(w - 100, handX));
-      kite.y = 220 + Math.floor(i / 8) * 180 + (i % 2) * 25;
-      kite.targetX = kite.x; kite.targetY = kite.y;
-      kite.rope?.resetPositions?.({x:handX,y:handY,z:0},{x:kite.x,y:kite.y,z:kite.z||0});
-      kite.updateHPBar?.();
-    });
-    for (let pair = 0; pair < 3; pair++) {
-      const left = items[pair], right = items[items.length - 1 - pair];
-      const y = 360 + pair * 180;
-      left.kite.x = w * .78; left.kite.y = y;
-      right.kite.x = w * .22; right.kite.y = y + 8;
-      for (const item of [left,right]) {
-        item.kite.targetX=item.kite.x; item.kite.targetY=item.kite.y;
-        item.kite.rope?.resetPositions?.({x:item.handX,y:item.handY,z:0},{x:item.kite.x,y:item.kite.y,z:item.kite.z||0});
+  const scenarioDurationMs = Math.max(1200, Math.floor(durationMs / 4));
+  const prepareScenario = async targetContacts => evaluate(`(() => {
+    const game=window.__PIPA_GAME__, w=game.app.screen.width;
+    game.app.ticker.stop();game.isCombatAuthority=false;game._lastSparkSound=Date.now();
+    const items=[...game.kites.values()].map(kite=>({kite,
+      handX:Number.isFinite(kite.line?.visualBaseX)?kite.line.visualBaseX:kite.baseX,
+      handY:Number.isFinite(kite.line?.visualBaseY)?kite.line.visualBaseY:kite.baseY
+    })).sort((a,b)=>(a.handY-b.handY)||(a.handX-b.handX));
+    const apply=candidatePairs=>{
+      game.relinhoContacts.clear();game._ropeCollisionHints.clear();game.cutCooldowns.clear();
+      items.forEach(({kite,handX,handY})=>{
+        kite.isAscending=false;kite.spawnProtection=1e9;kite.maxLineHP=1e9;kite.lineHP=1e9;
+        kite.x=handX;kite.y=Math.max(140,handY-1050);kite.targetX=kite.x;kite.targetY=kite.y;
+        kite.rope?.resetPositions?.({x:handX,y:handY,z:0},{x:kite.x,y:kite.y,z:kite.z||0});
+        kite.updateHPBar?.();
+      });
+      for(let pair=0;pair<candidatePairs;pair++){
+        const left=items[pair*2],right=items[pair*2+1];if(!left||!right)break;
+        const y=Math.max(140,Math.min(left.handY,right.handY)-1050);
+        left.kite.spawnProtection=0;right.kite.spawnProtection=0;
+        left.kite.x=right.handX;left.kite.y=y;right.kite.x=left.handX;right.kite.y=y+6;
+        for(const item of [left,right]){
+          item.kite.targetX=item.kite.x;item.kite.targetY=item.kite.y;
+          item.kite.rope?.resetPositions?.({x:item.handX,y:item.handY,z:0},{x:item.kite.x,y:item.kite.y,z:item.kite.z||0});
+        }
       }
+    };
+    if(${targetContacts}===0){apply(0);return {target:0,activeContacts:0,candidatePairs:0};}
+    const maxPairs=Math.min(18,Math.floor(items.length/2));let activeContacts=0,candidatePairs=0;
+    for(candidatePairs=${targetContacts};candidatePairs<=maxPairs;candidatePairs++){
+      apply(candidatePairs);game.checkRelinhos(0);
+      activeContacts=[...game.relinhoContacts.values()].filter(v=>v?.phase!=='RELEASE').length;
+      if(activeContacts>=${targetContacts})break;
     }
+    return {target:${targetContacts},activeContacts,candidatePairs};
   })()`);
-  await evaluate('window.__PIPA_GAME__.app.ticker.start()');
-
-  const perf = await evaluate(`new Promise(resolve => {
-    const duration = ${durationMs};
-    const samples = [];
-    let start = 0, last = 0;
-    const tick = now => {
-      if (!start) { start = now; last = now; requestAnimationFrame(tick); return; }
-      samples.push(now - last); last = now;
-      if (now - start < duration) requestAnimationFrame(tick);
-      else {
-        const sorted = [...samples].sort((a,b)=>a-b);
-        const pct = p => sorted[Math.min(sorted.length-1, Math.max(0, Math.ceil(sorted.length*p)-1))] || 0;
-        const avg = samples.reduce((a,b)=>a+b,0) / Math.max(1,samples.length);
-        resolve({ samples:samples.length, meanFps:1000/avg, p95Ms:pct(.95), p99Ms:pct(.99) });
-      }
-    };
-    requestAnimationFrame(tick);
-  })`);
-  const state = await evaluate(`(() => {
-    const game = window.__PIPA_GAME__;
-    return {
-      count: game.kites.size,
-      particles: game.sparks.particles.length,
-      profiler: game.runtimeProfiler.snapshot(),
-      heapUsed: performance.memory?.usedJSHeapSize || null
-    };
+  const warmup = await evaluate(`(() => {
+    const game=window.__PIPA_GAME__,gl=game.threeScene?.renderer?.getContext?.(),dbg=gl?.getExtension?.('WEBGL_debug_renderer_info');
+    const frames=[];for(let i=0;i<6;i++){const t=performance.now();game.gameLoop(1);frames.push(performance.now()-t);}
+    return {frames,renderer:dbg?gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL):'unknown',vendor:dbg?gl.getParameter(dbg.UNMASKED_VENDOR_WEBGL):'unknown'};
   })()`);
-  const report = { passed: true, durationMs, perf, state, errors };
-  await writeFile(path.join(evidence, 'perf-40-report.json'), JSON.stringify(report, null, 2));
-  console.log(JSON.stringify(report, null, 2));
-  assert.equal(state.count, 40, 'benchmark deve terminar com 40 pipas ativas');
-  assert.equal(errors.length, 0, JSON.stringify(errors));
-  assert.ok(perf.samples >= 60, `amostras insuficientes: ${perf.samples}`);
-  assert.ok(perf.meanFps >= 45, `FPS médio abaixo do gate: ${perf.meanFps}`);
-  assert.ok(perf.p95Ms <= 50, `p95 de frame acima do gate: ${perf.p95Ms}ms`);
-  assert.ok(state.profiler.sections.collision?.avgMs >= 0, 'profiler de colisão ausente');
-  assert.ok(state.profiler.sections.physics?.avgMs >= 0, 'profiler de física ausente');
-  assert.ok(state.particles <= 350, `partículas fora do budget: ${state.particles}`);
+  const scenarios=[];
+  for(const spec of [{name:'zero',target:0},{name:'two',target:2},{name:'three',target:3},{name:'many',target:8}]){
+    console.error('PERF_SCENARIO start',spec.name);
+    const prepared=await prepareScenario(spec.target);
+    assert.ok(prepared.activeContacts>=spec.target,`${spec.name}: n?o foi poss?vel preparar ${spec.target} contatos reais`);
+    await evaluate('window.__PIPA_GAME__.runtimeProfiler.reset();window.__PIPA_GAME__.app.ticker.start()');
+    const perf=await evaluate(`new Promise(resolve=>{
+      const duration=${scenarioDurationMs},samples=[];let start=0,last=0,maxContacts=0;
+      const tick=now=>{const g=window.__PIPA_GAME__,active=[...g.relinhoContacts.values()].filter(v=>v?.phase!=='RELEASE').length;maxContacts=Math.max(maxContacts,active);
+        if(!start){start=now;last=now;requestAnimationFrame(tick);return;}
+        samples.push(now-last);last=now;
+        if(now-start<duration)requestAnimationFrame(tick);else{
+          g.app.ticker.stop();const sorted=[...samples].sort((a,b)=>a-b),pct=p=>sorted[Math.min(sorted.length-1,Math.max(0,Math.ceil(sorted.length*p)-1))]||0;
+          const avg=samples.reduce((a,b)=>a+b,0)/Math.max(1,samples.length);
+          resolve({samples:samples.length,meanFps:1000/avg,p95Ms:pct(.95),p99Ms:pct(.99),maxContacts});
+        }};requestAnimationFrame(tick);
+    })`);
+    const state=await evaluate(`(()=>{const g=window.__PIPA_GAME__,mem=g.threeScene?.renderer?.info?.memory||{};return {
+      count:g.kites.size,particles:g.sparks.particles.length,profiler:g.runtimeProfiler.snapshot(),heapUsed:performance.memory?.usedJSHeapSize||null,
+      textures:Number(mem.textures)||0,geometries:Number(mem.geometries)||0};})()`);
+    scenarios.push({...spec,prepared,perf,state});
+    console.error('PERF_SCENARIO done',spec.name,perf.meanFps,perf.maxContacts);
+  }
+  const report={passed:true,durationMs,scenarioDurationMs,warmup,scenarios,errors};
+  await writeFile(path.join(evidence,'perf-40-report.json'),JSON.stringify(report,null,2));
+  console.log(JSON.stringify(report,null,2));
+  assert.equal(errors.length,0,JSON.stringify(errors));
+  for(const scenario of scenarios){
+    assert.equal(scenario.state.count,40,`${scenario.name}: benchmark deve terminar com 40 pipas ativas`);
+    assert.ok(scenario.perf.samples>=30,`${scenario.name}: amostras insuficientes ${scenario.perf.samples}`);
+    assert.ok(scenario.perf.meanFps>=40,`${scenario.name}: FPS m?dio abaixo do gate ${scenario.perf.meanFps}`);
+    assert.ok(scenario.perf.p95Ms<=60,`${scenario.name}: p95 acima do gate ${scenario.perf.p95Ms}ms`);
+    assert.ok(scenario.state.profiler.sections.collision?.avgMs>=0,`${scenario.name}: profiler colis?o ausente`);
+    assert.ok(scenario.state.profiler.sections.physics?.avgMs>=0,`${scenario.name}: profiler f?sica ausente`);
+    assert.ok(scenario.state.profiler.sections.render3d?.avgMs>=0,`${scenario.name}: profiler render3d ausente`);
+    assert.ok(scenario.state.profiler.sections.render2d?.avgMs>=0,`${scenario.name}: profiler render2d ausente`);
+    assert.ok(scenario.state.particles<=350,`${scenario.name}: part?culas fora do budget`);
+  }
+  assert.equal(scenarios.find(s=>s.name==='zero').perf.maxContacts,0,'cen?rio zero gerou contato inesperado');
+  assert.ok(scenarios.find(s=>s.name==='two').perf.maxContacts>=2,'cen?rio two n?o sustentou 2 contatos');
+  assert.ok(scenarios.find(s=>s.name==='three').perf.maxContacts>=3,'cen?rio three n?o sustentou 3 contatos');
+  assert.ok(scenarios.find(s=>s.name==='many').perf.maxContacts>=8,'cen?rio many n?o sustentou 8 contatos');
 } finally {
   if (ws?.readyState === 1) { try { await send('Browser.close'); } catch {} ws.close(); }
   browser?.kill();

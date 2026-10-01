@@ -9,7 +9,7 @@ await mkdir(evidence,{recursive:true});
 const port = 3107, debugPort = 9337;
 const server = spawn(process.execPath,['backend/server.js'],{cwd:root,env:{...process.env,
   PORT:String(port),PIPA_DISABLE_TIKTOK_AUTOCONNECT:'1',
-  PIPA_FRONTEND_DIST:path.join(root,'frontend','dist-preview'),
+  PIPA_FRONTEND_DIST:path.join(root,'frontend','dist'),
   PIPA_ARENA_STATE_FILE:path.join(process.env.TEMP,'pipa-browser-smoke-'+Date.now()+'.json')},stdio:'ignore'});
 let browser, ws;
 const pause = ms => new Promise(r=>setTimeout(r,ms));
@@ -246,9 +246,41 @@ try {
   assert.ok(arena.sessionId);
   const state=await evaluate('({count:window.__PIPA_GAME__.kites.size,particles:window.__PIPA_GAME__.sparks.particles.length,fps:window.__PIPA_GAME__.app.ticker.FPS})');
   assert.ok(state.particles<=350);
+  const reconnectBefore=await evaluate('({count:window.__PIPA_GAME__.kites.size,session:window.__PIPA_GAME__.arenaSessionId})');
+  await evaluate('window.__PIPA_GAME__.socket.disconnect();window.__PIPA_GAME__.socket.connect();true');
+  for(let i=0;i<80;i++){if(await evaluate('window.__PIPA_GAME__.socket.connected&&window.__PIPA_GAME__.isCombatAuthority'))break;await pause(150);}
+  assert.equal(await evaluate('window.__PIPA_GAME__.socket.connected'),true);
+  assert.equal(await evaluate('window.__PIPA_GAME__.isCombatAuthority'),true);
+  await pause(300);
+  const reconnectAfter=await evaluate('({count:window.__PIPA_GAME__.kites.size,session:window.__PIPA_GAME__.arenaSessionId})');
+  assert.equal(reconnectAfter.count,reconnectBefore.count);
+  assert.equal(reconnectAfter.session,reconnectBefore.session);
+  const lifecycle=[];
+  for(let cycle=0;cycle<3;cycle++){
+    const result=await evaluate(`(()=>{
+      const g=window.__PIPA_GAME__,s=g.socket,third=()=>{};
+      s.on('__p17_third_party__',third);
+      const before=s.listeners('__p17_third_party__').length;
+      g.destroy();g.destroy();
+      const after=s.listeners('__p17_third_party__').length;
+      const out={destroyed:g._destroyed,lifecycleDisposed:g._lifecycle.disposed,lifecycleEntries:g._lifecycle.disposers.length,
+        socketDisposed:g._socketSubscriptions.disposed,socketEntries:g._socketSubscriptions.subscriptions.length,
+        thirdPartyBefore:before,thirdPartyAfter:after,threeReleased:g.threeScene===null,audioReleased:g.audio===null};
+      s.off('__p17_third_party__',third);return out;
+    })()`);
+    lifecycle.push(result);
+    assert.equal(result.destroyed,true);assert.equal(result.lifecycleDisposed,true);assert.equal(result.lifecycleEntries,0);
+    assert.equal(result.socketDisposed,true);assert.equal(result.socketEntries,0);assert.equal(result.thirdPartyAfter,result.thirdPartyBefore);
+    assert.equal(result.threeReleased,true);assert.equal(result.audioReleased,true);
+    if(cycle<2){
+      await send('Page.reload',{ignoreCache:true});
+      for(let i=0;i<80;i++){if(await evaluate('!!window.__PIPA_GAME__?.socket.connected&&!window.__PIPA_GAME__._destroyed'))break;await pause(150);}
+      assert.equal(await evaluate('!!window.__PIPA_GAME__?.socket.connected&&!window.__PIPA_GAME__._destroyed'),true);
+    }
+  }
   assert.equal(errors.length,0,JSON.stringify(errors));
   await shot('portrait-combat');
-  const report={passed:true,tests:['boot','40 pipas','DOM seguro','checkpoint e restauração após reload de teste','executor único de combate','combo 3x Capivara','manobra de aparar','likes','resize portrait','overlay','combate sem exceções'],state,errors};
+  const report={passed:true,tests:['boot','40 pipas','DOM seguro','checkpoint/reload','executor unico de combate','presentes/manobras/aparos','likes','resize portrait','overlay','combate sem excecoes','Socket.IO reconnect preserva arena','3 ciclos lifecycle destroy/reload'],state,reconnect:{before:reconnectBefore,after:reconnectAfter},lifecycle,errors};
   await writeFile(path.join(evidence,'browser-report.json'),JSON.stringify(report,null,2));
   console.log(JSON.stringify(report,null,2));
 } finally {

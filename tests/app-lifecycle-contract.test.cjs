@@ -31,3 +31,11 @@ test('P17: destroy é idempotente',()=>{
   assert.match(body,/if\s*\(this\._destroyed\)\s*return;/);
   assert.match(body,/this\._destroyed\s*=\s*true;/);
 });
+
+test('P17: destroy delega timers e DOM exclusivamente ao LifecycleBag',()=>{
+  const start=code.indexOf('  destroy() {');
+  const body=code.slice(start);
+  assert.doesNotMatch(body,/window\.removeEventListener\(/);
+  assert.doesNotMatch(body,/clearInterval\(/);
+  assert.match(body,/this\._lifecycle\.dispose\(\)/);
+});

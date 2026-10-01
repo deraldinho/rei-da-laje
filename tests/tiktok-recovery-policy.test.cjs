@@ -68,3 +68,11 @@ test('P16: connect repetido durante waiting reutiliza o mesmo worker',async()=>{
   assert.equal(second.waiting,true);
   assert.equal(client.disconnects,0);
 });
+
+test('P16: retry lento permanece estritamente entre 2 e 5 minutos mesmo com jitter extremo',()=>{
+  const {nextTikTokRetry,TIKTOK_FAILURE}=require('../backend/tiktokRecoveryPolicy');
+  const low=nextTikTokRetry({kind:TIKTOK_FAILURE.LIVE_NOT_FOUND,attempt:1,random:()=>0});
+  const high=nextTikTokRetry({kind:TIKTOK_FAILURE.LIVE_ENDED,attempt:99,random:()=>1});
+  assert.ok(low.delayMs>=120000,`retry abaixo de 2min: ${low.delayMs}`);
+  assert.ok(high.delayMs<=300000,`retry acima de 5min: ${high.delayMs}`);
+});

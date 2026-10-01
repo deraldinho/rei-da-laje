@@ -8,7 +8,7 @@ const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 const evidence=path.join(root,'tests','evidence');
 await mkdir(evidence,{recursive:true});
 const port=3119, debugPort=9349;
-const durationMs=Math.max(5000,Number(process.env.PIPA_SOAK_MS)||60000);
+const durationMs=Math.max(5000,Number(process.env.PIPA_SOAK_MS)||(30*60*1000));
 const pause=ms=>new Promise(r=>setTimeout(r,ms));
 const server=spawn(process.execPath,['backend/server.js'],{cwd:root,env:{...process.env,
   PORT:String(port),PIPA_DISABLE_TIKTOK_AUTOCONNECT:'1',

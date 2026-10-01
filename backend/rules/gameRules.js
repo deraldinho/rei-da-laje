@@ -142,6 +142,22 @@ class GameRules {
     return { winner, ...cut, leader, king, dethroned, leadershipChanged: previousLeaderId !== this.leaderId };
   }
 
+  /** Aparo vale dois pontos de arena, mas não conta como corte nem sequência. */
+  recordCatch(catcherId) {
+    const catcher = this.activePlayers.get(catcherId);
+    if (!catcher) return null;
+    const previousLeaderId = this.leaderId;
+    catcher.score = Math.max(0, Number(catcher.score) || 0) + 2;
+    const leader = this.getSoleLeader();
+    this.leaderId = leader?.userId || null;
+    return {
+      catcher,
+      points: 2,
+      leader,
+      leadershipChanged: previousLeaderId !== this.leaderId
+    };
+  }
+
   sessionRanking(limit = 5) {
     return [...this.sessionStats.entries()].map(([userId, stats]) => ({ userId, ...stats }))
       .sort((a,b) => b.cuts - a.cuts || b.bestStreak - a.bestStreak || String(a.userId).localeCompare(String(b.userId)))

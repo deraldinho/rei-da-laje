@@ -27,7 +27,7 @@ test('Validação de Sincronização Total da Arena, Frontend, Admin e TikTok Li
   await t.test('2. App.js agenda sincronização periódica da arena (arenaSyncTimer) para autocura', () => {
     const code = fs.readFileSync(path.join(__dirname, '..', 'frontend', 'src', 'engine', 'App.js'), 'utf8');
     assert.match(code, /this\.arenaSyncTimer\s*=\s*this\._lifecycle\.interval/, 'App.js deve agendar arenaSyncTimer pelo lifecycle bag');
-    assert.match(code, /clearInterval\(this\.arenaSyncTimer\)/, 'App.js deve limpar arenaSyncTimer em destroy()');
+    assert.match(code, /this\._lifecycle\.dispose\(\)/, 'App.js deve limpar arenaSyncTimer pelo lifecycle bag em destroy()');
   });
 
   await t.test('3. admin.html sincroniza ativamente os jogadores da arena (syncAdminWithArena)', () => {

@@ -3,12 +3,15 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
-const npm=process.platform==='win32'?'npm.cmd':'npm';
+const isWindows=process.platform==='win32';
+const npm=isWindows?'npm.cmd':'npm';
 
 function run(label,args,extraEnv={}){
   console.log(`\n=== VERIFY: ${label} ===`);
   return new Promise((resolve,reject)=>{
-    const child=spawn(npm,args,{cwd:root,stdio:'inherit',env:{...process.env,...extraEnv}});
+    const command=isWindows?(process.env.ComSpec||'cmd.exe'):npm;
+    const commandArgs=isWindows?['/d','/s','/c',`npm ${args.join(' ')}`]:args;
+    const child=spawn(command,commandArgs,{cwd:root,stdio:'inherit',env:{...process.env,...extraEnv}});
     child.on('error',reject);
     child.on('exit',code=>code===0?resolve():reject(new Error(`${label} falhou com exit ${code}`)));
   });

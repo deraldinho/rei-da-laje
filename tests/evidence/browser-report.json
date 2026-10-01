@@ -4,19 +4,65 @@
     "boot",
     "40 pipas",
     "DOM seguro",
-    "checkpoint e restauração após reload de teste",
-    "executor único de combate",
-    "combo 3x Capivara",
-    "manobra de aparar",
+    "checkpoint/reload",
+    "executor unico de combate",
+    "presentes/manobras/aparos",
     "likes",
     "resize portrait",
     "overlay",
-    "combate sem exceções"
+    "combate sem excecoes",
+    "Socket.IO reconnect preserva arena",
+    "3 ciclos lifecycle destroy/reload"
   ],
   "state": {
     "count": 40,
     "particles": 0,
-    "fps": 8.561643835616458
+    "fps": 1.665278934221482
   },
+  "reconnect": {
+    "before": {
+      "count": 40,
+      "session": "e849204a-78b7-4c5f-9491-4762265a0deb"
+    },
+    "after": {
+      "count": 40,
+      "session": "e849204a-78b7-4c5f-9491-4762265a0deb"
+    }
+  },
+  "lifecycle": [
+    {
+      "destroyed": true,
+      "lifecycleDisposed": true,
+      "lifecycleEntries": 0,
+      "socketDisposed": true,
+      "socketEntries": 0,
+      "thirdPartyBefore": 1,
+      "thirdPartyAfter": 1,
+      "threeReleased": true,
+      "audioReleased": true
+    },
+    {
+      "destroyed": true,
+      "lifecycleDisposed": true,
+      "lifecycleEntries": 0,
+      "socketDisposed": true,
+      "socketEntries": 0,
+      "thirdPartyBefore": 1,
+      "thirdPartyAfter": 1,
+      "threeReleased": true,
+      "audioReleased": true
+    },
+    {
+      "destroyed": true,
+      "lifecycleDisposed": true,
+      "lifecycleEntries": 0,
+      "socketDisposed": true,
+      "socketEntries": 0,
+      "thirdPartyBefore": 1,
+      "thirdPartyAfter": 1,
+      "threeReleased": true,
+      "audioReleased": true
+    }
+  ],
   "errors": []
 }

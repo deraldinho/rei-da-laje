@@ -66,3 +66,23 @@ test('P15.3: App aplica limiter apenas ao coupling pós-scan', () => {
 test('P15.3: runtime de combate exige cruzamento angular real', () => {
   assert.match(appCode, /RopeCollision\.checkRopeCollision\([\s\S]*?minSinAngle:\s*0\.05/);
 });
+
+
+test('P15.3: observador não executa resolvedor canônico de dano', async () => {
+  const { resolveAuthoritativeCombat } = await loadESM('frontend/src/engine/physics/CombatAuthorityGate.js');
+  let calls = 0;
+  const resolver = (...args) => { calls++; return { tied: true, args }; };
+  const denied = resolveAuthoritativeCombat(false, resolver, 'A', 'B', { hit: true }, 1, {});
+  assert.equal(denied, null);
+  assert.equal(calls, 0);
+  const allowed = resolveAuthoritativeCombat(true, resolver, 'A', 'B', { hit: true }, 1, {});
+  assert.equal(calls, 1);
+  assert.equal(allowed.tied, true);
+});
+
+test('P15.3: App usa gate de autoridade e mede HUD, 2D e serialização', () => {
+  assert.match(appCode, /resolveAuthoritativeCombat/);
+  assert.match(appCode, /runtimeProfiler\.begin\('hud'\)/);
+  assert.match(appCode, /runtimeProfiler\.begin\('render2d'\)/);
+  assert.match(appCode, /runtimeProfiler\.begin\('serialization'\)/);
+});

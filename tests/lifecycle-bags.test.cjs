@@ -35,3 +35,27 @@ test('P17: SocketSubscriptionBag remove apenas listeners que registrou',async()=
   assert.equal(external,2);
   assert.equal(socket.listenerCount('event'),1);
 });
+
+test('P17: LifecycleBag preserva o this do timer global no navegador', async () => {
+  const originalSet = globalThis.setInterval;
+  const originalClear = globalThis.clearInterval;
+  let cleared = false;
+  globalThis.setInterval = function(fn, ms) {
+    assert.equal(this, globalThis);
+    return { fn, ms };
+  };
+  globalThis.clearInterval = function(handle) {
+    assert.equal(this, globalThis);
+    cleared = Boolean(handle);
+  };
+  try {
+    const {LifecycleBag}=await load('frontend/src/engine/LifecycleBag.js');
+    const bag=new LifecycleBag();
+    assert.ok(bag.interval(()=>{},250));
+    bag.dispose();
+    assert.equal(cleared,true);
+  } finally {
+    globalThis.setInterval=originalSet;
+    globalThis.clearInterval=originalClear;
+  }
+});

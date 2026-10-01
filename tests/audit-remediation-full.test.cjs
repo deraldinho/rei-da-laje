@@ -174,7 +174,8 @@ test('Validação Completa das Correções da Auditoria Técnica (P0, P1, P2)', 
     assert.equal(audio.ctx, null, 'AudioManager.destroy() deve descartar o AudioContext');
 
     const appCode = fs.readFileSync(path.join(__dirname, '..', 'frontend', 'src', 'engine', 'App.js'), 'utf8');
-    assert.match(appCode, /window\.removeEventListener\('keydown',\s*this\._onKeyDown\)/, 'App.js destroy deve remover listeners de teclado');
+    assert.match(appCode, /this\._lifecycle\.listen\(window,\s*'keydown',\s*this\._onKeyDown\)/, 'App.js deve registrar teclado no lifecycle bag');
+    assert.match(appCode, /this\._lifecycle\.dispose\(\)/, 'App.js destroy deve remover listeners e timers registrados no lifecycle bag');
     assert.match(appCode, /this\._socketSubscriptions\.dispose\(\)/, 'App.js destroy deve desconectar apenas os listeners de socket do GameApp');
     assert.match(appCode, /this\.audio\.destroy\(\)/, 'App.js destroy deve invocar audio.destroy()');
   });

@@ -86,6 +86,14 @@ export class HUD {
     this.leaderboard.setTop5ShowExtras(show);
   }
 
+  setCombatCompact(active) {
+    this.leaderboard.setCombatCompact(active);
+  }
+
+  expandLeaderboardTemporarily(durationMs = 2200) {
+    this.leaderboard.expandTemporarily(durationMs);
+  }
+
   updateSessionRecord(top) {
     this.leaderboard.updateSessionRecord(top);
   }

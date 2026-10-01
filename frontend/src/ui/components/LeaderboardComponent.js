@@ -22,6 +22,27 @@ export class LeaderboardComponent {
     this.rankInitialized = false;
     this.competitionRankEnabled = false;
     this.currentLeaderId = null;
+    this._combatCompact = false;
+    this._expandedUntil = 0;
+  }
+
+  setCombatCompact(active) {
+    if (!this.card) this.card = document.querySelector('.leaderboard-card');
+    if (!this.card) return;
+    const now = Date.now();
+    if (this._expandedUntil && now >= this._expandedUntil) {
+      this._expandedUntil = 0;
+      this.card.classList.remove('spotlight-expanded');
+    }
+    this._combatCompact = Boolean(active);
+    this.card.classList.toggle('combat-compact', this._combatCompact);
+  }
+
+  expandTemporarily(durationMs = 2200) {
+    if (!this.card) this.card = document.querySelector('.leaderboard-card');
+    if (!this.card) return;
+    this._expandedUntil = Date.now() + Math.max(300, Number(durationMs) || 2200);
+    this.card.classList.add('spotlight-expanded');
   }
 
   setTop5Scale(scale) {

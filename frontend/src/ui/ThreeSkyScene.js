@@ -28,6 +28,7 @@ import {
 import { ThreeLines } from './three/ThreeLines.js';
 import { ThreeThemeManager } from './three/themes/ThreeThemeManager.js';
 import { BroadcastDirector } from './three/BroadcastDirector.js';
+import { computeRenderBudget } from './three/RenderBudget.js';
 
 // 1. Constante de cores das linhas congelada para alta performance
 const LINE_COLORS = Object.freeze({
@@ -158,6 +159,11 @@ export class ThreeSkyScene {
     this.customKiteScale = 1.0;
     this.customKiteNameScale = 1.15;
     this.customLineOpacity = 0.88;
+    this._userShadowsEnabled = true;
+    this._runtimeQuality = 'high';
+    this._runtimePopulation = 0;
+    this._renderBudget = computeRenderBudget({ quality: 'high', population: 0 });
+    this._environmentFrame = 0;
 
     this.swayingTrees = [];
     this.favelaTrees = [];
@@ -348,31 +354,6 @@ export class ThreeSkyScene {
     this.canvas.style.display = this.isTransparent ? 'none' : 'block';
   }
 
-  resize(width, height) {
-    if (!this.renderer || !this.camera || this.disabled) return;
-    const w = Math.max(100, Number(width) || window.innerWidth || 1280);
-    const h = Math.max(100, Number(height) || window.innerHeight || 720);
-    this.width = w;
-    this.height = h;
-
-    this.camera.aspect = w / h;
-    this.setCameraMode(this.cameraMode || 'normal');
-    this.camera.updateProjectionMatrix();
-
-    this.renderer.setSize(w, h, false);
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.25));
-
-    if (this.laje && this.themeCode) {
-      this.laje.updateCulturalProps(
-        this.themeCode,
-        this.getVisibleBoundsAt.bind(this),
-        this.height,
-        this.width,
-        this.themeManager ? this.themeManager.getBuildContext() : {}
-      );
-    }
-  }
-
   toggleMode() {
     this.setTransparent(!this.isTransparent);
     return this.isTransparent ? 'Transparente' : this.theme.name;
@@ -401,25 +382,44 @@ export class ThreeSkyScene {
   }
 
   setShadows(enabled) {
-    const val = Boolean(enabled);
-    if (this.renderer?.shadowMap) this.renderer.shadowMap.enabled = val;
-    if (this.dirLight) this.dirLight.castShadow = val;
+    this._userShadowsEnabled = Boolean(enabled);
+    const effective = this._userShadowsEnabled && (this._renderBudget?.shadows !== false);
+    if (this.renderer?.shadowMap) this.renderer.shadowMap.enabled = effective;
+    if (this.dirLight) this.dirLight.castShadow = effective;
+  }
+
+  setRuntimeQuality(quality = 'high', population = 0) {
+    const next = computeRenderBudget({ quality, population });
+    const key = `${quality}|${Math.max(0, Number(population) || 0) >= 24 ? 'crowded' : Math.max(0, Number(population) || 0) >= 14 ? 'busy' : 'normal'}`;
+    if (key === this._runtimeBudgetKey) return this._renderBudget;
+    this._runtimeBudgetKey = key;
+    this._runtimeQuality = quality;
+    this._runtimePopulation = Math.max(0, Math.floor(Number(population) || 0));
+    this._renderBudget = next;
+    const baseRatio = Math.min(window.devicePixelRatio || 1, 1.25);
+    this.renderer?.setPixelRatio(Math.max(0.5, baseRatio * next.pixelRatioScale));
+    const effectiveShadows = this._userShadowsEnabled && next.shadows;
+    if (this.renderer?.shadowMap) this.renderer.shadowMap.enabled = effectiveShadows;
+    if (this.dirLight) this.dirLight.castShadow = effectiveShadows;
+    this.lines?.setIdleLineOpacityScale(next.idleLineOpacityScale);
+    return next;
   }
 
   setBoombox(enabled) {
     this.boomboxEnabled = Boolean(enabled);
   }
 
-  resize(w, h) {
-    this.width = Math.max(320, Number(w) || window.innerWidth || 1280);
-    this.height = Math.max(480, Number(h) || window.innerHeight || 720);
+  resize(width, height) {
+    const w = Math.max(320, Number(width) || window.innerWidth || 1280);
+    const h = Math.max(480, Number(height) || window.innerHeight || 720);
+    this.width = w;
+    this.height = h;
+    if (!this.renderer || !this.camera || this.disabled) return;
 
-    if (!this.renderer || !this.camera) return;
+    this.renderer.setSize(w, h, false);
+    this.camera.aspect = w / h;
 
-    this.renderer.setSize(this.width, this.height, false);
-    this.camera.aspect = this.width / this.height;
-
-    const portrait = this.height > this.width;
+    const portrait = h > w;
     const targetZ = portrait ? 830 : 720;
     const targetY = portrait ? 10 : 0;
     this.baseCameraPos.set(0, targetY, targetZ);
@@ -430,13 +430,12 @@ export class ThreeSkyScene {
 
     if (this.director) {
       this.director.basePos.copy(this.baseCameraPos);
-      this.director.resize(this.width, this.height);
+      this.director.resize(w, h);
     }
-
     if (this.themeManager) this.themeManager.layoutFavelaMorros();
     if (this.laje) {
       const fgBounds = this.getVisibleBoundsAt(480);
-      this.laje.layout(fgBounds, portrait, this.width, this.height);
+      this.laje.layout(fgBounds, portrait, w, h);
     }
     this.render();
   }
@@ -921,12 +920,12 @@ export class ThreeSkyScene {
 
     this.time += 0.016;
 
-    if (this.themeManager) {
-      this.themeManager.updateAnimations(0.016, this.time, this.wind);
-    }
-
-    if (this.laje) {
-      this.laje.update(0.016, this.time, this.boomboxEnabled);
+    const environmentStride = Math.max(1, Number(this._renderBudget?.environmentStride) || 1);
+    this._environmentFrame = (this._environmentFrame || 0) + 1;
+    if (this._environmentFrame % environmentStride === 0) {
+      const visualDt = 0.016 * environmentStride;
+      if (this.themeManager) this.themeManager.updateAnimations(visualDt, this.time, this.wind);
+      if (this.laje) this.laje.update(visualDt, this.time, this.boomboxEnabled);
     }
 
     this.renderer.render(this.scene, this.camera);

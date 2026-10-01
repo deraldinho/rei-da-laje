@@ -246,3 +246,9 @@ test('App.js: kick individual remove a pipa alvo sem reiniciar a arena inteira',
   assert.ok(appSource.includes("this.removeKite(data.kickedId)"), 'App.js deve remover pipa kickada');
 });
 
+
+
+test('App.js: applySettings importa liveVisualScale para settings sync/reconnect',()=>{
+  const appSource=fs.readFileSync(path.join(__dirname,'../frontend/src/engine/App.js'),'utf8');
+  assert.match(appSource,/import\s*\{\s*liveVisualScale\s*\}\s*from\s*['"]\.\.\/ui\/LiveLayout\.js['"]/);
+});

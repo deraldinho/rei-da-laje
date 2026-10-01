@@ -46,6 +46,12 @@ export class ThreeLines {
     this.sparksPoints = createSparks3DGroup(180);
     this.group.add(this.sparksPoints);
     this.customLineOpacity = 0.88;
+    this.idleLineOpacityScale = 1;
+  }
+
+  setIdleLineOpacityScale(val) {
+    const num = Number(val);
+    if (Number.isFinite(num)) this.idleLineOpacityScale = Math.max(0.15, Math.min(1, num));
   }
 
   setLineOpacity(val) {
@@ -89,7 +95,7 @@ export class ThreeLines {
         l3d.userData.mat.opacity = 1.0;
       } else {
         l3d.userData.mat.color.setHex(desiredColor);
-        l3d.userData.mat.opacity = customOpacity;
+        l3d.userData.mat.opacity = customOpacity * this.idleLineOpacityScale;
       }
     }
 
@@ -102,7 +108,7 @@ export class ThreeLines {
         l3d.userData.glowMat.opacity = 0.82;
       } else {
         l3d.userData.glowMat.color.setHex(desiredColor);
-        l3d.userData.glowMat.opacity = 0.38;
+        l3d.userData.glowMat.opacity = 0.38 * this.idleLineOpacityScale;
       }
     }
 

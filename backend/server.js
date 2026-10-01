@@ -15,6 +15,8 @@ const playerSpawnPayload = require('./playerSpawnPayload');
 const { requireLocalControl, canClaimCombat, isLoopbackOrigin } = require('./localControl');
 const { capturePlayerStates } = require('./arenaLiveState');
 const { validateCutClaim } = require('./cutClaimValidator');
+const { CatchClaimRegistry } = require('./catchClaimRegistry');
+const { registerCanonicalCatchHandler } = require('./socketCatchHandler');
 const GameReplayStore = require('./gameReplayStore');
 const SettingsManager = require('./settingsManager');
 const settingsManager = new SettingsManager();
@@ -58,6 +60,7 @@ const arenaStore = new ArenaStateStore(process.env.PIPA_ARENA_STATE_FILE || unde
 const restoredArena = arenaStore.restore(gameRules, buffManager);
 let arenaSessionId = arenaStore.sessionId;
 const recentValidatedCuts = new Map();
+const catchRegistry = new CatchClaimRegistry({ ttlMs: 25000 });
 let arenaPersistTimer = null;
 function flushArena() {
   if (arenaPersistTimer) { clearTimeout(arenaPersistTimer); arenaPersistTimer = null; }
@@ -275,6 +278,7 @@ app.post('/api/competition/reset', requireLocalControl, async (req, res) => {
   arenaStore.reset(gameRules, buffManager, { scope });
   arenaSessionId = arenaStore.sessionId;
   recentValidatedCuts.clear();
+  catchRegistry.clear();
 
   // 2. Se for solicitado limpar perfil do TikTok
   if (clearProfile) {
@@ -562,6 +566,7 @@ io.on('connection', (socket) => {
     }
     sendAck({ ok: true, cutResult });
     const winner = cutResult.winner;
+    catchRegistry.registerCut({ loserId: data.loserId, loserNick: cutResult.cutPlayer.nickname });
     buffManager.removePlayer(data.loserId);
     arenaStore.playerStates.delete(String(data.loserId));
     persistArenaNow();
@@ -606,6 +611,15 @@ io.on('connection', (socket) => {
       const q = cutResult.spawnedFromQueue;
       io.emit('player:spawn', playerSpawnPayload(q,buffManager));
     }
+  });
+
+  registerCanonicalCatchHandler({
+    socket,
+    io,
+    catchRegistry,
+    gameRules,
+    persistArenaNow,
+    getCombatOwnerSocketId: () => combatOwnerSocketId
   });
 
   socket.on('disconnect', () => {

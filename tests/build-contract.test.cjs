@@ -31,3 +31,16 @@ test('P18: artefatos pesados e runtime local ficam fora de versionamento',()=>{
   assert.match(code,/frontend\/dist\//);
   assert.match(code,/backups\//);
 });
+
+test('P18: browser smoke valida o bundle de produção atual',()=>{
+  const file=path.join(root,'tests','browser-smoke.mjs');
+  const code=fs.readFileSync(file,'utf8');
+  assert.match(code,/path\.join\(root,'frontend','dist'\)/);
+  assert.doesNotMatch(code,/dist-preview/);
+});
+
+test('P18: soak standalone usa janela longa por padrão',()=>{
+  const file=path.join(root,'tests','runtime-soak.mjs');
+  const code=fs.readFileSync(file,'utf8');
+  assert.match(code,/30\s*\*\s*60\s*\*\s*1000/);
+});

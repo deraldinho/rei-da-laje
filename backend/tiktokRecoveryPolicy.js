@@ -30,8 +30,10 @@ function nextTikTokRetry({ kind, attempt = 1, random = Math.random } = {}) {
   const slow = kind === TIKTOK_FAILURE.LIVE_NOT_FOUND || kind === TIKTOK_FAILURE.LIVE_ENDED;
   const delays = slow ? SLOW_DELAYS : FAST_DELAYS;
   const index = Math.min(delays.length - 1, Math.max(0, Math.floor(Number(attempt) || 1) - 1));
+  const jittered = applyJitter(delays[index], random);
+  const delayMs = slow ? Math.max(120000, Math.min(300000, jittered)) : jittered;
   return {
-    delayMs: applyJitter(delays[index], random),
+    delayMs,
     slow,
     countsTowardExhaustion: !slow
   };

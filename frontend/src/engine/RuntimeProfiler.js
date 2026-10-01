@@ -23,6 +23,7 @@ export class RuntimeProfiler {
     this.frames = [];
     this.sections = new Map();
     this.active = new Map();
+    this.gauges = Object.create(null);
   }
   _push(list, value) {
     if (!Number.isFinite(value) || value < 0) return;
@@ -50,10 +51,17 @@ export class RuntimeProfiler {
     this._push(this.frames, Number(deltaMs));
   }
 
+  gauge(name, value) {
+    const numeric = Number(value);
+    if (!name || !Number.isFinite(numeric)) return;
+    this.gauges[String(name)] = numeric;
+  }
+
   reset() {
     this.frames.length = 0;
     this.sections.clear();
     this.active.clear();
+    this.gauges = Object.create(null);
   }
   snapshot() {
     const frame = summarize(this.frames);
@@ -66,7 +74,8 @@ export class RuntimeProfiler {
       fps: frame.avgMs > 0 ? 1000 / frame.avgMs : 0,
       quality,
       frame,
-      sections
+      sections,
+      gauges: { ...this.gauges }
     };
   }
 }

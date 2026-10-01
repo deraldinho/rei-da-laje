@@ -1,7 +1,7 @@
 export class LifecycleBag {
-  constructor({ setIntervalFn = setInterval, clearIntervalFn = clearInterval } = {}) {
-    this.setIntervalFn = setIntervalFn;
-    this.clearIntervalFn = clearIntervalFn;
+  constructor({ setIntervalFn = null, clearIntervalFn = null } = {}) {
+    this.setIntervalFn = setIntervalFn || ((fn, ms) => globalThis.setInterval(fn, ms));
+    this.clearIntervalFn = clearIntervalFn || (handle => globalThis.clearInterval(handle));
     this.disposers = [];
     this.disposed = false;
   }
