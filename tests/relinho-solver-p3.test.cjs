@@ -220,3 +220,19 @@ test('P3.5 - Physics.resolveRelinhoCombat: Fachada preserva escudos e desempates
   assert.equal(kiteB.shieldCount, 0, 'Escudo do perdedor deve ser consumido');
   assert.equal(kiteB.lineHP, kiteB.maxLineHP, 'HP do defensor salvo pelo escudo deve ser restaurado ao máximo');
 });
+
+
+test('P3.6 - ruptura simultânea perfeitamente simétrica resolve um vencedor em vez de empatar para sempre', async () => {
+  const { RelinhoContactSolver } = await loadESM('frontend/src/engine/physics/RelinhoContactSolver.js');
+  const kiteA = createMockKite({ userId: 'duel_a', lineHP: 0.01, maxLineHP: 100 });
+  const kiteB = createMockKite({ userId: 'duel_b', lineHP: 0.01, maxLineHP: 100 });
+  const intersection = { x: 400, y: 500 };
+  const contact = { phase: 'GRINDING', friction: 1, slidingSpeed: 30, sinAngle: 0.8 };
+
+  const result = RelinhoContactSolver.resolveCombatStep(kiteA, kiteB, intersection, 1, contact,
+    (winner, loser, pt) => ({ tied: false, winner, loser, cutX: pt.x, cutY: pt.y }));
+
+  assert.equal(result.tied, false, 'empate físico exato precisa terminar o duelo');
+  assert.ok(result.winner && result.loser, 'deve existir exatamente um vencedor e um perdedor');
+  assert.notEqual(result.winner.userId, result.loser.userId);
+});

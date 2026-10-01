@@ -208,11 +208,30 @@ export class RelinhoContactSolver {
             : finalize(kiteB, kiteA, intersectionPoint);
         }
 
-        kiteA.lineHP = Math.max(1, kiteA.lineHP);
-        kiteB.lineHP = Math.max(1, kiteB.lineHP);
-        kiteA.updateHPBar?.();
-        kiteB.updateHPBar?.();
-        return { tied: true, sparksOnly: true, simultaneousBreak: true };
+        // Empate fÃ­sico perfeito: em um simulador contÃ­nuo isso Ã© um caso de medida zero,
+        // mas no fixed-step duas linhas idÃªnticas podem atingir 0 exatamente no mesmo frame.
+        // NÃ£o restauramos ambas para 1 HP, pois isso cria um duelo infinito. Resolve-se a
+        // micro-assimetria que o passo discreto nÃ£o consegue representar com um desempate
+        // determinÃ­stico baseado na identidade + ponto de contato, estÃ¡vel entre execuÃ§Ãµes.
+        const stableTieScore = (kite) => {
+          const seed = `${String(kite?.userId || '')}|${Math.round((intersectionPoint?.x || 0) * 10)}|${Math.round((intersectionPoint?.y || 0) * 10)}`;
+          let hash = 2166136261;
+          for (let i = 0; i < seed.length; i++) {
+            hash ^= seed.charCodeAt(i);
+            hash = Math.imul(hash, 16777619);
+          }
+          return hash >>> 0;
+        };
+        const scoreA = stableTieScore(kiteA);
+        const scoreB = stableTieScore(kiteB);
+        if (scoreA === scoreB) {
+          return String(kiteA?.userId || '').localeCompare(String(kiteB?.userId || '')) <= 0
+            ? finalize(kiteA, kiteB, intersectionPoint)
+            : finalize(kiteB, kiteA, intersectionPoint);
+        }
+        return scoreA > scoreB
+          ? finalize(kiteA, kiteB, intersectionPoint)
+          : finalize(kiteB, kiteA, intersectionPoint);
       }
 
       return excessA < excessB
