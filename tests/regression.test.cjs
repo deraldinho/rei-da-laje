@@ -90,8 +90,12 @@ test('dupla ruptura igual não favorece ordem de criação das pipas', async () 
     a.lineHP = 0.5; b.lineHP = 0.5;
     return reverse ? Physics.resolveRelinhoCombat(b, a, {x:1,y:1}) : Physics.resolveRelinhoCombat(a, b, {x:1,y:1});
   };
-  assert.equal(run(false).tied, true);
-  assert.equal(run(true).tied, true);
+  const forward = run(false);
+  const reverse = run(true);
+  assert.equal(forward.tied, false);
+  assert.equal(reverse.tied, false);
+  assert.equal(forward.winner?.userId, reverse.winner?.userId);
+  assert.equal(forward.loser?.userId, reverse.loser?.userId);
 });
 test('liderança exige pontuação isolada e muda só com corte registrado', () => {
   const rules = new GameRules(4);

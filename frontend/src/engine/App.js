@@ -22,11 +22,13 @@ import { PhysicsClock } from './physics/PhysicsClock.js'; // Passo 1
 import { KiteDynamics } from './physics/KiteDynamics.js';
 import { CombatContactAccumulator } from './physics/CombatContactAccumulator.js';
 import { selectCouplingJobs } from './physics/RopeCouplingLimiter.js';
+import { createRelinhoContactBudget } from './physics/RelinhoContactBudget.js';
 import { resolveAuthoritativeCombat } from './physics/CombatAuthorityGate.js';
 import { RuntimeProfiler } from './RuntimeProfiler.js';
 import { LifecycleBag } from './LifecycleBag.js';
 import { SocketSubscriptionBag } from './SocketSubscriptionBag.js';
 import { AparoController } from './AparoController.js';
+import { stabilizeSpawnKite } from './SpawnLayout.js';
 
 export class GameApp {
   constructor(socket) {
@@ -932,6 +934,7 @@ export class GameApp {
     ordered.forEach((kite, index) => {
       kite.rooftopPlayer?.setLayout(slotOrder[index], ordered.length);
       this.syncLineToPlayerHand(kite);
+      stabilizeSpawnKite(kite, index, ordered.length, w, h);
     });
   }
 
@@ -944,6 +947,7 @@ export class GameApp {
       data.spawnProtection = this.spawnProtectionSec;
     }
     const kite = new Kite(data, w, h);
+    kite.spawnLayoutEligible = !checkpoint;
     if (this.customKiteScale !== undefined) {
       kite.visualScale *= (this.customKiteScale / 1.55);
       kite.scale.set(kite.visualScale);
@@ -1046,6 +1050,8 @@ export class GameApp {
       this.runtimeProfiler.gauge('drawCalls', Number(webglRender.calls) || 0);
       this.runtimeProfiler.gauge('triangles', Number(webglRender.triangles) || 0);
     }
+    const staticSavedDraws = Number(this.threeScene?.themeManager?.staticBatchStats?.savedDraws) || 0;
+    this.runtimeProfiler.gauge('staticSavedDraws', staticSavedDraws);
 
     // P8/P15.1 — Fixed Simulation Completa (60 Hz determinístico):
     // manobras, cordas, relinho, voadas e linhas rompidas compartilham o mesmo relógio.
@@ -1144,6 +1150,7 @@ export class GameApp {
     const deadThisFrame = new Set(); // pipas que morreram neste frame
     const seenContacts = new Set();
     const combatResponses = new CombatContactAccumulator();
+    const contactBudget = createRelinhoContactBudget(this.relinhoContacts, 3);
     const couplingQueue = []; // aplicar só depois da detecção/resolução: check-hit não pode mutar a geometria durante o scan
 
     for (let i = 0; i < activeList.length; i++) {
@@ -1262,6 +1269,11 @@ export class GameApp {
           // Não aplicar coupling durante o scan de colisão. Alterar os nós aqui faz
           // o próximo par enxergar uma geometria diferente dentro do MESMO substep,
           // gerando cascata de hits quando 3+ linhas se encontram.
+          if (!contactBudget.admit(pairKey)) {
+            if (bothHaveRope) this._ropeCollisionHints.delete(pairKey);
+            continue;
+          }
+
           if (bothHaveRope) {
             this._ropeCollisionHints.set(pairKey, {
               segmentIndexA: inter.segmentIndexA,

@@ -9,6 +9,29 @@
  *   3. Tensão da Corda XPBD (puxa o cabresto na direção do fio).
  *   4. Intenções de Controle (comentários/presentes: reelVelocity, liftIntent, steerIntent).
  */
+const SPARSE_CROSSING_SPEED = 0.72;
+
+export function sparseCruiseTarget(kite, population = 2, globalTime = 0, width = 1080, height = 1920) {
+  const count = Math.max(2, Math.min(4, Math.floor(Number(population) || 2)));
+  const layoutIndex = Number(kite?.rooftopPlayer?.layoutIndex);
+  const hasLayoutIndex = Number.isFinite(layoutIndex);
+  const rank = hasLayoutIndex ? ((Math.floor(layoutIndex) % count) + count) % count : 0;
+  const fallbackPhase = Number.isFinite(kite?.windPhase) ? kite.windPhase : 0;
+  const phase = hasLayoutIndex ? (rank * Math.PI * 2) / count : fallbackPhase;
+  const t = Number.isFinite(globalTime) ? globalTime : 0;
+  const w = Math.max(320, Number(width) || 1080);
+  const h = Math.max(480, Number(height) || 1920);
+
+  // Fases uniformemente espaÃ§adas fazem os sobreviventes trocarem de corredor.
+  // Para 2 pipas as fases sÃ£o exatamente opostas; 3/4 formam uma circulaÃ§Ã£o.
+  const crossingWave = Math.cos(t * SPARSE_CROSSING_SPEED + phase);
+  const verticalWave = Math.sin(t * 0.43 + phase * 0.35);
+  return {
+    x: w * (0.5 + crossingWave * 0.34),
+    y: h * (0.28 + verticalWave * 0.075)
+  };
+}
+
 export class KiteDynamics {
   // Relógio global compartilhado: TODAS as pipas usam o mesmo tempo para convergir
   // ao MESMO ponto de encontro simultaneamente. Sem isso, cada pipa calculava
@@ -184,21 +207,9 @@ export class KiteDynamics {
     let cruiseX, cruiseY;
 
     if (sparse) {
-      const gt = KiteDynamics._globalTime;
-      const phase = kite.windPhase || 0;
-
-      // Onda de convergência COMPARTILHADA (mesma pra todas as pipas)
-      // Ciclo ~9.6s: ~4.8s comprimido no centro, ~4.8s espalhado pelos lados
-      const convergence = Math.pow((1 + Math.sin(gt * 0.65)) / 2, 2) * 0.9;
-
-      // Drift INDIVIDUAL: cada pipa oscila com sua própria fase
-      // Quando convergência=0: amplitude total de ±0.38 * largura (cobre 76% da tela)
-      // Quando convergência=1: amplitude ≈ 0 (todas agrupadas no centro)
-      const drift = Math.sin(gt * 0.55 + phase);
-      const lift = Math.sin(gt * 0.48 + phase * 1.7);
-
-      cruiseX = width * (0.5 + drift * 0.38 * (1 - convergence));
-      cruiseY = height * (0.28 + lift * 0.14 * (1 - convergence));
+      const target = sparseCruiseTarget(kite, population, KiteDynamics._globalTime, width, height);
+      cruiseX = target.x;
+      cruiseY = target.y;
     } else {
       cruiseX = Number.isFinite(kite.targetX) ? kite.targetX : (width * 0.5);
       cruiseY = Number.isFinite(kite.targetY) ? kite.targetY : (height * 0.26);

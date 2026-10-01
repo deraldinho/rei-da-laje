@@ -52,7 +52,7 @@ export class Physics {
       intersectionPoint,
       delta,
       contact,
-      (winner, loser, pt) => this.finalizeCut(winner, loser, pt)
+      (winner, loser, pt) => Physics.finalizeCut(winner, loser, pt)
     );
   }
 
