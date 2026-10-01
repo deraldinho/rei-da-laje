@@ -24,14 +24,15 @@ test('presentes geram manobras com alcance e duração limitados', async () => {
   assert.equal(maneuverTarget(owner,[owner,{...target,x:999}],10),null);
 });
 
-test('manobra defensiva reduz dano, manobra ofensiva não garante corte', async () => {
-  const { Physics } = await esm('Physics.js');
-  const kite = (maneuver = null) => ({lineHP:100,maxLineHP:100,shieldCount:0,lineType:'algodao',maneuver,
-    calculateCombatPower:()=>1,takeDamage(amount){this.lineHP-=amount;return this.lineHP<=0;}});
-  const a=kite({defense:0.6}), b=kite({damage:1.16});
-  const outcome=Physics.resolveRelinhoCombat(a,b,{x:0,y:0});
-  assert.equal(outcome.tied,true);
-  assert.ok(a.lineHP>b.lineHP);
+test('manobra defensiva reduz abrasão e bônus ofensivo não vira dano fixo', async () => {
+  const { RelinhoContactSolver } = await esm('physics/RelinhoContactSolver.js');
+  const kite = (maneuver = null, contactSpeed = 0) => ({lineHP:100,maxLineHP:100,shieldCount:0,lineType:'algodao',maneuver,contactSpeed,lineTension:.8,calculateCombatPower:()=>1});
+  const contact={slidingSpeed:12,vSlide:12,slideA:12,slideB:-12,sinAngle:.8,contactTime:.5};
+  const defended=RelinhoContactSolver.calculateFrictionalWork(kite({defense:.6}),kite(),{x:0,y:0},contact);
+  const baseline=RelinhoContactSolver.calculateFrictionalWork(kite(),kite(),{x:0,y:0},contact);
+  assert.ok(defended.damageRateA < baseline.damageRateA,'defesa reduz desgaste recebido');
+  const offensive=RelinhoContactSolver.calculateFrictionalWork(kite({damage:1.16}),kite(),{x:0,y:0},contact);
+  assert.ok(Math.abs(offensive.damageRateB-baseline.damageRateB)<1e-12,'damage da manobra não pode ser dano fixo fora da física');
 });
 
 test('estatísticas de cortes, derrotas e fila permanecem na sessão', () => {
@@ -70,11 +71,12 @@ test('troca de linha preserva o dano acumulado em vez de curar totalmente', () =
   assert.equal(kite.lineHP,40);
 });
 
-test('choque rápido aumenta dano em no máximo 10 por cento', async()=>{
-  const {Physics}=await esm('Physics.js');
-  const kite=contactSpeed=>({lineHP:100,maxLineHP:100,lineType:'algodao',shieldCount:0,contactSpeed,
-    calculateCombatPower:()=>1,takeDamage(n){this.lineHP-=n;return this.lineHP<=0;}});
-  const a=kite(10),b=kite(0);
-  Physics.resolveRelinhoCombat(a,b,{x:0,y:0});
-  assert.ok(b.lineHP<a.lineHP && b.lineHP>=98.68);
+test('contactSpeed isolado não injeta dano fora do vSlide físico', async()=>{
+  const {RelinhoContactSolver}=await esm('physics/RelinhoContactSolver.js');
+  const kite=contactSpeed=>({lineHP:100,maxLineHP:100,lineType:'algodao',shieldCount:0,contactSpeed,lineTension:.8,calculateCombatPower:()=>1});
+  const contact={slidingSpeed:10,vSlide:10,slideA:10,slideB:-10,sinAngle:.8,contactTime:.5};
+  const fast=RelinhoContactSolver.calculateFrictionalWork(kite(30),kite(0),{x:0,y:0},contact);
+  const slow=RelinhoContactSolver.calculateFrictionalWork(kite(0),kite(0),{x:0,y:0},contact);
+  assert.ok(Math.abs(fast.damageRateA-slow.damageRateA)<1e-12);
+  assert.ok(Math.abs(fast.damageRateB-slow.damageRateB)<1e-12);
 });

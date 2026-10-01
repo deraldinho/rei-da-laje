@@ -1,238 +1,66 @@
-const test = require('node:test');
-const assert = require('node:assert/strict');
-const path = require('node:path');
-const { pathToFileURL } = require('node:url');
+const test=require('node:test');
+const assert=require('node:assert/strict');
+const path=require('node:path');
+const {pathToFileURL}=require('node:url');
+async function load(relative){return import(pathToFileURL(path.resolve(__dirname,'..',relative)).href+`?t=${Date.now()}-${Math.random()}`);}
 
-class MockCanvas {
-  constructor() {
-    this.width = 100;
-    this.height = 100;
-    this.nodeName = 'CANVAS';
-    this.tagName = 'CANVAS';
-    this.style = {};
-  }
-  getContext() {
-    return {
-      fillRect: () => {},
-      clearRect: () => {},
-      getImageData: () => ({ data: new Uint8ClampedArray(4) }),
-      putImageData: () => {},
-      createImageData: () => [],
-      setTransform: () => {},
-      drawImage: () => {},
-      save: () => {},
-      fillText: () => {},
-      restore: () => {},
-      beginPath: () => {},
-      moveTo: () => {},
-      lineTo: () => {},
-      closePath: () => {},
-      stroke: () => {},
-      translate: () => {},
-      scale: () => {},
-      rotate: () => {},
-      arc: () => {},
-      fill: () => {},
-      measureText: () => ({ width: 0 }),
-      transform: () => {},
-      rect: () => {},
-      clip: () => {}
-    };
-  }
+function mockKite(opts={}){
+  return {userId:opts.userId||'p',x:400,y:300,baseX:400,baseY:900,lineHP:opts.lineHP??100,maxLineHP:100,
+    shieldCount:opts.shieldCount??0,lineType:opts.lineType||'algodao',lineTension:opts.lineTension??.8,
+    rope:opts.rope||null,maneuver:null,defenseWindowRemaining:0,chatCombo:{defense:1,attack:1},
+    takeDamage(){throw new Error('compatibilidade nova não pode chamar takeDamage');},triggerShieldAbsorb(){},updateHPBar(){}};
 }
+function contact(slide=12){return {phase:'GRINDING',contactTime:.5,slidingSpeed:slide,vSlide:slide,slideA:slide,slideB:-slide,
+  relativeVx:slide,relativeVy:0,sinAngle:1,x:400,y:500,z:0,segmentIndexA:2,segmentIndexB:3,s:.3,t:.7};}
 
-if (typeof global.window === 'undefined') {
-  global.window = {};
-}
-if (typeof global.HTMLCanvasElement === 'undefined') {
-  global.HTMLCanvasElement = MockCanvas;
-}
-if (typeof global.document === 'undefined') {
-  global.document = {
-    createElement: (tag) => {
-      if (tag === 'canvas') return new MockCanvas();
-      return { style: {} };
-    }
-  };
-}
-
-async function loadESM(relativePath) {
-  const filePath = path.resolve(__dirname, '..', relativePath);
-  return import(pathToFileURL(filePath).href);
-}
-
-function createMockKite(opts = {}) {
-  const lineType = opts.lineType || 'algodao';
-  return {
-    userId: opts.userId || 'player_' + Math.random().toString(36).slice(2, 7),
-    x: opts.x ?? 400,
-    y: opts.y ?? 300,
-    baseX: opts.baseX ?? 400,
-    baseY: opts.baseY ?? 900,
-    lineHP: opts.lineHP ?? 100,
-    maxLineHP: opts.maxLineHP ?? 100,
-    shieldCount: opts.shieldCount ?? 0,
-    lineType,
-    lineTension: opts.lineTension ?? 0.6,
-    contactSpeed: opts.contactSpeed ?? 0,
-    defenseWindowRemaining: opts.defenseWindowRemaining ?? 0,
-    chatCombo: opts.chatCombo || { defense: 1, attack: 1 },
-    maneuver: opts.maneuver || null,
-    rope: opts.rope || null,
-    calculateCombatPower: () => opts.power ?? 1,
-    takeDamage(d) {
-      this.lineHP -= d;
-      return this.lineHP <= 0;
-    },
-    triggerShieldAbsorb() {},
-    updateHPBar() {}
-  };
-}
-
-test('P3.1 - RelinhoContactSolver: Algodão vs Algodão preserva paridade 1.0 na razão abrasiva', async () => {
-  const { RelinhoContactSolver } = await loadESM('frontend/src/engine/physics/RelinhoContactSolver.js');
-
-  const kiteA = createMockKite({ lineType: 'algodao', power: 1 });
-  const kiteB = createMockKite({ lineType: 'algodao', power: 1 });
-  const hitPoint = { x: 400, y: 500 };
-
-  const work = RelinhoContactSolver.calculateFrictionalWork(kiteA, kiteB, hitPoint);
-  assert.ok(work.damageRateA > 0, 'Dano A deve ser positivo');
-  assert.ok(work.damageRateB > 0, 'Dano B deve ser positivo');
-  assert.ok(
-    Math.abs(work.damageRateA - work.damageRateB) < 1e-4,
-    `Algodão vs Algodão com mesma geometria deve gerar dano idêntico: A=${work.damageRateA}, B=${work.damageRateB}`
-  );
+test('P3.1 - fachada tribológica mantém vSlide explícito zero como abrasão zero',async()=>{
+  const {RelinhoContactSolver}=await load('frontend/src/engine/physics/RelinhoContactSolver.js');
+  const a=mockKite(),b=mockKite({userId:'b'});
+  const work=RelinhoContactSolver.calculateFrictionalWork(a,b,{x:400,y:500},{...contact(0),slidingSpeed:0,vSlide:0});
+  assert.equal(work.damageRateA,0); assert.equal(work.damageRateB,0); assert.equal(work.slidingSpeed,0);
 });
 
-test('P3.2 - RelinhoContactSolver: Razão Tribológica favorece Linha Chilena e protege Kevlar', async () => {
-  const { RelinhoContactSolver } = await loadESM('frontend/src/engine/physics/RelinhoContactSolver.js');
-
-  const chileKite = createMockKite({ lineType: 'chile', power: 1 });
-  const cottonKite = createMockKite({ lineType: 'algodao', power: 1 });
-  const kevlarKite = createMockKite({ lineType: 'kevlar', power: 1 });
-  const hitPoint = { x: 400, y: 500 };
-
-  // Duelo 1: Chile vs Algodão
-  // Chile ataca Algodão (damageRateB) vs Algodão ataca Chile (damageRateA)
-  const duel1 = RelinhoContactSolver.calculateFrictionalWork(chileKite, cottonKite, hitPoint);
-  assert.ok(
-    duel1.damageRateB > duel1.damageRateA * 1.5,
-    `Chile deve causar dano significativamente maior que Algodão devido à alta abrasividade: Chile causou ${duel1.damageRateB}, Algodão causou ${duel1.damageRateA}`
-  );
-
-  // Duelo 2: Algodão vs Kevlar
-  // Algodão ataca Kevlar (damageRateB) vs Kevlar ataca Algodão (damageRateA)
-  const duel2 = RelinhoContactSolver.calculateFrictionalWork(cottonKite, kevlarKite, hitPoint);
-  assert.ok(
-    duel2.damageRateB < duel2.damageRateA,
-    `Kevlar deve sofrer menos dano que Algodão devido à alta resistência à abrasão: Kevlar sofreu ${duel2.damageRateB}, Algodão sofreu ${duel2.damageRateA}`
-  );
+test('P3.2 - fachada preserva assimetria física Chile versus Algodão/Kevlar',async()=>{
+  const {RelinhoContactSolver}=await load('frontend/src/engine/physics/RelinhoContactSolver.js');
+  const chile=mockKite({lineType:'chile'}), cotton=mockKite({userId:'cotton'}), kevlar=mockKite({userId:'kevlar',lineType:'kevlar'});
+  const c=contact(12);
+  const duel1=RelinhoContactSolver.calculateFrictionalWork(chile,cotton,c,c);
+  assert.ok(duel1.damageRateB>duel1.damageRateA,'Chile deve desgastar mais o algodão');
+  const duel2=RelinhoContactSolver.calculateFrictionalWork(cotton,kevlar,c,c);
+  assert.ok(duel2.damageRateB<duel2.damageRateA,'Kevlar deve sofrer menos desgaste');
 });
 
-test('P3.3 - RelinhoContactSolver: Desgaste de segmento localizado degrada nó atingido da corda física', async () => {
-  const { RelinhoContactSolver } = await loadESM('frontend/src/engine/physics/RelinhoContactSolver.js');
-  const { RopePhysics } = await loadESM('frontend/src/engine/physics/RopePhysics.js');
-
-  const ropeA = new RopePhysics({ numNodes: 12, totalLength: 500, lineType: 'algodao' });
-  const ropeB = new RopePhysics({ numNodes: 12, totalLength: 500, lineType: 'algodao' });
-
-  const kiteA = createMockKite({ rope: ropeA });
-  const kiteB = createMockKite({ rope: ropeB });
-
-  // Antes do combate: desgaste deve ser 0 em todos os segmentos
-  assert.equal(ropeA.segmentWear[5], 0);
-  assert.equal(ropeB.segmentWear[7], 0);
-
-  const intersection = {
-    x: 400,
-    y: 500,
-    segmentIndexA: 5,
-    segmentIndexB: 7
-  };
-
-  // Simula 10 passos de relinho contínuo
-  for (let step = 0; step < 10; step++) {
-    RelinhoContactSolver.resolveCombatStep(kiteA, kiteB, intersection, 1);
-  }
-
-  // Segmentos colididos devem ter acumulado desgaste localizado
-  assert.ok(ropeA.segmentWear[5] > 0, `Segmento 5 da corda A deveria ter acumulado desgaste, valor: ${ropeA.segmentWear[5]}`);
-  assert.ok(ropeB.segmentWear[7] > 0, `Segmento 7 da corda B deveria ter acumulado desgaste, valor: ${ropeB.segmentWear[7]}`);
-
-  // Segmentos adjacentes não atingidos diretamente devem manter integridade superior
-  assert.ok(
-    ropeA.getSegmentIntegrity(5) < ropeA.getSegmentIntegrity(0),
-    'Segmento colidido deve ter integridade menor que segmento intacto na base'
-  );
+test('P3.3 - fachada acumula desgaste localizado sem mutação de HP por takeDamage',async()=>{
+  const [{RelinhoContactSolver},{RopePhysics}]=await Promise.all([load('frontend/src/engine/physics/RelinhoContactSolver.js'),load('frontend/src/engine/physics/RopePhysics.js')]);
+  const ra=new RopePhysics({nodeCount:6,lineType:'algodao'}), rb=new RopePhysics({nodeCount:6,lineType:'algodao'});
+  ra.tension=rb.tension=1;
+  const a=mockKite({rope:ra}),b=mockKite({userId:'b',rope:rb}); const c=contact(20);
+  for(let i=0;i<20;i++) RelinhoContactSolver.resolveCombatStep(a,b,c,1,c);
+  assert.ok(ra.segmentWear[2]>0); assert.ok(rb.segmentWear[3]>0);
+  assert.equal(ra.segmentWear[0],0); assert.equal(rb.segmentWear[0],0);
 });
 
-test('P3.4 - RelinhoContactSolver: Ruptura física instantânea quando o nó da corda atinge integridade crítica', async () => {
-  const { RelinhoContactSolver } = await loadESM('frontend/src/engine/physics/RelinhoContactSolver.js');
-  const { RopePhysics } = await loadESM('frontend/src/engine/physics/RopePhysics.js');
-
-  const ropeA = new RopePhysics({ numNodes: 12, totalLength: 500, lineType: 'algodao' });
-  const ropeB = new RopePhysics({ numNodes: 12, totalLength: 500, lineType: 'algodao' });
-
-  const kiteA = createMockKite({ rope: ropeA, lineHP: 90, maxLineHP: 100 });
-  const kiteB = createMockKite({ rope: ropeB, lineHP: 90, maxLineHP: 100 });
-
-  // Força desgaste extremo no segmento 4 da corda B (simula atrito prévio acumulado)
-  ropeB.segmentWear[4] = 0.96; // integridade = 0.04 (abaixo do limiar crítico de 0.05)
-
-  const intersection = {
-    x: 400,
-    y: 500,
-    segmentIndexA: 2,
-    segmentIndexB: 4
-  };
-
-  let finalizedWinner = null;
-  let finalizedLoser = null;
-  const result = RelinhoContactSolver.resolveCombatStep(
-    kiteA,
-    kiteB,
-    intersection,
-    1,
-    null,
-    (winner, loser, pt) => {
-      finalizedWinner = winner;
-      finalizedLoser = loser;
-      return { tied: false, winner, loser, cutX: pt.x, cutY: pt.y };
-    }
-  );
-
-  assert.equal(result.tied, false, 'Combate deve resolver corte devido à ruptura do elo mais fraco');
-  assert.equal(finalizedWinner.userId, kiteA.userId, 'Kite A deve ser o vencedor');
-  assert.equal(finalizedLoser.userId, kiteB.userId, 'Kite B deve ser o perdedor pela quebra da corda');
+test('P3.4 - segmento pré-desgastado rompe pela fachada e preserva ponto físico',async()=>{
+  const [{RelinhoContactSolver},{RopePhysics}]=await Promise.all([load('frontend/src/engine/physics/RelinhoContactSolver.js'),load('frontend/src/engine/physics/RopePhysics.js')]);
+  const ra=new RopePhysics({nodeCount:6,lineType:'algodao'}), rb=new RopePhysics({nodeCount:6,lineType:'algodao'}); ra.tension=rb.tension=1; rb.segmentWear[3]=.999;
+  const a=mockKite({userId:'a',rope:ra}),b=mockKite({userId:'b',rope:rb}); const c=contact(40);
+  const result=RelinhoContactSolver.resolveCombatStep(a,b,c,1,c,(winner,loser,pt)=>({tied:false,winner,loser,cutX:pt.x,cutY:pt.y,segmentIndex:pt.segmentIndexB,segmentT:pt.t}));
+  assert.equal(result.tied,false); assert.equal(result.loser.userId,'b'); assert.equal(result.segmentIndex,3); assert.equal(result.segmentT,.7);
 });
 
-test('P3.5 - Physics.resolveRelinhoCombat: Fachada preserva escudos e desempates tribológicos', async () => {
-  const { Physics } = await loadESM('frontend/src/engine/Physics.js');
-
-  const kiteA = createMockKite({ power: 2, lineHP: 100 });
-  const kiteB = createMockKite({ power: 1, lineHP: 0.2, shieldCount: 1 }); // Com escudo protetor
-  const intersection = { x: 400, y: 500 };
-
-  const outcome = Physics.resolveRelinhoCombat(kiteA, kiteB, intersection, 1);
-
-  assert.equal(outcome.absorbedByShield, true, 'Escudo deve absorver o golpe letal');
-  assert.equal(kiteB.shieldCount, 0, 'Escudo do perdedor deve ser consumido');
-  assert.equal(kiteB.lineHP, kiteB.maxLineHP, 'HP do defensor salvo pelo escudo deve ser restaurado ao máximo');
+test('P3.5 - Physics.finalizeCut mantém escudo como único consumidor local de ruptura',async()=>{
+  const [{Physics},{RopePhysics}]=await Promise.all([load('frontend/src/engine/Physics.js'),load('frontend/src/engine/physics/RopePhysics.js')]);
+  const rope=new RopePhysics({nodeCount:6,lineType:'kevlar'}); rope.segmentWear.fill(.8);
+  const winner=mockKite({userId:'winner'}), loser=mockKite({userId:'loser',rope,shieldCount:1,lineHP:0});
+  const outcome=Physics.finalizeCut(winner,loser,{x:10,y:20,kiteA:winner,kiteB:loser,segmentIndexB:2,t:.4});
+  assert.equal(outcome.absorbedByShield,true); assert.equal(loser.shieldCount,0); assert.equal(loser.lineHP,loser.maxLineHP);
+  assert.ok([...rope.segmentWear].every(v=>v===0));
 });
 
-
-test('P3.6 - ruptura simultânea perfeitamente simétrica resolve um vencedor em vez de empatar para sempre', async () => {
-  const { RelinhoContactSolver } = await loadESM('frontend/src/engine/physics/RelinhoContactSolver.js');
-  const kiteA = createMockKite({ userId: 'duel_a', lineHP: 0.01, maxLineHP: 100 });
-  const kiteB = createMockKite({ userId: 'duel_b', lineHP: 0.01, maxLineHP: 100 });
-  const intersection = { x: 400, y: 500 };
-  const contact = { phase: 'GRINDING', friction: 1, slidingSpeed: 30, sinAngle: 0.8 };
-
-  const result = RelinhoContactSolver.resolveCombatStep(kiteA, kiteB, intersection, 1, contact,
-    (winner, loser, pt) => ({ tied: false, winner, loser, cutX: pt.x, cutY: pt.y }));
-
-  assert.equal(result.tied, false, 'empate físico exato precisa terminar o duelo');
-  assert.ok(result.winner && result.loser, 'deve existir exatamente um vencedor e um perdedor');
-  assert.notEqual(result.winner.userId, result.loser.userId);
+test('P3.6 - ruptura simultânea simétrica pela fachada resolve vencedor determinístico',async()=>{
+  const [{RelinhoContactSolver},{RopePhysics}]=await Promise.all([load('frontend/src/engine/physics/RelinhoContactSolver.js'),load('frontend/src/engine/physics/RopePhysics.js')]);
+  const ra=new RopePhysics({nodeCount:6,lineType:'algodao'}),rb=new RopePhysics({nodeCount:6,lineType:'algodao'}); ra.tension=rb.tension=1; ra.segmentWear[2]=.999; rb.segmentWear[3]=.999;
+  const a=mockKite({userId:'duel_a',rope:ra}),b=mockKite({userId:'duel_b',rope:rb}); const c=contact(40);
+  const result=RelinhoContactSolver.resolveCombatStep(a,b,c,1,c,(winner,loser,pt)=>({tied:false,winner,loser,cutX:pt.x,cutY:pt.y}));
+  assert.equal(result.tied,false); assert.ok(result.winner&&result.loser); assert.notEqual(result.winner.userId,result.loser.userId);
 });

@@ -7,6 +7,7 @@ const BuffManager = require('../backend/rules/buffManager');
 const { GIFTS } = require('../backend/rules/giftConfig');
 const { pathToFileURL } = require('node:url');
 const physicsReady = import(pathToFileURL(path.join(__dirname, '../frontend/src/engine/Physics.js')).href);
+const ropeReady = import(pathToFileURL(path.join(__dirname, '../frontend/src/engine/physics/RopePhysics.js')).href);
 function kite(power = 1, shield = 0, lineType = 'algodao') {
   return { lineHP: 100, maxLineHP: 100, shieldCount: shield, lineType,
     calculateCombatPower: () => power,
@@ -67,11 +68,10 @@ test('mesmo tempo de combate causa mesmo dano em 30, 60 e 120 FPS', async () => 
   });
   for (const hp of results) assert.ok(Math.abs(hp-results[0]) < 0.00001);
 });
-test('escudo absorve derrota e restaura HP', async () => {
+test('escudo absorve ruptura física e restaura HP', async () => {
   const {Physics} = await physicsReady;
   const a = kite(10), b = kite(1,2);
-  b.lineHP = 1;
-  const result = Physics.resolveRelinhoCombat(a,b,{x:1,y:1});
+  const result = Physics.finalizeCut(a,b,{x:1,y:1});
   assert.equal(result.absorbedByShield, true);
   assert.equal(b.shieldCount, 1);
   assert.equal(b.lineHP, b.maxLineHP);
@@ -82,20 +82,20 @@ test('dois mestres do céu não cortam um ao outro', async () => {
   assert.equal(result.tied,true);
 });
 
-test('dupla ruptura igual não favorece ordem de criação das pipas', async () => {
+test('dupla ruptura estrutural igual não favorece ordem de criação das pipas', async () => {
   const { Physics } = await physicsReady;
+  const { RopePhysics } = await ropeReady;
   const run = reverse => {
-    const a = kite(), b = kite();
-    a.userId = 'a'; b.userId = 'b';
-    a.lineHP = 0.5; b.lineHP = 0.5;
-    return reverse ? Physics.resolveRelinhoCombat(b, a, {x:1,y:1}) : Physics.resolveRelinhoCombat(a, b, {x:1,y:1});
+    const mk=(id,x)=>{ const k={...kite(),userId:id,x,y:20,baseX:x,baseY:100,lineTension:1}; k.rope=new RopePhysics({nodeCount:6,lineType:'algodao'}); k.rope.resetPositions({x:k.baseX,y:k.baseY,z:0},{x:k.x,y:k.y,z:0}); k.rope.segmentWear[0]=0.999; return k; };
+    const a=mk('a',20), b=mk('b',90);
+    const hit={x:55,y:50,segmentIndexA:0,segmentIndexB:0,s:.5,t:.5,sinAngle:1,slidingSpeed:80,slideA:80,slideB:-80};
+    const contact={phase:'GRINDING',...hit,contactTime:1};
+    return reverse ? Physics.resolveRelinhoCombat(b,a,hit,1,{...contact}) : Physics.resolveRelinhoCombat(a,b,hit,1,{...contact});
   };
-  const forward = run(false);
-  const reverse = run(true);
-  assert.equal(forward.tied, false);
-  assert.equal(reverse.tied, false);
-  assert.equal(forward.winner?.userId, reverse.winner?.userId);
-  assert.equal(forward.loser?.userId, reverse.loser?.userId);
+  const forward=run(false), reverse=run(true);
+  assert.equal(forward.tied,false); assert.equal(reverse.tied,false);
+  assert.equal(forward.winner?.userId,reverse.winner?.userId);
+  assert.equal(forward.loser?.userId,reverse.loser?.userId);
 });
 test('liderança exige pontuação isolada e muda só com corte registrado', () => {
   const rules = new GameRules(4);
@@ -110,18 +110,18 @@ test('liderança exige pontuação isolada e muda só com corte registrado', () 
   assert.equal(cut.leadershipChanged, true);
 });
 
-test('geometria desempata a ruptura simultânea independentemente da ordem de processamento', async () => {
+test('geometria desempata ruptura estrutural independentemente da ordem de processamento', async () => {
   const { Physics } = await physicsReady;
+  const { RopePhysics } = await ropeReady;
   const run = reverse => {
-    const a = kite(), b = kite();
-    Object.assign(a,{userId:'a',x:20,y:20,baseX:20,baseY:100,lineHP:0.5});
-    Object.assign(b,{userId:'b',x:90,y:30,baseX:10,baseY:100,lineHP:0.5});
-    const hit = {x:20,y:30};
-    return reverse ? Physics.resolveRelinhoCombat(b,a,hit) : Physics.resolveRelinhoCombat(a,b,hit);
+    const mk=(id,x,y,baseX)=>{ const k={...kite(),userId:id,x,y,baseX,baseY:100,lineTension:1}; k.rope=new RopePhysics({nodeCount:6,lineType:'algodao'}); k.rope.resetPositions({x:k.baseX,y:k.baseY,z:0},{x:k.x,y:k.y,z:0}); k.rope.segmentWear[0]=0.999; return k; };
+    const a=mk('a',20,20,20), b=mk('b',90,30,10);
+    const hit={x:20,y:30,segmentIndexA:0,segmentIndexB:0,s:.5,t:.5,sinAngle:1,slidingSpeed:80,slideA:80,slideB:-80};
+    const contact={phase:'GRINDING',...hit,contactTime:1};
+    return reverse ? Physics.resolveRelinhoCombat(b,a,hit,1,{...contact}) : Physics.resolveRelinhoCombat(a,b,hit,1,{...contact});
   };
-  assert.equal(run(false).winner.userId, run(true).winner.userId);
+  assert.equal(run(false).winner.userId,run(true).winner.userId);
 });
-
 test('fila e histórico têm limites de segurança sem duplicar ativos',()=>{
   const rules=new GameRules(1,2,5);
   assert.equal(rules.handlePlayerComment({userId:'a'}).status,'spawn');

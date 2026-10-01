@@ -18,8 +18,8 @@ function between(source, startToken, endToken) {
 test('P15.2: autoridade inicia fail-closed e rastreia cortes pendentes', () => {
   assert.match(app, /this\.isCombatAuthority\s*=\s*false;/);
   assert.match(app, /this\._pendingCutLosers\s*=\s*new Set\(\);/);
-  assert.match(app, /_pendingCutLosers\.has\(String\(kA\.userId\)\)/);
-  assert.match(app, /_pendingCutLosers\.has\(String\(kB\.userId\)\)/);
+  assert.match(app, /pendingCutIds:\s*this\._pendingCutLosers/);
+  assert.match(app, /allowWear:\s*Boolean\(this\.isCombatAuthority\)/);
 });
 test('P15.2: handleCutSuccess apenas propõe o corte antes do evento canônico', () => {
   const body = between(app, '  handleCutSuccess(', '  destroy(');
@@ -50,14 +50,15 @@ test('P15.2: backend valida checkpoint candidato antes de persistir estado da ar
   const validateAt = block.indexOf('validateCutClaim');
   const commitAt = block.indexOf('arenaStore.playerStates.set');
   assert.ok(validateAt >= 0, 'validateCutClaim precisa existir');
-  assert.ok(commitAt > validateAt,
-    'checkpoint do claim só pode ser persistido depois que o corte for validado');
+  assert.ok(commitAt > validateAt, 'checkpoint do claim só pode ser persistido depois que o corte for validado');
 });
+
 test('P15.2: perda de autoridade cancela claims pendentes e força reconciliação', () => {
   const block = between(app, "this._socketSubscriptions.on('arena:authority_revoked'", "this._socketSubscriptions.on('arena:authority_available'");
   assert.match(block, /this\._pendingCutLosers\.clear\(\)/);
   assert.match(block, /this\.syncArena\(\)/);
 });
+
 test('P15.2: desconexão cancela claims pendentes para não travar cortes após reconectar', () => {
   const block = between(app, "this._socketSubscriptions.on('disconnect'", 'this.hud.setConnection(this.socket.connected)');
   assert.match(block, /this\._pendingCutLosers\.clear\(\)/);

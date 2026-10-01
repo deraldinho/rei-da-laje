@@ -123,14 +123,14 @@ test('Validação Completa das Correções da Auditoria Técnica (P0, P1, P2)', 
     assert.match(appCode, /ack\?\.ok|ack\.ok/, 'App.js deve tratar o ACK do relinho:cut antes de liberar o claim pendente');
   });
 
-  await t.test('5. App.js: Otimização de Combate (zero-allocation pairKey sem JSON.stringify, AABB via RopeCollision)', () => {
+  await t.test('5. Física de combate: pairKey estável, broad phase e narrow phase fora do App', () => {
     const appCode = fs.readFileSync(path.join(__dirname, '..', 'frontend', 'src', 'engine', 'App.js'), 'utf8');
-    assert.doesNotMatch(appCode, /JSON\.stringify\(\[kA\.userId,\s*kB\.userId\]\.sort\(\)\)/, 'App.js não deve mais usar JSON.stringify e array sort por frame no loop de combate');
-    assert.match(appCode, /idA\s*<\s*idB\s*\?\s*\(idA\s*\+\s*'\|'\s*\+\s*idB\)/, 'App.js deve usar concatenação estável de strings para pairKey');
-    // Passo 4: broad-phase AABB da reta (mão→pipa) foi removido intencionalmente.
-    // O AABB interno de RopeCollision cobre a corda física e evita falsos descartes.
-    assert.match(appCode, /RopeCollision\.checkRopeCollision/, 'App.js deve delegar AABB ao RopeCollision interno');
-    assert.doesNotMatch(appCode, /Math\.min\(kA\.baseX,\s*kA\.x\)/, 'Broad-phase AABB da reta mão→pipa deve ter sido removido (substituído pelo AABB do RopeCollision)');
+    const broadCode = fs.readFileSync(path.join(__dirname, '..', 'frontend', 'src', 'engine', 'physics', 'LineBroadPhase.js'), 'utf8');
+    const systemCode = fs.readFileSync(path.join(__dirname, '..', 'frontend', 'src', 'engine', 'physics', 'LineContactSystem.js'), 'utf8');
+    assert.doesNotMatch(appCode, /JSON.stringify([kA.userId,s*kB.userId].sort())/);
+    assert.match(broadCode, /candidate\.pairKey\s*=\s*aFirst\s*\?/);
+    assert.match(systemCode, /RopeCollision.checkRopeCollision/);
+    assert.match(appCode, /this.relinhoContactSystem.step/);
   });
 
   await t.test('6. App.js & Kite.js: Reutilização de amostra de vento e PhysicsClock (eliminação de >80 amostragens redundantes/frame)', () => {

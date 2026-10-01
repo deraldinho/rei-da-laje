@@ -65,3 +65,18 @@ test('material e direção local produzem desgaste assimétrico sem regra fixa d
   integrateLineAbrasion(c2,a,b,1/60,DEFAULT_RELINHO_PHYSICS_CONFIG);
   assert.notEqual(c2.abrasionRateA,c1.abrasionRateA,'sinal/direção local deve influenciar exposição');
 });
+
+test('trocar A/B preserva a física quando velocidades relativas e slides são transformados',async()=>{
+  const [{computeLineContactPhysics},{integrateLineAbrasion},{DEFAULT_RELINHO_PHYSICS_CONFIG},{getLineMaterial}]=await Promise.all([
+    import(`${physicsUrl}?t=${Date.now()}`),import(`${abrasionUrl}?t=${Date.now()}`),import(configUrl),import(materialUrl)]);
+  const a=kite('a',getLineMaterial('chile'),.85), b=kite('b',getLineMaterial('algodao'),.55);
+  const forwardHit={...hit(10),slideA:10,slideB:-2,relativeVx:7,relativeVy:1};
+  const reverseHit={...forwardHit,slideA:2,slideB:-10,relativeVx:-7,relativeVy:-1,
+    segmentIndexA:forwardHit.segmentIndexB,segmentIndexB:forwardHit.segmentIndexA,s:forwardHit.t,t:forwardHit.s};
+  const forward=contact(computeLineContactPhysics(a,b,forwardHit,DEFAULT_RELINHO_PHYSICS_CONFIG));
+  const reverse=contact(computeLineContactPhysics(b,a,reverseHit,DEFAULT_RELINHO_PHYSICS_CONFIG));
+  integrateLineAbrasion(forward,a,b,1/60,DEFAULT_RELINHO_PHYSICS_CONFIG);
+  integrateLineAbrasion(reverse,b,a,1/60,DEFAULT_RELINHO_PHYSICS_CONFIG);
+  assert.ok(Math.abs(forward.abrasionRateA-reverse.abrasionRateB)<1e-12,'wear da mesma linha A deve ser invariável');
+  assert.ok(Math.abs(forward.abrasionRateB-reverse.abrasionRateA)<1e-12,'wear da mesma linha B deve ser invariável');
+});

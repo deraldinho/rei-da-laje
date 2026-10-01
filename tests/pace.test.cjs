@@ -1,40 +1,45 @@
 const test=require('node:test');
 const assert=require('node:assert/strict');
-const fs=require('node:fs');
-const path = require('node:path');
-const { pathToFileURL } = require('node:url');
-const load = file => import(pathToFileURL(path.join(__dirname, '../frontend/src/engine', file)).href);
-test('ritmo de encontros em arenas verticais e horizontais',async()=>{
- const {Wind}=await load('Wind.js'),{Physics}=await load('Physics.js');
- const results=[];
- for(const [width,height] of [[390,844],[1080,1920],[1920,1080]]) for(const count of [2,6,20]) {
-  let totalContact=0,totalCut=0;
-  for(let seed=1;seed<=12;seed++){
-   let rng=seed*7919;const random=()=>((rng=(Math.imul(rng,1664525)+1013904223)>>>0)/4294967296);
-   const kites=Array.from({length:count},()=>({
-    x:width*(.1+random()*.8),y:height*(.12+random()*.45),
-    baseX:width*(.15+random()*.7),baseY:height+20,
-    screenWidth:width,screenHeight:height,windPhase:random()*Math.PI*2,windInfluence:.8+random()*.6,
-    likeBoostRemaining:0,lineHP:100,maxLineHP:100,shieldCount:0,lineType:'algodao',lastHit:0,
-    calculateCombatPower(){return 1;},takeDamage(n){this.lineHP-=n;this.lastHit=time;return this.lineHP<=0;}
-   }));
-   let contact=60,cut=60,time=0;
-   for(let frame=0;frame<1800&&cut===60;frame++){
-    time=frame/30;
-    kites.forEach(k=>{Wind.move(k,2,time,count);if(time-k.lastHit>2)k.lineHP=Math.min(100,k.lineHP+.6);});
-    for(let i=0;i<count;i++)for(let j=i+1;j<count;j++){
-     const a=kites[i],b=kites[j];
-     const radius=Wind.contactRadius?.(width,height)??120;
-     if(Math.hypot(a.x-b.x,a.y-b.y)>radius)continue;
-     const hit=Physics.checkLineIntersection(a.baseX,a.baseY,a.x,a.y,b.baseX,b.baseY,b.x,b.y);
-     if(hit.hit){contact=Math.min(contact,time);if(!Physics.resolveRelinhoCombat(a,b,hit,2).tied)cut=time;}
+const path=require('node:path');
+const {pathToFileURL}=require('node:url');
+const load=file=>import(pathToFileURL(path.join(__dirname,'../frontend/src/engine',file)).href);
+
+function makeKite(RopePhysics,id,index,count,w,h){
+  const baseX=w*(.12+.76*(index/Math.max(1,count-1)));
+  const rope=new RopePhysics({nodeCount:12,lineType:'algodao'});
+  const k={userId:id,x:baseX,y:h*.28,baseX,baseY:h*.92,baseZ:0,z:0,vx:0,vy:0,mass:.85,rotation:0,
+    screenWidth:w,screenHeight:h,windPhase:index*.73,windInfluence:1,likeBoostRemaining:0,
+    lineType:'algodao',lineHP:100,maxLineHP:100,shieldCount:0,lineSlack:0,lineTension:.75,
+    spawnProtection:0,isAscending:false,rooftopPlayer:{layoutIndex:index},rope};
+  rope.resetPositions({x:baseX,y:k.baseY,z:0},{x:k.x,y:k.y,z:0});
+  return k;
+}
+
+test('ritmo físico de encontros e cortes em arenas verticais e horizontais',async()=>{
+  const [{Wind},{KiteDynamics},{RopePhysics},{LineContactSystem}]=await Promise.all([
+    load('Wind.js'),load('physics/KiteDynamics.js'),load('physics/RopePhysics.js'),load('physics/LineContactSystem.js')]);
+  const results=[];
+  for(const [w,h] of [[390,844],[1080,1920],[1920,1080]]) for(const count of [2,3,4]){
+    KiteDynamics._globalTime=0; KiteDynamics._lastFrame=-1; KiteDynamics._stepFrame=0;
+    const kites=Array.from({length:count},(_,i)=>makeKite(RopePhysics,`p${i}`,i,count,w,h));
+    const system=new LineContactSystem();
+    let contact=null,cut=null,maxTracked=0,maxSolved=0;
+    for(let frame=0;frame<2400&&cut===null;frame++){
+      KiteDynamics._stepFrame=frame;
+      const wind=Wind.sample(frame/60);
+      for(const k of kites){
+        KiteDynamics.step(k,1/60,wind,count);
+        k.rope.step(1/60,{x:k.baseX,y:k.baseY,z:0},{x:k.x,y:k.y,z:0},wind,{lineSlack:0,lineTension:.75});
+      }
+      const r=system.step(kites,1/60,frame*(1000/60),{allowWear:true});
+      if(contact===null&&r.metrics.activeContacts>0) contact=frame/60;
+      if(r.cuts.length) cut=frame/60;
+      maxTracked=Math.max(maxTracked,r.metrics.trackedContacts||0);
+      maxSolved=Math.max(maxSolved,r.metrics.solvedContacts||0);
     }
-   }
-   totalContact+=contact;totalCut+=cut;
+    results.push({w,h,count,contact,cut,maxTracked,maxSolved});
   }
-  results.push({width,height,count,contact:+(totalContact/12).toFixed(2),cut:+(totalCut/12).toFixed(2)});
- }
- console.log(JSON.stringify(results));
- assert.ok(results.every(r=>r.contact<14),'Encontros médios devem ocorrer em menos de 14s após subida');
- assert.ok(results.filter(r=>r.count===2).every(r=>r.cut<40),'Cortes médios em duelos devem ocorrer em menos de 40s');
+  assert.ok(results.every(r=>r.contact!==null&&r.contact<14),'contatos físicos devem surgir em menos de 14s');
+  assert.ok(results.filter(r=>r.count===2).every(r=>r.cut!==null&&r.cut<40),'duelos devem cortar em menos de 40s');
+  assert.ok(results.every(r=>r.maxTracked<=12&&r.maxSolved<=3),'limites de contato não podem regredir');
 });

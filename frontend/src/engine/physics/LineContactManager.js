@@ -173,6 +173,16 @@ export class LineContactManager {
     return out;
   }
 
+  reset() {
+    for (const c of this.contacts.values()) resetContact(c);
+    this.contacts.clear();
+    this._selection.length=0; this._selected.length=0; this._perRope.clear();
+    this._rebuildFree();
+    this._stepId=0; this._rotationCursor=0;
+    this._metrics.activeContacts=0; this._metrics.selectedContacts=0;
+    return this;
+  }
+
   snapshot(limit = 8) {
     const result=[];
     const max=Math.max(0,Math.floor(Number(limit)||0));

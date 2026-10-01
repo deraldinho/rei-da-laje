@@ -64,29 +64,23 @@ test('vento muda direção e movimenta pipas sem comandos', async () => {
   assert.ok(samples.some(x=>x>0)&&samples.some(x=>x<0));
 });
 
-test('vento gera cruzamentos reais e cortes sem ação do espectador', async () => {
-  async function moduleAt(file) {
-    return import(require('node:url').pathToFileURL(path.join(__dirname, '../frontend/src/engine/', file)).href);
+test('vento e dinâmica física geram contato abrasivo e corte sem ação do espectador', async () => {
+  async function moduleAt(file) { return import(require('node:url').pathToFileURL(path.join(__dirname, '../frontend/src/engine/', file)).href); }
+  const {Wind}=await moduleAt('Wind.js');
+  const {KiteDynamics}=await moduleAt('physics/KiteDynamics.js');
+  const {RopePhysics}=await moduleAt('physics/RopePhysics.js');
+  const {LineContactSystem}=await moduleAt('physics/LineContactSystem.js');
+  const make=(id,index)=>{ const baseX=index===0?260:540; const rope=new RopePhysics({nodeCount:12,lineType:'algodao'}); const k={userId:id,x:baseX,y:220,baseX,baseY:620,baseZ:0,z:0,vx:0,vy:0,mass:.85,rotation:0,screenWidth:800,screenHeight:600,windPhase:index*Math.PI,windInfluence:1,likeBoostRemaining:0,lineType:'algodao',lineHP:100,maxLineHP:100,shieldCount:0,lineSlack:0,lineTension:.75,spawnProtection:0,isAscending:false,rooftopPlayer:{layoutIndex:index},rope}; rope.resetPositions({x:baseX,y:620,z:0},{x:k.x,y:k.y,z:0}); return k; };
+  const kites=[make('a',0),make('b',1)], system=new LineContactSystem();
+  let cuts=0,maxTracked=0,maxSolved=0;
+  for(let frame=0;frame<1200&&!cuts;frame++){
+    KiteDynamics._stepFrame=frame; const wind=Wind.sample(frame/60);
+    for(const k of kites){ KiteDynamics.step(k,1/60,wind,kites.length); k.rope.step(1/60,{x:k.baseX,y:k.baseY,z:0},{x:k.x,y:k.y,z:0},wind,{lineSlack:0,lineTension:.75}); }
+    const result=system.step(kites,1/60,frame*(1000/60),{allowWear:true});
+    cuts+=result.cuts.length; maxTracked=Math.max(maxTracked,result.metrics.trackedContacts||0); maxSolved=Math.max(maxSolved,result.metrics.solvedContacts||0);
   }
-  const {Wind}=await moduleAt('Wind.js'), {Physics}=await moduleAt('Physics.js');
-  const kites=Array.from({length:8},(_,i)=>({
-    x:80+i*90,y:180,baseX:80+i*90,baseY:620,screenWidth:800,screenHeight:600,
-    windPhase:i*0.7,windInfluence:1,likeBoostRemaining:0,lineType:'algodao',
-    lineHP:100,maxLineHP:100,shieldCount:0,
-    calculateCombatPower(){return 1;},
-    takeDamage(n){this.lineHP-=n;return this.lineHP<=0;}
-  }));
-  let cuts=0;
-  for(let frame=0;frame<3600 && !cuts;frame++) {
-    kites.forEach(k=>Wind.move(k,1,frame/60));
-    for(let i=0;i<kites.length;i++) for(let j=i+1;j<kites.length;j++) {
-      const a=kites[i],b=kites[j];
-      if(Math.hypot(a.x-b.x,a.y-b.y)>120)continue;
-      const hit=Physics.checkLineIntersection(a.baseX,a.baseY,a.x,a.y,b.baseX,b.baseY,b.x,b.y);
-      if(hit.hit && !Physics.resolveRelinhoCombat(a,b,hit,1).tied)cuts++;
-    }
-  }
-  assert.ok(cuts>0);
+  assert.ok(cuts>0,'vento+dynamics devem criar corte físico em duelo sem comandos');
+  assert.ok(maxTracked<=12); assert.ok(maxSolved<=3);
 });
 test('redemoinho atrai no máximo três pipas elegíveis', async () => {
   const {Wind}=await import('data:text/javascript;base64,'+Buffer.from(fs.readFileSync(path.join(__dirname,'../frontend/src/engine/Wind.js'),'utf8')).toString('base64'));

@@ -60,11 +60,13 @@ test('P15.3: coupling limita correções por corda sem descartar combate', async
 
 test('P15.3: App aplica limiter apenas ao coupling pós-scan', () => {
   assert.match(appCode, /selectCouplingJobs/);
-  assert.match(appCode, /selectCouplingJobs\(couplingQueue,\s*3\)/);
+  assert.match(appCode, /selectCouplingJobs\(result\.couplingJobs,\s*3\)/);
 });
 
 test('P15.3: runtime de combate exige cruzamento angular real', () => {
-  assert.match(appCode, /RopeCollision\.checkRopeCollision\([\s\S]*?minSinAngle:\s*0\.05/);
+  const systemCode = fs.readFileSync(path.resolve(__dirname, '../frontend/src/engine/physics/LineContactSystem.js'), 'utf8');
+  assert.match(systemCode, /RopeCollision\.checkRopeCollision/);
+  assert.match(systemCode, /minSinAngle:\s*0\.05/);
 });
 
 
@@ -81,7 +83,7 @@ test('P15.3: observador não executa resolvedor canônico de dano', async () => 
 });
 
 test('P15.3: App usa gate de autoridade e mede HUD, 2D e serialização', () => {
-  assert.match(appCode, /resolveAuthoritativeCombat/);
+  assert.match(appCode, /allowWear:\s*Boolean\(this\.isCombatAuthority\)/);
   assert.match(appCode, /runtimeProfiler\.begin\('hud'\)/);
   assert.match(appCode, /runtimeProfiler\.begin\('render2d'\)/);
   assert.match(appCode, /runtimeProfiler\.begin\('serialization'\)/);

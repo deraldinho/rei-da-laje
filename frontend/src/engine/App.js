@@ -14,17 +14,15 @@ import { RooftopPlayer } from '../ui/RooftopPlayer.js';
 import { liveVisualScale } from '../ui/LiveLayout.js';
 import { rooftopSlotOrder, rooftopPlayerLayout, rooftopHandAnchor, rooftopAnchorY } from '../ui/RooftopLayout.js';
 import { applyManeuverMovement, maneuverStats, selectGiftManeuver } from './Maneuvers.js';
-import { applyLikeSpool, evolveRelinhoContact } from './RelinhoMechanics.js';
+import { applyLikeSpool } from './RelinhoMechanics.js';
 import { CHECKPOINT_KEY, captureArena, readArenaCheckpoint, restoreKiteState } from './ArenaCheckpoint.js';
 import { startChatAction, applyChatAction } from './ChatControls.js';
 import { RopeCollision } from './physics/RopeCollision.js';
 import { PhysicsClock } from './physics/PhysicsClock.js'; // Passo 1
 import { KiteDynamics } from './physics/KiteDynamics.js';
-import { CombatContactAccumulator } from './physics/CombatContactAccumulator.js';
 import { selectCouplingJobs } from './physics/RopeCouplingLimiter.js';
-import { createRelinhoContactBudget } from './physics/RelinhoContactBudget.js';
 import { sanitizeRelinhoPhysicsConfig } from './physics/RelinhoPhysicsConfig.js';
-import { resolveAuthoritativeCombat } from './physics/CombatAuthorityGate.js';
+import { LineContactSystem } from './physics/LineContactSystem.js';
 import { RuntimeProfiler } from './RuntimeProfiler.js';
 import { LifecycleBag } from './LifecycleBag.js';
 import { SocketSubscriptionBag } from './SocketSubscriptionBag.js';
@@ -42,8 +40,9 @@ export class GameApp {
     this.fallingKites = [];
     this.windTime = 0;
     this.cutCooldowns = new Map();
-    this.relinhoContacts = new Map(); // evita múltiplos cortes na mesma colisão
-    this._ropeCollisionHints = new Map(); // par -> últimos segmentos em contato (hot path do check-hit)
+    this.relinhoPhysicsConfig = sanitizeRelinhoPhysicsConfig();
+    this.relinhoContactSystem = new LineContactSystem(this.relinhoPhysicsConfig);
+    this.relinhoContacts = this.relinhoContactSystem.contacts;
     this._pendingCutLosers = new Set(); // loserId aguardando validação canônica do backend
     this._pendingCatchFlyaways = new Set(); // voadas aguardando confirmação canônica de aparo
     this.aparoController = new AparoController(socket, this._pendingCatchFlyaways);
@@ -843,6 +842,7 @@ export class GameApp {
     // 3. Vento e física
     Wind.setSettings(settings);
     this.relinhoPhysicsConfig = sanitizeRelinhoPhysicsConfig(settings.relinhoPhysics, this.relinhoPhysicsConfig);
+    this.relinhoContactSystem?.setConfig(this.relinhoPhysicsConfig);
 
     // 4. Regras do jogo
     if (settings.maxKites) {
@@ -889,7 +889,7 @@ export class GameApp {
       if (this.threeScene) {
         this.threeScene.syncEntities(this.kites, this.fallingKites, this.sparks, 1);
       }
-      this.relinhoContacts?.clear();
+      this.relinhoContactSystem?.reset();
       this.cutCooldowns?.clear();
       try { localStorage.removeItem(CHECKPOINT_KEY); } catch (_) { }
       this.hud.currentLeaderId = null;
@@ -1086,7 +1086,8 @@ export class GameApp {
 
       // 4º: Colisão e resolução de atrito de relinho determinísticos
       this.runtimeProfiler.begin('collision');
-      this.checkRelinhos(fixedDelta);
+      this._physicsTimeMs = (this._physicsTimeMs || 0) + fixedDt * 1000;
+      this.checkRelinhos(fixedDelta, physicsKites, fixedDt);
       this.runtimeProfiler.end('collision');
 
       // 5º: Física pós-corte no MESMO fixed step (independe de 30/60/120 FPS)
@@ -1137,261 +1138,87 @@ export class GameApp {
 
 
 
-  checkRelinhos(delta) {
-    const activeList = Array.from(this.kites.values());
-    if (activeList.length < 2) {
-      this.hud.setCombatCompact(false);
-      return;
+  checkRelinhos(delta, physicsKites = null, fixedDt = 1 / 60) {
+    const activeList = Array.isArray(physicsKites) ? physicsKites : Array.from(this.kites.values());
+    const simNow = Number.isFinite(this._physicsTimeMs) ? this._physicsTimeMs : 0;
+
+    for (const kite of activeList) {
+      const k3d = this.threeScene?.kites3D?.get(String(kite?.userId ?? ''));
+      if (k3d && Number.isFinite(k3d.position?.z)) kite.z = k3d.position.z;
     }
-    // Alterna a prioridade dos pares por frame: a primeira pipa criada não ataca sempre primeiro.
-    this.combatRotation = ((this.combatRotation || 0) + 1) % activeList.length;
-    activeList.push(...activeList.splice(0, this.combatRotation));
 
-    const now = Date.now();
-    for (const [key, time] of this.cutCooldowns) if (now - time >= 3000) this.cutCooldowns.delete(key);
-    const deadThisFrame = new Set(); // pipas que morreram neste frame
-    const seenContacts = new Set();
-    const combatResponses = new CombatContactAccumulator();
-    const contactBudget = createRelinhoContactBudget(this.relinhoContacts, 3);
-    const couplingQueue = []; // aplicar só depois da detecção/resolução: check-hit não pode mutar a geometria durante o scan
+    const result = this.relinhoContactSystem.step(activeList, fixedDt, simNow, {
+      allowWear: Boolean(this.isCombatAuthority),
+      pendingCutIds: this._pendingCutLosers
+    });
 
-    for (let i = 0; i < activeList.length; i++) {
-      const kA = activeList[i];
-      if (kA.isAscending || kA.spawnProtection > 0 || this._pendingCutLosers.has(String(kA.userId)) || deadThisFrame.has(kA.userId)) continue; // já morreu ou aguarda corte canônico
+    this.runtimeProfiler.gauge('relinhoCandidates', result.metrics.candidatePairs || 0);
+    this.runtimeProfiler.gauge('relinhoNarrowChecks', result.metrics.narrowChecks || 0);
+    this.runtimeProfiler.gauge('relinhoContacts', result.metrics.trackedContacts || 0);
+    this.runtimeProfiler.gauge('relinhoSolved', result.metrics.solvedContacts || 0);
 
-      for (let j = i + 1; j < activeList.length; j++) {
-        const kB = activeList[j];
-        if (kB.isAscending || kB.spawnProtection > 0 || this._pendingCutLosers.has(String(kB.userId)) || deadThisFrame.has(kB.userId)) continue; // já morreu ou aguarda corte canônico
+    const wallNow = Date.now();
+    for (const contact of result.fxContacts) {
+      const kA = contact.kiteA, kB = contact.kiteB;
+      if (!kA || !kB) continue;
+      const contactStrength = Math.min(1.5, 0.65 + Math.hypot(contact.relativeVx || 0, contact.relativeVy || 0) * 0.025);
+      kA.line?.triggerContact?.(contactStrength);
+      kB.line?.triggerContact?.(contactStrength);
+      kA.isInCombat = true; kB.isInCombat = true;
+      kA.combatCooldown = 0; kB.combatCooldown = 0;
 
-        // Passo 4: Removido o broad-phase AABB da reta mão→pipa.
-        // Esse AABB descartava colisões físicas válidas quando a corda curva
-        // saía do AABB da reta (evidência: hit=true em RopeCollision mas
-        // endpoint broad-phase=false). Confiamos no AABB interno de RopeCollision.
-
-        // Chave única do par (sem alocação de array ou JSON.stringify)
-        const idA = String(kA.userId);
-        const idB = String(kB.userId);
-        const pairKey = idA < idB ? (idA + '|' + idB) : (idB + '|' + idA);
-
-        // Verifica cooldown pós-corte (3s de proteção)
-        const lastCut = this.cutCooldowns.get(pairKey) || 0;
-        if (now - lastCut < 3000) continue;
-
-        // Detecção de colisão: 2 caminhos mutuamente exclusivos
-        //
-        // Caminho A (autoritativo): ambas as pipas têm RopePhysics
-        //   → usa APENAS RopeCollision (cápsula segmento×segmento).
-        //   → NÃO faz fallback para reta geométrica: a corda curva pode
-        //     não passar pelo AABB da reta, e a reta pode cruzar sem
-        //     que as cordas físicas se toquem (BUG: relinho sem contato).
-        //
-        // Caminho B (legado): pelo menos uma pipa sem RopePhysics
-        //   → usa interseção geométrica reta mão→pipa (comportamento anterior).
-        let inter = null;
-
-        // 1. Coordenadas das extremidades das linhas (mão do boneco até cabresto da pipa)
-        const ax1 = Number.isFinite(kA.line?.visualBaseX) ? kA.line.visualBaseX : kA.baseX;
-        const ay1 = Number.isFinite(kA.line?.visualBaseY) ? kA.line.visualBaseY : kA.baseY;
-        const ax2 = kA.x;
-        const ay2 = kA.y;
-
-        const bx1 = Number.isFinite(kB.line?.visualBaseX) ? kB.line.visualBaseX : kB.baseX;
-        const by1 = Number.isFinite(kB.line?.visualBaseY) ? kB.line.visualBaseY : kB.baseY;
-        const bx2 = kB.x;
-        const by2 = kB.y;
-
-        // Sincroniza profundidade Z do Three.js se disponível
-        const k3dA = this.threeScene?.kites3D?.get(idA);
-        const k3dB = this.threeScene?.kites3D?.get(idB);
-        if (k3dA) { kA.z = k3dA.position.z; }
-        if (k3dB) { kB.z = k3dB.position.z; }
-        const deltaZ = (Number.isFinite(kA.z) && Number.isFinite(kB.z)) ? Math.abs(kA.z - kB.z) : 0;
-
-        // 2. Interseção geométrica contínua (fallback se alguma pipa não tiver corda física XPBD)
-        const bothHaveRope = Boolean(kA.rope && kB.rope);
-        const ropeHit = bothHaveRope ? RopeCollision.checkRopeCollision(kA.rope, kB.rope, 8.0, {
-          hint: this._ropeCollisionHints.get(pairKey),
-          minSinAngle: 0.05
-        }) : null;
-        const geomHit = !bothHaveRope ? Physics.checkLineIntersection(ax1, ay1, ax2, ay2, bx1, by1, bx2, by2) : { hit: false };
-        const hasHit = Boolean(bothHaveRope ? (ropeHit && ropeHit.hit) : geomHit.hit);
-
-        // Se as linhas se cruzam fisicamente ou geometricamente:
-        if (hasHit) {
-          // Vetores diretores das linhas
-          const lenA = Math.hypot(ax2 - ax1, ay2 - ay1) || 1;
-          const lenB = Math.hypot(bx2 - bx1, by2 - by1) || 1;
-          const tanAx = (ax2 - ax1) / lenA, tanAy = (ay2 - ay1) / lenA;
-          const tanBx = (bx2 - bx1) / lenB, tanBy = (by2 - by1) / lenB;
-          const dot = Math.max(-1, Math.min(1, tanAx * tanBx + tanAy * tanBy));
-          const calculatedSin = Math.sqrt(Math.max(0, 1 - dot * dot));
-
-          const contactX = ropeHit?.hit ? ropeHit.x : geomHit.x;
-          const contactY = ropeHit?.hit ? ropeHit.y : geomHit.y;
-
-          // Velocidade relativa e atrito no ponto de contato
-          const rvx = (kA.vx || 0) - (kB.vx || 0);
-          const rvy = (kA.vy || 0) - (kB.vy || 0);
-          const relativeSpeed = ropeHit?.hit ? ropeHit.relativeSpeed : Math.hypot(rvx, rvy);
-          const sinAngle = ropeHit?.hit ? ropeHit.sinAngle : calculatedSin;
-          const slidingSpeed = ropeHit?.hit ? ropeHit.slidingSpeed : Math.max(1.0, relativeSpeed * sinAngle);
-
-          // Identifica segmentos mais próximos nas cordas físicas
-          const tA = Math.max(0, Math.min(1, Math.hypot(contactX - ax1, contactY - ay1) / lenA));
-          const tB = Math.max(0, Math.min(1, Math.hypot(contactX - bx1, contactY - by1) / lenB));
-          const nNodeA = kA.rope?.nodeCount || 12;
-          const nNodeB = kB.rope?.nodeCount || 12;
-          const segIdxA = ropeHit?.hit ? ropeHit.segmentIndexA : Math.min(nNodeA - 2, Math.max(0, Math.floor(tA * (nNodeA - 1))));
-          const segIdxB = ropeHit?.hit ? ropeHit.segmentIndexB : Math.min(nNodeB - 2, Math.max(0, Math.floor(tB * (nNodeB - 1))));
-          const contactS = ropeHit?.hit ? (ropeHit.s ?? tA) : tA;
-          const contactT = ropeHit?.hit ? (ropeHit.t ?? tB) : tB;
-
-          inter = {
-            hit: true,
-            x: contactX,
-            y: contactY,
-            z: ((kA.z || 0) + (kB.z || 0)) * 0.5,
-            kiteA: kA,
-            kiteB: kB,
-            segmentIndexA: segIdxA,
-            segmentIndexB: segIdxB,
-            s: contactS,
-            t: contactT,
-            slidingSpeed,
-            relativeSpeed,
-            sinAngle,
-            deltaZ,
-            isXCrossing: sinAngle >= 0.05,
-            c1: ropeHit?.c1 || null,
-            c2: ropeHit?.c2 || null,
-            distance: ropeHit?.distance,
-            contactRadius: ropeHit?.contactRadius
-          };
-
-          // Não aplicar coupling durante o scan de colisão. Alterar os nós aqui faz
-          // o próximo par enxergar uma geometria diferente dentro do MESMO substep,
-          // gerando cascata de hits quando 3+ linhas se encontram.
-          if (!contactBudget.admit(pairKey)) {
-            if (bothHaveRope) this._ropeCollisionHints.delete(pairKey);
-            continue;
-          }
-
-          if (bothHaveRope) {
-            this._ropeCollisionHints.set(pairKey, {
-              segmentIndexA: inter.segmentIndexA,
-              segmentIndexB: inter.segmentIndexB
-            });
-            couplingQueue.push({ idA, idB, ropeA: kA.rope, ropeB: kB.rope, inter });
-          }
-
-          // Contato confirmado. A profundidade 3D permanece estável; não puxamos
-          // os corpos das pipas para o Z do oponente (isso criava oscilação coletiva).
-          kA.isInCombat = true;
-          kB.isInCombat = true;
-        } else {
-          if (bothHaveRope) this._ropeCollisionHints.delete(pairKey);
-          continue;
-        }
-
-        if (inter.hit) {
-          seenContacts.add(pairKey);
-          const contact = evolveRelinhoContact(this.relinhoContacts.get(pairKey), kA, kB, now);
-          // Passo 5: enriquece contact com dados físicos do RopeCollision
-          // (slidingSpeed e sinAngle precisam chegar ao RelinhoContactSolver para P=F·V)
-          if (contact && inter.slidingSpeed !== undefined) {
-            contact.slidingSpeed = inter.slidingSpeed;
-            contact.sinAngle = inter.sinAngle;
-          }
-          this.relinhoContacts.set(pairKey, contact);
-
-          // Passo 7: Removido desgaste duplicado fixo (0.004 * delta).
-          // O ÚNICO lugar que aplica applySegmentWear é RelinhoContactSolver,
-          // evitando desgaste mesmo com slidingSpeed=0 e dupla contagem.
-          // (antes: App.js + RelinhoContactSolver ambos chamavam applySegmentWear
-          //  → segmento rompia em ~2.1s mesmo parado)
-
-          // Vibração visual baseada na velocidade relativa vetorial e fricção
-          const contactStrength = Math.min(1.5, 0.65 + (contact.relativeSpeed || 0) * 0.025);
-          kA.line.triggerContact(contactStrength);
-          kB.line.triggerContact(contactStrength);
-
-          // Resposta corporal é AGREGADA e aplicada uma vez por pipa ao fim do step.
-          // Antes cada par multiplicava drag=0.88; 3 relinhos => 0.88³ por step,
-          // o que fazia a pipa praticamente congelar.
-          combatResponses.addPair(kA, kB, delta);
-
-          kA.isInCombat = true;
-          kB.isInCombat = true;
-          kA.combatCooldown = 0;
-          kB.combatCooldown = 0;
-
-          // Emite faíscas incandescentes no ponto exato (X, Y)
-          const avgHP = ((kA.lineHP / kA.maxLineHP) + (kB.lineHP / kB.maxLineHP)) / 2;
-          const sparkCount = Math.min(3 + Math.floor((1 - avgHP) * 10), 14);
-          const requestedSparks = Math.ceil(sparkCount * delta);
-          const visibleSparks = Math.max(0, Math.min(requestedSparks, this._combatSparkBudget || 0));
-          this._combatSparkBudget = Math.max(0, (this._combatSparkBudget || 0) - visibleSparks);
-          if (visibleSparks > 0) {
-            this.sparks.emit(inter.x, inter.y, visibleSparks);
-            if (this.threeScene && !this.threeScene.disabled) {
-              const k3dA = this.threeScene.kites3D?.get(String(kA.userId));
-              const k3dB = this.threeScene.kites3D?.get(String(kB.userId));
-              const avgZ = (k3dA && k3dB) ? (k3dA.position.z + k3dB.position.z) * 0.5 : 120;
-              const p3d = this.threeScene.screenToWorld(inter.x, inter.y, avgZ);
-              this.threeScene.emitSpark3D(p3d.x, p3d.y, p3d.z, visibleSparks, kA.line?.color || 0xffea00);
-            }
-          }
-
-          // Som de faísca (limitado a 1 a cada 180ms para não saturar)
-          if (!this._lastSparkSound || now - this._lastSparkSound > 180) {
-            this.audio.playSparksSound();
-            this._lastSparkSound = now;
-          }
-
-          // Resolve combate — aplica dano por frame nas duas pipas
-          const combat = resolveAuthoritativeCombat(
-            this.isCombatAuthority, Physics.resolveRelinhoCombat, kA, kB, inter, delta, contact
-          );
-          if (!combat) continue;
-
-          if (combat.absorbedByShield) this.socket.emit('player:shield_used', {
-            userId: combat.shieldUserId, remainingShields: combat.remainingShields
-          });
-
-          if (!combat.tied && combat.winner && combat.loser) {
-            // CORTE! Uma pipa morreu
-            deadThisFrame.add(combat.loser.userId);
-            this.cutCooldowns.set(pairKey, now);
-            this.handleCutSuccess(combat.winner, combat.loser, combat.cutX, combat.cutY, combat.breakInfo);
-            break; // sai do loop interno, pipa A pode ter sido afetada
-          }
+      const hpA = Math.max(0, Number(kA.lineHP) || 0) / Math.max(1, Number(kA.maxLineHP) || 1);
+      const hpB = Math.max(0, Number(kB.lineHP) || 0) / Math.max(1, Number(kB.maxLineHP) || 1);
+      const avgHP = (hpA + hpB) * 0.5;
+      const sparkCount = Math.min(3 + Math.floor((1 - avgHP) * 10), 14);
+      const requestedSparks = Math.ceil(sparkCount * Math.max(0, Number(delta) || 0));
+      const visibleSparks = Math.max(0, Math.min(requestedSparks, this._combatSparkBudget || 0));
+      this._combatSparkBudget = Math.max(0, (this._combatSparkBudget || 0) - visibleSparks);
+      if (visibleSparks > 0) {
+        this.sparks.emit(contact.x, contact.y, visibleSparks);
+        if (this.threeScene && !this.threeScene.disabled) {
+          const avgZ = ((Number(kA.z) || 0) + (Number(kB.z) || 0)) * 0.5 || 120;
+          const p3d = this.threeScene.screenToWorld(contact.x, contact.y, avgZ);
+          this.threeScene.emitSpark3D(p3d.x, p3d.y, p3d.z, visibleSparks, kA.line?.color || 0xffea00);
         }
       }
+      if (!this._lastSparkSound || wallNow - this._lastSparkSound > 180) {
+        this.audio.playSparksSound();
+        this._lastSparkSound = wallNow;
+      }
     }
-    // Só agora, depois que todos os check-hit/combates do substep usaram a mesma
-    // geometria, aplicamos o engate elástico. Isso evita feedback dentro do próprio
-    // detector e reduz a cascata de colisões em 3+ relinhos simultâneos.
-    for (const job of selectCouplingJobs(couplingQueue, 3)) {
+
+    for (const job of selectCouplingJobs(result.couplingJobs, 3)) {
       if (!job.ropeA?.isBroken && !job.ropeB?.isBroken) {
         RopeCollision.applyMutualContactCoupling(job.ropeA, job.ropeB, job.inter, 0.18);
       }
     }
 
-    // Uma única resposta mecânica por pipa, independentemente de quantos pares
-    // de relinho ela participa neste mesmo fixed step.
-    combatResponses.apply(delta);
-
-    for (const [key, state] of this.relinhoContacts) {
-      if (seenContacts.has(key)) continue;
-      if (state?.phase !== 'RELEASE') this.relinhoContacts.set(key, { ...state, phase: 'RELEASE', releasedAt: now });
-      else if (now - (state.releasedAt || now) > 220) {
-        this.relinhoContacts.delete(key);
-        this._ropeCollisionHints.delete(key);
+    for (const cut of result.cuts) {
+      const contact = cut.contact;
+      if (!contact || !cut.winner || !cut.loser) continue;
+      const point = {
+        x: cut.cutX, y: cut.cutY, z: cut.cutZ,
+        kiteA: contact.kiteA, kiteB: contact.kiteB,
+        segmentIndexA: contact.segmentIndexA, segmentIndexB: contact.segmentIndexB,
+        s: contact.s, t: contact.t
+      };
+      const combat = Physics.finalizeCut(cut.winner, cut.loser, point);
+      if (combat.absorbedByShield) {
+        this.socket.emit('player:shield_used', {
+          userId: combat.shieldUserId,
+          remainingShields: combat.remainingShields
+        });
+        continue;
+      }
+      if (!combat.tied && combat.winner && combat.loser) {
+        this.cutCooldowns.set(cut.pairKey, wallNow);
+        this.handleCutSuccess(combat.winner, combat.loser, combat.cutX, combat.cutY, combat.breakInfo);
       }
     }
-    this.hud.setCombatCompact(seenContacts.size > 0);
-  }
 
+    this.hud.setCombatCompact((result.metrics.activeContacts || 0) > 0);
+  }
   checkAparos(delta, currentWind) {
     return this.aparoController.check({
       isAuthority: this.isCombatAuthority,

@@ -107,7 +107,9 @@ test('P15.1: runtime atualiza voadas e linhas rompidas dentro do fixed timestep 
   const fixedBlock = app.slice(fixedStart,fixedEnd);
   assert.match(fixedBlock,/fk\.update\(fixedDelta/);
   assert.match(fixedBlock,/bhr\.update\(fixedDelta/);
-  assert.match(app,/CombatContactAccumulator/);
+  assert.match(app,/LineContactSystem/);
+  assert.match(app,/this\.relinhoContactSystem\.step/);
+  assert.doesNotMatch(app,/CombatContactAccumulator/);
   assert.doesNotMatch(app,/kA\.syncLineVisual\?\.\(\);\s*kB\.syncLineVisual\?\.\(\);/);
   assert.match(app,/_combatSparkBudget/);
 });

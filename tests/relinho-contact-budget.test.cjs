@@ -21,12 +21,8 @@ test('mantém contatos ativos existentes e limita novos relinhos a três', async
 
 test('contato RELEASE não ocupa vaga e par admitido só conta uma vez', async () => {
   const { createRelinhoContactBudget } = await import(`${url}?t=${Date.now()}-2`);
-  const contacts = new Map([
-    ['a|b', { phase: 'RELEASE' }],
-    ['c|d', { phase: 'GRINDING' }]
-  ]);
+  const contacts = new Map([['a|b',{phase:'RELEASE'}],['c|d',{phase:'GRINDING'}]]);
   const budget = createRelinhoContactBudget(contacts, 3);
-
   assert.equal(budget.activeCount, 1);
   assert.equal(budget.admit('e|f'), true);
   assert.equal(budget.admit('e|f'), true);
@@ -35,10 +31,10 @@ test('contato RELEASE não ocupa vaga e par admitido só conta uma vez', async (
   assert.equal(budget.admit('i|j'), false);
 });
 
-test('GameApp aplica o budget antes de ativar combate, coupling e dano', () => {
+test('GameApp delega o hot path ao LineContactSystem mantendo o limite físico centralizado', () => {
   const fs = require('node:fs');
   const source = fs.readFileSync(path.resolve(__dirname, '..', 'frontend/src/engine/App.js'), 'utf8');
-  assert.match(source, /createRelinhoContactBudget/);
-  assert.match(source, /const\s+contactBudget\s*=\s*createRelinhoContactBudget\(this\.relinhoContacts,\s*3\)/);
-  assert.match(source, /if\s*\(!contactBudget\.admit\(pairKey\)\)\s*\{/);
+  assert.match(source, /LineContactSystem/);
+  assert.match(source, /this\.relinhoContactSystem\.step\(/);
+  assert.doesNotMatch(source, /const\s+contactBudget\s*=\s*createRelinhoContactBudget\(this\.relinhoContacts,\s*3\)/);
 });
