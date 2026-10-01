@@ -87,8 +87,12 @@ export class KiteDynamics {
 
     // Balanço aerodinâmico natural da pipa no céu (dança ao sabor da brisa)
     const swayTimer = (kite.oscillationTimer || 0) * 1.5 + (kite.windPhase || 0);
-    const naturalSwayFx = Math.sin(swayTimer) * 18.0;
-    const naturalSwayFy = Math.cos(swayTimer * 0.8) * 12.0;
+    const sparse = population <= 4;
+    // Com poucas pipas, o balanço precisa ser muito maior para gerar cruzamentos
+    const swayAmpX = sparse ? 55.0 : 18.0;
+    const swayAmpY = sparse ? 35.0 : 12.0;
+    const naturalSwayFx = Math.sin(swayTimer) * swayAmpX + (sparse ? Math.sin(swayTimer * 0.37) * 30.0 : 0);
+    const naturalSwayFy = Math.cos(swayTimer * 0.8) * swayAmpY + (sparse ? Math.cos(swayTimer * 0.29) * 18.0 : 0);
 
     // 4. Intenções de Controle Físico (PlayerIntentController, Buffer de Chat e Fila de Manobras)
     let controlFx = 0;
@@ -152,16 +156,35 @@ export class KiteDynamics {
     // 5. Estabilidade Aerodinâmica de Altitude de Cruzeiro e Dispersão no Céu
     const width = Number.isFinite(kite.screenWidth) ? kite.screenWidth : 1080;
     const height = Number.isFinite(kite.screenHeight) ? kite.screenHeight : 1920;
-    const cruiseY = Number.isFinite(kite.targetY) ? kite.targetY : (height * 0.26);
-    const cruiseX = Number.isFinite(kite.targetX) ? kite.targetX : (width * 0.5);
+    let cruiseY = Number.isFinite(kite.targetY) ? kite.targetY : (height * 0.26);
+    let cruiseX = Number.isFinite(kite.targetX) ? kite.targetX : (width * 0.5);
+
+    // Convergência Dinâmica para Populações Baixas (≤4 pipas):
+    // Com poucas pipas os corredores aéreos individuais separam demais as trajetórias,
+    // impedindo que as linhas se cruzem. A convergência periódica empurra o ponto de
+    // equilíbrio de cada pipa para um encontro compartilhado que migra pelo céu,
+    // garantindo relinhos naturais mesmo com 2 a 4 pipas.
+    if (sparse) {
+      const phase = kite.windPhase || 0;
+      const t = (kite.oscillationTimer || 0) * 0.35;
+      // Ponto de encontro orbitante: percorre o centro do céu em uma elipse lenta
+      const meetX = width * (0.5 + Math.sin(t * 0.19) * 0.28);
+      const meetY = height * (0.28 + Math.cos(t * 0.15) * 0.07);
+      // Intensidade de convergência oscila: aproximação e afastamento cíclicos
+      // Isso cria janelas de ~4-8s onde as pipas se juntam (relinho) e depois dispersam
+      const convergePower = Math.pow((1 + Math.sin(t * 0.55 + phase)) / 2, 1.5);
+      cruiseX += (meetX - cruiseX) * convergePower * 0.85;
+      cruiseY += (meetY - cruiseY) * convergePower * 0.6;
+    }
 
     // Sustentação restauradora de altitude: quanto mais a pipa descer em relação ao céu,
     // maior a sustentação ascencional do vento contra a face inferior da pipa (-Y)
     const altitudeError = kite.y - cruiseY;
-    const restoringLiftFy = -altitudeError * 1.55;
+    const restoringLiftFy = -altitudeError * (sparse ? 0.9 : 1.55);
 
-    // Dispersão lateral no céu: mantém cada pipa em seu corredor aéreo, permitindo disputas
-    const lateralCorridorFx = -(kite.x - cruiseX) * 0.35;
+    // Dispersão lateral no céu: com poucas pipas a mola é mais fraca para permitir
+    // travessias livres; com muitas pipas a mola impede amontoamento
+    const lateralCorridorFx = -(kite.x - cruiseX) * (sparse ? 0.15 : 0.35);
 
     // A linha equilibra a sustentação; atenuamos a componente vertical para não afundar a pipa na laje
     const balancedTensionFy = tensionFy * 0.12;

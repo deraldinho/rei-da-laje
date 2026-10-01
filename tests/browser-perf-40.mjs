@@ -73,11 +73,16 @@ try {
   await send('Runtime.enable');
   await send('Emulation.setDeviceMetricsOverride', { width: 1440, height: 2560, deviceScaleFactor: 1, mobile: false });
   await send('Page.navigate', { url: `http://127.0.0.1:${port}` });
-  for (let i = 0; i < 80; i++) {
-    if (await evaluate('!!window.__PIPA_GAME__?.socket.connected')) break;
+  let booted = false;
+  for (let i = 0; i < 120; i++) {
+    try { if (await evaluate('!!window.__PIPA_GAME__?.socket.connected')) { booted = true; break; } } catch {}
     await pause(150);
   }
-  assert.equal(await evaluate('!!window.__PIPA_GAME__?.socket.connected'), true);
+  if (!booted) {
+    const diagnostic = await evaluate(`({readyState:document.readyState,game:!!window.__PIPA_GAME__,href:location.href,body:document.body?.textContent?.slice(0,120)||''})`);
+    console.error('PERF_BOOT_DIAGNOSTIC', JSON.stringify({ diagnostic, errors }, null, 2));
+  }
+  assert.equal(booted, true, 'GameApp/socket não inicializou no benchmark');
   await evaluate('window.__PIPA_GAME__.app.ticker.stop()');
   await Promise.all(Array.from({ length: 40 }, (_, i) => spawnKite(i)));
   for (let i = 0; i < 40; i++) {

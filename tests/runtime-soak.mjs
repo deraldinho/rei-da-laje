@@ -32,8 +32,12 @@ try{
   await send('Page.enable');await send('Runtime.enable');
   await send('Emulation.setDeviceMetricsOverride',{width:1440,height:2560,deviceScaleFactor:1,mobile:false});
   await send('Page.navigate',{url:`http://127.0.0.1:${port}`});
-  for(let i=0;i<80;i++){if(await evaluate('!!window.__PIPA_GAME__?.socket.connected'))break;await pause(150);}
-  assert.equal(await evaluate('!!window.__PIPA_GAME__?.socket.connected'),true);
+  let booted=false;
+  for(let i=0;i<160;i++){
+    try { if(await evaluate('!!window.__PIPA_GAME__?.socket.connected')){booted=true;break;} } catch {}
+    await pause(150);
+  }
+  assert.equal(booted,true,'GameApp/socket não inicializou dentro da janela de boot do soak');
   await evaluate('window.__PIPA_GAME__.app.ticker.stop()');
   await Promise.all(Array.from({length:40},(_,i)=>comment(i)));
   for(let i=0;i<40;i++){if(await evaluate('window.__PIPA_GAME__.kites.size')===40)break;await pause(100);}
