@@ -590,6 +590,9 @@ export function createKiteModel3D(themeColorHex = 0xff5722, patternIndex = 0, se
   group.userData = {
     kiteMesh,
     kiteMat,
+    centerStick,
+    crossStick,
+    cabresto,
     decal,
     decalMat,
     crown,
@@ -991,4 +994,82 @@ export class ThreeKites {
     }
     this.fallingKites3D.clear();
   }
+}
+
+const POOL_TAIL_COLORS = [0xff0055, 0xffd700, 0x00f0ff, 0x111111, 0x00e676, 0xff9100];
+
+export function configureKiteModelType3D(model, type = 'tradicional', patternIndex = 0) {
+  if (!model?.userData?.poolGeometries) return model;
+  const normalized = type === 'raia' ? 'raia' : type === 'peixinho' ? 'peixinho' : 'tradicional';
+  const cfg = model.userData.poolGeometries[normalized];
+  model.userData.kiteMesh.geometry = cfg.body;
+  model.userData.centerStick.geometry = cfg.center;
+  model.userData.centerStick.position.y = cfg.centerY;
+  model.userData.crossStick.geometry = cfg.cross;
+  model.userData.cabresto.geometry = cfg.cabresto;
+  model.userData.decal.geometry = cfg.decal;
+  model.userData.tailGroup.position.y = cfg.tailY;
+  model.userData.hpGroup.position.y = cfg.hpY;
+  model.userData.tailMesh.geometry.setDrawRange(0, cfg.tailCount);
+  model.userData.activeTailNodeCount = cfg.tailCount;
+
+  const nodeIndices = normalized === 'raia'
+    ? [2]
+    : Array.from({ length: Math.floor(cfg.tailCount / 2) }, (_, i) => i * 2 + 1)
+      .filter(nodeIdx => nodeIdx < cfg.tailCount);
+  model.userData.fitilhos.forEach((item, index) => {
+    const nodeIdx = nodeIndices[index];
+    item.mesh.visible = Number.isInteger(nodeIdx);
+    if (!Number.isInteger(nodeIdx)) return;
+    item.nodeIdx = nodeIdx;
+    item.mesh.geometry = normalized === 'raia'
+      ? model.userData.poolFitilhoGeometries.raia
+      : model.userData.poolFitilhoGeometries.normal;
+    item.mesh.material = model.userData.poolFitilhoMats[
+      (nodeIdx + Math.abs(Number(patternIndex) || 0)) % model.userData.poolFitilhoMats.length
+    ];
+  });
+  model.userData.kiteModelType = normalized;
+  return model;
+}
+
+export function createPoolReadyKiteModel3D() {
+  const poolGeometries = {
+    tradicional: {
+      body: getSharedTradicionalGeo(),
+      center: getSharedCenterStickGeo(false, false),
+      cross: getSharedCrossStickGeo(false, false),
+      cabresto: getSharedCabrestoGeo(false, false),
+      decal: getSharedDecalGeo(false),
+      centerY: -5.5, tailY: -26, hpY: -24, tailCount: 14
+    },
+    raia: {
+      body: getSharedRaiaGeo(),
+      center: getSharedCenterStickGeo(true, false),
+      cross: getSharedCrossStickGeo(true, false),
+      cabresto: getSharedCabrestoGeo(true, false),
+      decal: getSharedDecalGeo(false),
+      centerY: 0, tailY: -17, hpY: -20, tailCount: 5
+    },
+    peixinho: {
+      body: getSharedPeixinhoGeo(),
+      center: getSharedCenterStickGeo(false, true),
+      cross: getSharedCrossStickGeo(false, true),
+      cabresto: getSharedCabrestoGeo(false, true),
+      decal: getSharedDecalGeo(true),
+      centerY: -6.5, tailY: -24, hpY: -25, tailCount: 16
+    }
+  };
+  const poolFitilhoGeometries = {
+    normal: getSharedFitilhoGeo(false),
+    raia: getSharedFitilhoGeo(true)
+  };
+  const poolFitilhoMats = POOL_TAIL_COLORS.map(color => getSharedFitilhoMat(color));
+  const model = createKiteModel3D(0xff5722, 0, null, 'peixinho');
+  model.userData.poolReady = true;
+  model.userData.poolGeometries = poolGeometries;
+  model.userData.poolFitilhoGeometries = poolFitilhoGeometries;
+  model.userData.poolFitilhoMats = poolFitilhoMats;
+  configureKiteModelType3D(model, 'tradicional', 0);
+  return model;
 }
