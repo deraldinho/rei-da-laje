@@ -38,3 +38,43 @@ try{
   await Promise.all(Array.from({length:40},(_,i)=>comment(i)));
   for(let i=0;i<40;i++){if(await evaluate('window.__PIPA_GAME__.kites.size')===40)break;await pause(100);}
   assert.equal(await evaluate('window.__PIPA_GAME__.kites.size'),40);
+
+  await evaluate(`(()=>{
+    const game=window.__PIPA_GAME__, w=game.app.screen.width;
+    game.isCombatAuthority=false;
+    game.runtimeProfiler.reset();
+    [...game.kites.values()].sort((a,b)=>String(a.userId).localeCompare(String(b.userId))).forEach((kite,i)=>{
+      kite.isAscending=false;kite.spawnProtection=0;kite.maxLineHP=1e9;kite.lineHP=1e9;
+      const handX=Number.isFinite(kite.line?.visualBaseX)?kite.line.visualBaseX:kite.baseX;
+      const handY=Number.isFinite(kite.line?.visualBaseY)?kite.line.visualBaseY:kite.baseY;
+      const col=i%8,row=Math.floor(i/8);
+      kite.x=120+col*((w-240)/7);kite.y=250+row*260;
+      kite.targetX=kite.x;kite.targetY=kite.y;
+      kite.rope?.resetPositions?.({x:handX,y:handY,z:0},{x:kite.x,y:kite.y,z:kite.z||0});
+      kite.updateHPBar?.();
+    });
+  })()`);
+  await evaluate('window.__PIPA_GAME__.app.ticker.start()');
+  await pause(2000);
+  const sampleExpr=`(()=>{const g=window.__PIPA_GAME__,mem=g.threeScene?.renderer?.info?.memory||{};return {count:g.kites.size,particles:g.sparks.particles.length,heap:performance.memory?.usedJSHeapSize||null,textures:Number(mem.textures)||0,geometries:Number(mem.geometries)||0,profiler:g.runtimeProfiler.snapshot()};})()`;
+  const samples=[await evaluate(sampleExpr)];
+  const started=Date.now();
+  while(Date.now()-started<durationMs){await pause(1000);samples.push(await evaluate(sampleExpr));}
+
+  const baseline=samples[0],last=samples.at(-1);
+  const maxParticles=Math.max(...samples.map(s=>s.particles));
+  const heapGrowth=baseline.heap&&last.heap?last.heap-baseline.heap:null;
+  const report={passed:true,durationMs,sampleCount:samples.length,baseline,last,maxParticles,heapGrowth,errors};
+  await writeFile(path.join(evidence,'runtime-soak-report.json'),JSON.stringify(report,null,2));
+  console.log(JSON.stringify(report,null,2));
+  assert.equal(errors.length,0,JSON.stringify(errors));
+  assert.ok(samples.every(s=>s.count===40),'soak deve manter 40 pipas ativas');
+  assert.ok(maxParticles<=350,`partículas fora do budget: ${maxParticles}`);
+  assert.ok(last.textures<=baseline.textures+12,`texturas cresceram: ${baseline.textures} -> ${last.textures}`);
+  assert.ok(last.geometries<=baseline.geometries+20,`geometrias cresceram: ${baseline.geometries} -> ${last.geometries}`);
+  if(heapGrowth!==null) assert.ok(heapGrowth<=64*1024*1024,`heap cresceu ${(heapGrowth/1024/1024).toFixed(1)} MB`);
+  assert.ok(last.profiler?.fps>=30,`FPS do profiler abaixo de 30: ${last.profiler?.fps}`);
+}finally{
+  if(ws?.readyState===1){try{await send('Browser.close');}catch{}ws.close();}
+  browser?.kill();server.kill();
+}
