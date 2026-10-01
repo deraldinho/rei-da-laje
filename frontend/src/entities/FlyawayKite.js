@@ -31,7 +31,7 @@ export class FlyawayKite extends PIXI.Container {
     // Velocidade linear e angular preservadas do instante da disputa
     const initVx = Number.isFinite(kiteData?.vx) ? kiteData.vx : (Math.random() - 0.5) * 2.5;
     const initVy = Number.isFinite(kiteData?.vy) ? kiteData.vy : -0.8;
-    this.vx = initVx * 0.95;
+    this.vx = initVx;
     this.vy = initVy;
     this.vz = 0;
     this.rotation = Number.isFinite(kiteData?.rotation) ? kiteData.rotation : 0;

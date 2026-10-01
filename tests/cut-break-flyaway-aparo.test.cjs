@@ -92,3 +92,23 @@ test('P10 & P15: Ruptura física localizada na corda e criação de FlyawayKite 
   assert.equal(flyaway.isCaught, true, 'FlyawayKite deve registrar estado de aparada');
   assert.equal(flyaway.caughtBy, activeKite);
 });
+
+test('P10: corte preserva ponto físico, posição e momento da pipa sem teleporte', async () => {
+  const { RopePhysics } = await loadESM('frontend/src/engine/physics/RopePhysics.js');
+  const { FlyawayKite } = await loadESM('frontend/src/entities/FlyawayKite.js');
+  const rope = new RopePhysics({ nodeCount: 12, lineType: 'algodao' });
+  rope.resetPositions({x:180,y:1760,z:0},{x:820,y:360,z:120});
+  const info = rope.breakAt(6, 0.4);
+  assert.equal(info.segmentIndex, 6);
+  assert.ok(Math.abs(info.segmentT - 0.4) < 1e-12);
+  const handTip = info.handNodes.at(-1), flyTip = info.flyawayNodes[0];
+  assert.deepEqual({x:handTip.x,y:handTip.y,z:handTip.z}, info.breakPoint);
+  assert.deepEqual({x:flyTip.x,y:flyTip.y,z:flyTip.z}, info.breakPoint);
+  assert.notStrictEqual(handTip, flyTip, 'as duas metades não podem compartilhar objeto mutável');
+  const loser={userId:'momentum',nickname:'Momentum',x:820,y:360,z:120,vx:3.5,vy:-1.2,rotation:.15};
+  const flyaway=new FlyawayKite(loser,info);
+  assert.equal(flyaway.x, loser.x); assert.equal(flyaway.y, loser.y);
+  assert.equal(flyaway.vx, loser.vx, 'momento horizontal deve ser preservado no instante do corte');
+  assert.equal(flyaway.vy, loser.vy, 'momento vertical deve ser preservado no instante do corte');
+  flyaway.destroy({children:true});
+});
