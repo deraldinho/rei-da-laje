@@ -18,6 +18,7 @@ import { CHECKPOINT_KEY, captureArena, readArenaCheckpoint, restoreKiteState } f
 import { startChatAction, applyChatAction } from './ChatControls.js';
 import { RopeCollision } from './physics/RopeCollision.js';
 import { PhysicsClock } from './physics/PhysicsClock.js'; // Passo 1
+import { KiteDynamics } from './physics/KiteDynamics.js';
 import { CombatContactAccumulator } from './physics/CombatContactAccumulator.js';
 import { selectCouplingJobs } from './physics/RopeCouplingLimiter.js';
 import { RuntimeProfiler } from './RuntimeProfiler.js';
@@ -225,7 +226,9 @@ export class GameApp {
     this.giftShowcase = new GiftShowcase();
     this.app.stage.addChild(this.giftShowcase);
 
-    // Loop de Renderização a 60 FPS
+    // Loop de Renderização fixo em 60 FPS
+    this.app.ticker.maxFPS = 60;
+    this.app.ticker.minFPS = 30;
     this.app.ticker.add((delta) => this.gameLoop(delta));
 
     this._onRendererResize = (width, height) => {
@@ -1015,6 +1018,7 @@ export class GameApp {
       }
 
       // 2º: KiteDynamics e RopePhysics XPBD
+      KiteDynamics._stepFrame++; // Avança o frame global ANTES do loop de pipas
       for (const kite of physicsKites) {
         kite.update(fixedDt * 60, currentWind, physicsKites.length);
       }

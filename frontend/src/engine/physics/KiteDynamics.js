@@ -10,6 +10,12 @@
  *   4. Intenções de Controle (comentários/presentes: reelVelocity, liftIntent, steerIntent).
  */
 export class KiteDynamics {
+  // Relógio global compartilhado: TODAS as pipas usam o mesmo tempo para convergir
+  // ao MESMO ponto de encontro simultaneamente. Sem isso, cada pipa calculava
+  // seu próprio ponto e momento de convergência (oscillationTimer é randômico).
+  static _globalTime = 0;
+  static _stepFrame = 0;   // counter de substep para deduplicar incremento
+  static _lastFrame = -1;  // último substep processado
   /**
    * Executa um passo determinístico de dinâmica física na pipa (60 Hz fixo)
    * @param {object} kite Instância da pipa
@@ -21,6 +27,13 @@ export class KiteDynamics {
     if (!kite || !Number.isFinite(kite.x) || !Number.isFinite(kite.y)) return;
 
     const dt = Math.max(0.001, Math.min(0.05, Number(fixedDt) || 1 / 60));
+    // Incrementa o relógio global apenas UMA vez por substep de física,
+    // não uma vez por pipa. Usa counter de frame incrementado externamente.
+    const currentFrame = KiteDynamics._stepFrame;
+    if (currentFrame !== KiteDynamics._lastFrame) {
+      KiteDynamics._globalTime += dt;
+      KiteDynamics._lastFrame = currentFrame;
+    }
     const wX = Number.isFinite(wind?.x) ? wind.x : 0;
     const wY = Number.isFinite(wind?.y) ? wind.y : 0;
     const gust = Number.isFinite(wind?.gust) ? wind.gust : 1.0;
@@ -161,20 +174,23 @@ export class KiteDynamics {
 
     // Convergência Dinâmica para Populações Baixas (≤4 pipas):
     // Com poucas pipas os corredores aéreos individuais separam demais as trajetórias,
-    // impedindo que as linhas se cruzem. A convergência periódica empurra o ponto de
-    // equilíbrio de cada pipa para um encontro compartilhado que migra pelo céu,
-    // garantindo relinhos naturais mesmo com 2 a 4 pipas.
+    // impedindo que as linhas se cruzem. Usa o RELÓGIO GLOBAL (_globalTime) para que
+    // TODAS as pipas convirjam ao MESMO ponto no MESMO momento.
     if (sparse) {
-      const phase = kite.windPhase || 0;
-      const t = (kite.oscillationTimer || 0) * 0.35;
-      // Ponto de encontro orbitante: percorre o centro do céu em uma elipse lenta
-      const meetX = width * (0.5 + Math.sin(t * 0.19) * 0.28);
-      const meetY = height * (0.28 + Math.cos(t * 0.15) * 0.07);
-      // Intensidade de convergência oscila: aproximação e afastamento cíclicos
-      // Isso cria janelas de ~4-8s onde as pipas se juntam (relinho) e depois dispersam
-      const convergePower = Math.pow((1 + Math.sin(t * 0.55 + phase)) / 2, 1.5);
-      cruiseX += (meetX - cruiseX) * convergePower * 0.85;
-      cruiseY += (meetY - cruiseY) * convergePower * 0.6;
+      const gt = KiteDynamics._globalTime;
+      // Ponto de encontro compartilhado: orbita lentamente pelo centro do céu
+      // Ciclo completo ~33s horizontal, ~42s vertical — tempo suficiente para
+      // varrer toda a arena e cruzar linhas de qualquer configuração de spawn
+      const meetX = width * (0.5 + Math.sin(gt * 0.19) * 0.25);
+      const meetY = height * (0.28 + Math.cos(gt * 0.15) * 0.06);
+      // Intensidade de convergência oscila com período ~8s:
+      // fase alta (~4s): todas as pipas puxadas forte para o ponto de encontro
+      // fase baixa (~4s): pipas se dispersam, criando ritmo natural de combate
+      const convergePower = Math.pow((1 + Math.sin(gt * 0.8)) / 2, 1.2);
+      // Com convergePower=1 o cruise vira 100% o ponto de encontro;
+      // com convergePower~0 cada pipa mantém seu corredor individual
+      cruiseX = cruiseX + (meetX - cruiseX) * convergePower * 0.92;
+      cruiseY = cruiseY + (meetY - cruiseY) * convergePower * 0.75;
     }
 
     // Sustentação restauradora de altitude: quanto mais a pipa descer em relação ao céu,
