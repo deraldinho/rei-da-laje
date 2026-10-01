@@ -10,9 +10,14 @@
     "build": "vite build frontend",
     "prestart": "vite build frontend",
     "start": "node backend/server.js",
-    "test": "node --test tests/*.test.cjs",
+    "test": "npm run test:unit",
     "kill": "powershell -Command \"Get-NetTCPConnection -LocalPort 3000,5173 -ErrorAction SilentlyContinue | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force -ErrorAction SilentlyContinue }; Write-Host 'Portas 3000 e 5173 liberadas!'\"",
-    "restart": "npm run kill && npm run dev"
+    "restart": "npm run kill && npm run dev",
+    "test:unit": "node --test tests/*.test.cjs",
+    "test:browser": "node tests/browser-smoke.mjs",
+    "test:perf": "node tests/browser-perf-40.mjs",
+    "test:soak": "node tests/runtime-soak.mjs",
+    "verify": "node tests/verify.mjs"
   },
   "dependencies": {
     "concurrently": "^8.2.2",

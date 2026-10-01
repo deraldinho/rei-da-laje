@@ -30,3 +30,6 @@ scratch/
 Thumbs.db
 .vscode/
 .idea/
+
+# Rollback local
+backups/
