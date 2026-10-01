@@ -7,6 +7,24 @@
  * 3. Cálculo da menor distância entre segmentos 2D/3D com espessura de cápsula (raioA + raioB).
  * 4. Ponto exato de contato, tangentes, ângulo relativo e velocidade de deslizamento abrasivo.
  */
+const SCRATCH_KEY = Symbol('ropeCollisionScratch');
+function collisionScratch(out) {
+  const make=()=>({
+    closest:{c1:{},c2:{},contactPoint:{}}, hintC1:{},hintC2:{},hintPoint:{},
+    bestC1:{},bestC2:{},bestPoint:{}
+  });
+  if(!out) return make();
+  if(!out[SCRATCH_KEY]) Object.defineProperty(out,SCRATCH_KEY,{value:make()});
+  return out[SCRATCH_KEY];
+}
+
+function collisionMiss(out, details = null) {
+  if (!out) return details ? { hit:false, ...details } : { hit:false };
+  out.hit = false;
+  if (details) Object.assign(out, details);
+  return out;
+}
+
 export class RopeCollision {
   /**
    * Calcula a menor distância e os pontos mais próximos entre dois segmentos de reta 3D/2D
@@ -83,7 +101,7 @@ export class RopeCollision {
    * @param {object} options Opções de filtragem { minSinAngle, maxZDistance }
    * @returns {object} { hit: boolean, ...detalhes do contato }
    */
-  static _finalizeContact(nodesA, nodesB, bestIndexA, bestIndexB, closestInfo, contactRadius, options = {}) {
+  static _finalizeContact(nodesA, nodesB, bestIndexA, bestIndexB, closestInfo, contactRadius, options = {}, out = null) {
     const deltaZ = Number.isFinite(options.deltaZ)
       ? options.deltaZ
       : Math.abs((closestInfo.c1.z || 0) - (closestInfo.c2.z || 0));
@@ -92,12 +110,12 @@ export class RopeCollision {
     const dist2D = Math.sqrt(dx2 * dx2 + dy2 * dy2);
 
     if (Number.isFinite(options.maxZDistance) && deltaZ > options.maxZDistance) {
-      return { hit: false, minDistance: closestInfo.distance, deltaZ, dist2D, reason: 'Z_SEPARATION' };
+      return collisionMiss(out, { minDistance: closestInfo.distance, deltaZ, dist2D, reason: 'Z_SEPARATION' });
     }
 
     const effectiveDist = Number.isFinite(options.maxZDistance) ? dist2D : closestInfo.distance;
     if (effectiveDist > contactRadius) {
-      return { hit: false, minDistance: closestInfo.distance, deltaZ, dist2D };
+      return collisionMiss(out, { minDistance: closestInfo.distance, deltaZ, dist2D });
     }
 
     const s = closestInfo.s;
@@ -124,42 +142,28 @@ export class RopeCollision {
     const minSinAngle = Number.isFinite(options.minSinAngle) ? options.minSinAngle : 0.15;
     const isXCrossing = sinAngle >= minSinAngle;
     if (Number.isFinite(options.minSinAngle) && !isXCrossing) {
-      return {
-        hit: false,
-        minDistance: closestInfo.distance,
-        sinAngle,
-        isXCrossing: false,
-        reason: 'PARALLEL_OR_GLANCING'
-      };
+      return collisionMiss(out, { minDistance:closestInfo.distance, sinAngle, isXCrossing:false, reason:'PARALLEL_OR_GLANCING' });
     }
 
-    const slideA = Math.abs(rvx * tanAx + rvy * tanAy);
-    const slideB = Math.abs(rvx * tanBx + rvy * tanBy);
-    const slidingSpeed = Math.max(slideA, slideB, relativeSpeed * sinAngle);
+    const slideA = rvx * tanAx + rvy * tanAy;
+    const slideB = rvx * tanBx + rvy * tanBy;
+    const slidingSpeed = 0.5 * (Math.abs(slideA) + Math.abs(slideB));
 
-    return {
-      hit: true,
-      x: closestInfo.contactPoint.x,
-      y: closestInfo.contactPoint.y,
-      z: closestInfo.contactPoint.z,
-      distance: closestInfo.distance,
-      segmentIndexA: bestIndexA,
-      segmentIndexB: bestIndexB,
-      s,
-      t,
-      relativeSpeed,
-      slidingSpeed,
-      sinAngle,
-      isXCrossing,
-      deltaZ,
-      contactRadius,
-      c1: { x: closestInfo.c1.x, y: closestInfo.c1.y, z: closestInfo.c1.z },
-      c2: { x: closestInfo.c2.x, y: closestInfo.c2.y, z: closestInfo.c2.z }
-    };
+    const result = out || {};
+    const c1 = result.c1 || (result.c1 = {});
+    const c2 = result.c2 || (result.c2 = {});
+    c1.x=closestInfo.c1.x; c1.y=closestInfo.c1.y; c1.z=closestInfo.c1.z;
+    c2.x=closestInfo.c2.x; c2.y=closestInfo.c2.y; c2.z=closestInfo.c2.z;
+    Object.assign(result,{hit:true,x:closestInfo.contactPoint.x,y:closestInfo.contactPoint.y,z:closestInfo.contactPoint.z,
+      distance:closestInfo.distance,segmentIndexA:bestIndexA,segmentIndexB:bestIndexB,s,t,
+      tangentAx:tanAx,tangentAy:tanAy,tangentBx:tanBx,tangentBy:tanBy,
+      velocityAx:vxA,velocityAy:vyA,velocityBx:vxB,velocityBy:vyB,relativeVx:rvx,relativeVy:rvy,
+      slideA,slideB,relativeSpeed,slidingSpeed,sinAngle,isXCrossing,deltaZ,contactRadius});
+    return result;
   }
 
-  static checkRopeCollision(ropeA, ropeB, thicknessMultiplier = 4.5, options = {}) {
-    if (!ropeA || !ropeB) return { hit: false };
+  static checkRopeCollision(ropeA, ropeB, thicknessMultiplier = 4.5, options = {}, out = null) {
+    if (!ropeA || !ropeB) return collisionMiss(out);
 
     const radiusA = Math.max(0.5, (ropeA.material?.diameter || 1.0) * thicknessMultiplier);
     const radiusB = Math.max(0.5, (ropeB.material?.diameter || 1.0) * thicknessMultiplier);
@@ -175,7 +179,7 @@ export class RopeCollision {
       aabbA.minY - contactRadius > aabbB.maxY ||
       aabbA.maxY + contactRadius < aabbB.minY
     ) {
-      return { hit: false };
+      return collisionMiss(out);
     }
 
     const nodesA = ropeA.nodes;
@@ -184,7 +188,8 @@ export class RopeCollision {
       return { hit: false };
     }
 
-    const scratch = { c1: {}, c2: {}, contactPoint: {}, distance: Infinity, s: 0, t: 0 };
+    const workspace = collisionScratch(out);
+    const scratch = workspace.closest;
 
     const pairOverlaps = (i, j) => {
       const a1 = nodesA[i], a2 = nodesA[i + 1];
@@ -209,7 +214,7 @@ export class RopeCollision {
       const centerB = Math.max(0, Math.min(nodesB.length - 2, Math.floor(hint.segmentIndexB)));
       let bestDistance = Infinity;
       let bestIndexA = -1, bestIndexB = -1, bestS = 0, bestT = 0;
-      const c1 = { x: 0, y: 0, z: 0 }, c2 = { x: 0, y: 0, z: 0 }, cp = { x: 0, y: 0, z: 0 };
+      const c1 = workspace.hintC1, c2 = workspace.hintC2, cp = workspace.hintPoint;
       const offsets = [0, -1, 1];
       for (const da of offsets) {
         const i = centerA + da;
@@ -229,7 +234,7 @@ export class RopeCollision {
       if (bestIndexA >= 0) {
         const hinted = this._finalizeContact(nodesA, nodesB, bestIndexA, bestIndexB, {
           distance: bestDistance, s: bestS, t: bestT, c1, c2, contactPoint: cp
-        }, contactRadius, options);
+        }, contactRadius, options, out);
         if (hinted.hit) return hinted;
       }
     }
@@ -241,9 +246,9 @@ export class RopeCollision {
     let bestIndexB = -1;
     let bestS = 0;
     let bestT = 0;
-    const bestC1 = { x: 0, y: 0, z: 0 };
-    const bestC2 = { x: 0, y: 0, z: 0 };
-    const bestContact = { x: 0, y: 0, z: 0 };
+    const bestC1 = workspace.bestC1;
+    const bestC2 = workspace.bestC2;
+    const bestContact = workspace.bestPoint;
 
     for (let i = 0; i < nodesA.length - 1; i++) {
       for (let j = 0; j < nodesB.length - 1; j++) {
@@ -259,7 +264,7 @@ export class RopeCollision {
       }
     }
 
-    if (bestIndexA < 0 || bestIndexB < 0) return { hit: false, minDistance: Infinity };
+    if (bestIndexA < 0 || bestIndexB < 0) return collisionMiss(out, { minDistance: Infinity });
     return this._finalizeContact(nodesA, nodesB, bestIndexA, bestIndexB, {
       distance: minDistance,
       s: bestS,
@@ -267,7 +272,7 @@ export class RopeCollision {
       c1: bestC1,
       c2: bestC2,
       contactPoint: bestContact
-    }, contactRadius, options);
+    }, contactRadius, options, out);
   }
 
   /**
