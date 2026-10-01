@@ -169,38 +169,50 @@ export class KiteDynamics {
     // 5. Estabilidade Aerodinâmica de Altitude de Cruzeiro e Dispersão no Céu
     const width = Number.isFinite(kite.screenWidth) ? kite.screenWidth : 1080;
     const height = Number.isFinite(kite.screenHeight) ? kite.screenHeight : 1920;
-    let cruiseY = Number.isFinite(kite.targetY) ? kite.targetY : (height * 0.26);
-    let cruiseX = Number.isFinite(kite.targetX) ? kite.targetX : (width * 0.5);
 
     // Convergência Dinâmica para Populações Baixas (≤4 pipas):
-    // Com poucas pipas os corredores aéreos individuais separam demais as trajetórias,
-    // impedindo que as linhas se cruzem. Usa o RELÓGIO GLOBAL (_globalTime) para que
-    // TODAS as pipas convirjam ao MESMO ponto no MESMO momento.
+    // Conceito: COMPRIMIR → EXPANDIR → CRUZAR
+    //
+    // 1. Convergência ALTA: drift é comprimido, todas as pipas vão pro CENTRO
+    // 2. Convergência BAIXA: drift se expande, cada pipa usa sua windPhase
+    //    individual e vai pra um LADO DIFERENTE do céu
+    // 3. Como as mãos (âncoras na laje) ficam fixas, pipas que trocam de lado
+    //    cruzam as linhas umas das outras → RELINHO NATURAL
+    //
+    // NOTA: O erro anterior era convergir todas a UM MESMO PONTO — isso formava
+    // um "leque" de linhas que NUNCA se cruzavam.
+    let cruiseX, cruiseY;
+
     if (sparse) {
       const gt = KiteDynamics._globalTime;
-      // Ponto de encontro compartilhado: orbita lentamente pelo centro do céu
-      // Ciclo completo ~33s horizontal, ~42s vertical — tempo suficiente para
-      // varrer toda a arena e cruzar linhas de qualquer configuração de spawn
-      const meetX = width * (0.5 + Math.sin(gt * 0.19) * 0.25);
-      const meetY = height * (0.28 + Math.cos(gt * 0.15) * 0.06);
-      // Intensidade de convergência oscila com período ~8s:
-      // fase alta (~4s): todas as pipas puxadas forte para o ponto de encontro
-      // fase baixa (~4s): pipas se dispersam, criando ritmo natural de combate
-      const convergePower = Math.pow((1 + Math.sin(gt * 0.8)) / 2, 1.2);
-      // Com convergePower=1 o cruise vira 100% o ponto de encontro;
-      // com convergePower~0 cada pipa mantém seu corredor individual
-      cruiseX = cruiseX + (meetX - cruiseX) * convergePower * 0.92;
-      cruiseY = cruiseY + (meetY - cruiseY) * convergePower * 0.75;
+      const phase = kite.windPhase || 0;
+
+      // Onda de convergência COMPARTILHADA (mesma pra todas as pipas)
+      // Ciclo ~9.6s: ~4.8s comprimido no centro, ~4.8s espalhado pelos lados
+      const convergence = Math.pow((1 + Math.sin(gt * 0.65)) / 2, 2) * 0.9;
+
+      // Drift INDIVIDUAL: cada pipa oscila com sua própria fase
+      // Quando convergência=0: amplitude total de ±0.38 * largura (cobre 76% da tela)
+      // Quando convergência=1: amplitude ≈ 0 (todas agrupadas no centro)
+      const drift = Math.sin(gt * 0.55 + phase);
+      const lift = Math.sin(gt * 0.48 + phase * 1.7);
+
+      cruiseX = width * (0.5 + drift * 0.38 * (1 - convergence));
+      cruiseY = height * (0.28 + lift * 0.14 * (1 - convergence));
+    } else {
+      cruiseX = Number.isFinite(kite.targetX) ? kite.targetX : (width * 0.5);
+      cruiseY = Number.isFinite(kite.targetY) ? kite.targetY : (height * 0.26);
     }
 
     // Sustentação restauradora de altitude: quanto mais a pipa descer em relação ao céu,
     // maior a sustentação ascencional do vento contra a face inferior da pipa (-Y)
     const altitudeError = kite.y - cruiseY;
-    const restoringLiftFy = -altitudeError * (sparse ? 0.9 : 1.55);
+    const restoringLiftFy = -altitudeError * (sparse ? 1.8 : 1.55);
 
-    // Dispersão lateral no céu: com poucas pipas a mola é mais fraca para permitir
-    // travessias livres; com muitas pipas a mola impede amontoamento
-    const lateralCorridorFx = -(kite.x - cruiseX) * (sparse ? 0.15 : 0.35);
+    // Força lateral de corredor: com sparse, a mola é FORTE para que as pipas
+    // sigam fielmente o cruiseX calculado pela convergência (antes era 0.15 e
+    // as pipas não chegavam ao destino). Com muitas pipas, mantém dispersão.
+    const lateralCorridorFx = -(kite.x - cruiseX) * (sparse ? 0.55 : 0.35);
 
     // A linha equilibra a sustentação; atenuamos a componente vertical para não afundar a pipa na laje
     const balancedTensionFy = tensionFy * 0.12;
