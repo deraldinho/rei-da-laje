@@ -1,0 +1,3 @@
+const test=require('node:test');const assert=require('node:assert/strict');const fs=require('node:fs');const path=require('node:path');
+test('worker encaminha evento follow para o processo principal',()=>{const s=fs.readFileSync(path.join(__dirname,'../backend/tiktokWorkerSupervisor.js'),'utf8');assert.match(s,/\['chat','gift','like','follow'\]/);});
+test('frontend anuncia novo seguidor e celebra avatar ativo sem criar pipa',()=>{const s=fs.readFileSync(path.join(__dirname,'../frontend/src/engine/App.js'),'utf8');const i=s.indexOf("this._socketSubscriptions.on('follow:new'");assert.ok(i>=0);const b=s.slice(i,i+700);assert.match(b,/AGORA SEGUE A LIVE/);assert.match(b,/rooftopPlayer\?\.celebrate/);assert.doesNotMatch(b,/addKite|spawn/);});

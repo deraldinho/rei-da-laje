@@ -1,0 +1,31 @@
+# Dependências
+node_modules/
+frontend/node_modules/
+
+# Builds e Bundles
+frontend/dist/
+frontend/dist-preview/
+dist/
+
+# Arquivos de Dados e Estado em Tempo de Execução
+arena-state.json
+live-profile.json
+gift-catalog.json
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Test Evidence & Screenshots temporários
+tests/evidence/*.png
+
+# Arquivos compactados e temporários
+*.zip
+scratch/
+.superpowers/
+
+# IDE e Sistema Operacional
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

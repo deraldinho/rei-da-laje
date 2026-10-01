@@ -1,0 +1,22 @@
+{
+  "passed": true,
+  "tests": [
+    "boot",
+    "40 pipas",
+    "DOM seguro",
+    "checkpoint e restauração após reload de teste",
+    "executor único de combate",
+    "combo 3x Capivara",
+    "manobra de aparar",
+    "likes",
+    "resize portrait",
+    "overlay",
+    "combate sem exceções"
+  ],
+  "state": {
+    "count": 40,
+    "particles": 0,
+    "fps": 4.997501249375315
+  },
+  "errors": []
+}

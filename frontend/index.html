@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#102e43">
+  <title>Rei da Laje · Arena de Pipas</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Outfit:wght@500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/src/ui/design/tokens.css">
+  <link rel="stylesheet" href="/src/ui/game.css">
+  <style>.gift-guide span{text-transform:uppercase}#windStatus{color:#ffe07a}</style>
+  <link rel="stylesheet" href="/src/ui/portrait-live.css">
+</head>
+<body>
+  <canvas id="threeCanvas" aria-hidden="true"></canvas>
+  <canvas id="gameCanvas" aria-label="Arena de combate de pipas"></canvas>
+  <div id="uiOverlay">
+    <header class="arena-header">
+      <div class="brand">
+        <span class="brand-mark">◆</span>
+        <div>
+          <span class="eyebrow" id="brandEyebrow">DISPUTA DE RELINHO</span>
+          <h1>REI DA <em>LAJE</em></h1>
+        </div>
+      </div>
+      <div class="header-actions">
+        <div id="threeExperienceHub" class="three-experience-hub" aria-label="Telemetria da Experiência 3D">
+          <div class="hud-3d-pill theme-indicator-pill" id="themeIndicatorPill" role="button" tabindex="0" title="Clique ou pressione Tecla M para alternar entre os 27 Estados do Brasil 3D" aria-label="Cenário 3D e Monumento Estadual Ativo">
+            <span class="hud-3d-icon" id="themeStateFlag">📍</span>
+            <div class="hud-3d-text">
+              <span class="hud-3d-sub" id="themeRegionText">BRASIL 3D</span>
+              <strong class="hud-3d-title" id="themeLandmarkText">RIO DE JANEIRO</strong>
+            </div>
+          </div>
+          <div class="hud-3d-pill wind-vector-pill" id="windVectorPill" title="Vetor de Vento 3D">
+            <div class="wind-compass" id="windCompassNeedle">
+              <span class="compass-arrow">➤</span>
+            </div>
+            <div class="hud-3d-text">
+              <span class="hud-3d-sub">VENTO 3D</span>
+              <strong class="hud-3d-title" id="windVectorText">SUAVE · 0 km/h</strong>
+            </div>
+          </div>
+          <div class="hud-3d-pill webgl-status-pill webgl-active" id="webglStatusPill" title="Aceleração Gráfica WebGL 60 FPS">
+            <span class="webgl-dot"></span>
+            <span class="webgl-badge-label">3D 60FPS</span>
+          </div>
+        </div>
+        <div class="arena-status">
+          <span id="connectionStatus" class="status offline disconnected" role="status" aria-label="Arena reconectando" title="Arena reconectando"></span>
+          <span id="tiktokLiveStatus" class="status offline" role="status" aria-label="TikTok verificando" title="TikTok verificando"></span>
+          <span class="population"><b id="kiteCounter">00</b> PIPAS NO CÉU</span>
+          <span id="queueCounter" class="queue-counter"></span>
+        </div>
+        <nav class="game-controls" aria-label="Controles da transmissão">
+          <button id="btnSound" aria-pressed="false" title="Ativar ou desativar áudio da transmissão">Ativar som</button>
+          <button id="btnVoice" class="active" aria-pressed="true" title="Ativar ou desativar narração por voz da live (TTS)">🎙️ Narrador ON</button>
+          <button id="btnToggleScene" title="Alternar cenário Favela/Laje (Atalho Tecla B)"><span id="sceneModeText">Favela / Laje</span> · B</button>
+          <button id="btnCycleTheme" title="Alternar Mapa 3D dos 27 Estados (Atalho Tecla M)">🗺️ <span id="themeBtnText">Mapa</span> · M</button>
+          <button id="btnCameraMode" title="Alternar Modo de Câmera 3D (Atalho Tecla C)">🎥 <span id="cameraBtnText">Câmera</span> · C</button>
+        </nav>
+      </div>
+    </header>
+    <aside class="leaderboard-card" aria-label="Placar dos jogadores ativos">
+      <div class="leaderboard-title">
+        <span>🏆 TOP 5 · LIVE</span>
+        <span class="eyebrow">CORTES</span>
+      </div>
+      <div id="leaderboardList">
+        <p class="ranking-empty">O próximo Rei da Laje pode ser você.</p>
+      </div>
+      <div class="ranking-footer">5 cortes seguidos = coroa da laje</div>
+      <div id="sessionRecord" class="session-record">RECORDE DA LIVE: aguardando cortes</div>
+      <div id="hallOfFame" class="hall-of-fame" aria-label="Hall da fama da transmissão"></div>
+      <div id="activeKing" class="active-king">👑 COROA EM DISPUTA</div>
+    </aside>
+    <div id="killfeedContainer" class="killfeed-container" aria-live="polite"></div>
+    <div id="leadershipBanner" class="leadership-banner" hidden aria-live="polite">
+      <span class="leadership-icon">👑</span>
+      <div>
+        <span class="leadership-caption">NOVO LÍDER DA ARENA</span>
+        <strong id="leadershipName"></strong>
+        <span id="leadershipScore"></span>
+      </div>
+    </div>
+    <div id="competitionNotice" class="competition-notice" hidden aria-live="polite"></div>
+    <div id="maneuverToast" class="maneuver-toast" hidden aria-live="polite"></div>
+    <div id="giftCelebration" class="gift-celebration" hidden aria-live="polite">
+      <img id="giftCelebrationIcon" class="gift-celebration-icon" alt="" hidden>
+      <strong id="giftCelebrationTitle"></strong>
+      <span id="giftCelebrationDetail"></span>
+    </div>
+    <section id="emptyState" class="empty-state">
+      <div class="empty-state-card">
+        <span class="empty-kite">◇</span>
+        <span class="eyebrow">✦ O CÉU ESTÁ LIVRE ✦</span>
+        <h2>Sua pipa.<br>Seu nome.<br><em class="highlight-laje">Sua laje.</em></h2>
+        <div class="empty-cta">
+          <p class="cta-primary">💬 Comente na live para entrar!</p>
+          <p class="cta-secondary">O vento guia o relinho · Presentes dão superpoderes</p>
+        </div>
+      </div>
+    </section>
+    <footer class="arena-footer">
+      <div id="boostStatus" class="boost-status" hidden>♥ RAJADA ATIVA · +25% AGILIDADE</div>
+      <div class="join-message">
+        <span class="join-dot"></span>
+        <b>COMENTE PARA ENTRAR</b>
+        <span class="join-sub">Foi cortado? Comente de novo!</span>
+      </div>
+      <div class="commands gift-guide">
+        <span id="windStatus" class="wind-badge">VENTO AUTOMÁTICO</span>
+        <span class="gift-badge gift-retao" title="Rosa ativa Retão"><span class="gift-emoji">🌹</span><span class="gift-labels"><strong class="gift-name">ROSA</strong><small class="gift-perk">RETÃO</small></span></span>
+        <span class="gift-badge gift-despicar" title="Donut ativa Despico"><span class="gift-emoji">🍩</span><span class="gift-labels"><strong class="gift-name">DONUT</strong><small class="gift-perk">DESPICAR</small></span></span>
+        <span class="gift-badge gift-aparar" title="Capivara ativa Aparada"><span class="gift-emoji">🦫</span><span class="gift-labels"><strong class="gift-name">CAPIVARA</strong><small class="gift-perk">APARAR</small></span></span>
+        <span class="gift-badge gift-perseguir" title="Perfume ativa Tornado"><span class="gift-emoji">🌪️</span><span class="gift-labels"><strong class="gift-name">PERFUME</strong><small class="gift-perk">PERSEGUIR</small></span></span>
+        <span class="gift-badge gift-protecao" title="Leão ativa Proteção"><span class="gift-emoji">🦁</span><span class="gift-labels"><strong class="gift-name">LEÃO</strong><small class="gift-perk">PROTEÇÃO</small></span></span>
+      </div>
+    </footer>
+  </div>
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>

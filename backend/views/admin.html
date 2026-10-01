@@ -1,0 +1,2196 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🎮 Painel de Controle Dev & Live — Pipa Live TikTok</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #070b12;
+      --bg-radial: radial-gradient(circle at 20% 15%, rgba(0, 240, 255, 0.08) 0%, transparent 40%),
+                   radial-gradient(circle at 85% 85%, rgba(255, 0, 85, 0.07) 0%, transparent 45%),
+                   radial-gradient(circle at 50% 50%, rgba(13, 22, 38, 0.8) 0%, #070b12 100%);
+      --card-bg: rgba(15, 23, 38, 0.78);
+      --card-bg-hover: rgba(20, 32, 54, 0.88);
+      --card-border: rgba(255, 255, 255, 0.08);
+      --card-border-glow: rgba(0, 240, 255, 0.35);
+      --surface-glass: rgba(10, 18, 30, 0.75);
+      --surface-glass-border: rgba(255, 255, 255, 0.1);
+      
+      --primary: #00f0ff;
+      --primary-dim: rgba(0, 240, 255, 0.15);
+      --accent: #ff0055;
+      --accent-dim: rgba(255, 0, 85, 0.15);
+      --gold: #f59e0b;
+      --gold-dim: rgba(245, 158, 11, 0.15);
+      --success: #10b981;
+      --success-dim: rgba(16, 185, 129, 0.15);
+      --text: #f0f6fc;
+      --text-muted: #8b949e;
+      --text-subtle: #6e7681;
+      
+      --radius-sm: 8px;
+      --radius-md: 12px;
+      --radius-lg: 16px;
+      --radius-full: 9999px;
+      
+      --shadow-card: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+      --shadow-glow-cyan: 0 0 20px rgba(0, 240, 255, 0.25);
+      --shadow-glow-gold: 0 0 20px rgba(245, 158, 11, 0.25);
+      --shadow-glow-accent: 0 0 20px rgba(255, 0, 85, 0.25);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      background-image: var(--bg-radial);
+      background-attachment: fixed;
+      color: var(--text);
+      font-family: 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* Header Principal */
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 16px 22px;
+      background: var(--surface-glass);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border: 1px solid var(--surface-glass-border);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-card);
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+
+    .header-branding {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .header-icon {
+      font-size: 2rem;
+      filter: drop-shadow(0 0 10px rgba(0, 240, 255, 0.6));
+      animation: floatKite 3s ease-in-out infinite;
+    }
+
+    @keyframes floatKite {
+      0%, 100% { transform: translateY(0) rotate(0deg); }
+      50% { transform: translateY(-4px) rotate(4deg); }
+    }
+
+    h1 {
+      font-size: 1.55rem;
+      font-weight: 900;
+      letter-spacing: -0.02em;
+      background: linear-gradient(135deg, #00f0ff 0%, #7000ff 50%, #ff0055 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .header-tagline {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      font-weight: 500;
+      letter-spacing: 0.02em;
+      text-transform: uppercase;
+    }
+
+    .header-badges {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 14px;
+      border-radius: var(--radius-full);
+      font-size: 0.84rem;
+      font-weight: 600;
+      background: rgba(15, 23, 42, 0.8);
+      border: 1px solid var(--card-border);
+      transition: all 0.3s ease;
+    }
+
+    .status-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #8b949e;
+      transition: all 0.3s ease;
+    }
+
+    .status-dot.online {
+      background: var(--success);
+      box-shadow: 0 0 12px var(--success), 0 0 24px var(--success);
+      animation: pulseDot 2s infinite;
+    }
+
+    @keyframes pulseDot {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.7; transform: scale(1.15); }
+    }
+
+    /* Segmented Navigation Bar / Category Tabs */
+    .nav-tabs {
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      padding: 6px;
+      background: rgba(11, 19, 32, 0.6);
+      border: 1px solid var(--card-border);
+      border-radius: var(--radius-md);
+      backdrop-filter: blur(10px);
+      scrollbar-width: thin;
+      scrollbar-color: var(--card-border) transparent;
+    }
+
+    .nav-tabs::-webkit-scrollbar { height: 4px; }
+    .nav-tabs::-webkit-scrollbar-thumb { background: var(--card-border); border-radius: 4px; }
+
+    .nav-tab {
+      padding: 8px 16px;
+      border-radius: var(--radius-sm);
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      background: transparent;
+      border: 1px solid transparent;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.2s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .nav-tab:hover {
+      color: var(--text);
+      background: rgba(255, 255, 255, 0.04);
+    }
+
+    .nav-tab.active {
+      color: #00f0ff;
+      background: rgba(0, 240, 255, 0.12);
+      border-color: rgba(0, 240, 255, 0.3);
+      box-shadow: 0 0 12px rgba(0, 240, 255, 0.15);
+    }
+
+    /* Barra Mestra de Controle e Sincronização em Tempo Real */
+    .sync-banner {
+      background: linear-gradient(90deg, rgba(0, 240, 255, 0.08) 0%, rgba(112, 0, 255, 0.06) 50%, rgba(255, 0, 85, 0.06) 100%);
+      border: 1px solid rgba(0, 240, 255, 0.3);
+      padding: 14px 20px;
+      border-radius: var(--radius-md);
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      box-shadow: 0 4px 20px rgba(0, 240, 255, 0.07);
+    }
+
+    .sync-status {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 0.92rem;
+      font-weight: 600;
+      color: #7ee787;
+    }
+
+    .sync-actions {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    /* Grid Layout */
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+      gap: 20px;
+    }
+
+    /* Card Design System */
+    .card {
+      background: var(--card-bg);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid var(--card-border);
+      border-radius: var(--radius-lg);
+      padding: 22px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      box-shadow: var(--shadow-card);
+      transition: border-color 0.25s ease, box-shadow 0.25s ease, transform 0.2s ease;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, rgba(0, 240, 255, 0.4), transparent);
+      opacity: 0.6;
+    }
+
+    .card:hover {
+      border-color: rgba(0, 240, 255, 0.25);
+      box-shadow: 0 12px 36px 0 rgba(0, 0, 0, 0.45);
+    }
+
+    .card-highlight-accent {
+      border-color: rgba(255, 0, 85, 0.35);
+      background: linear-gradient(180deg, rgba(22, 27, 34, 0.92), rgba(31, 18, 24, 0.92));
+    }
+    .card-highlight-accent::before {
+      background: linear-gradient(90deg, transparent, rgba(255, 0, 85, 0.6), transparent);
+    }
+
+    .card-highlight-cyan {
+      border-color: rgba(0, 240, 255, 0.35);
+      background: linear-gradient(180deg, rgba(22, 27, 34, 0.92), rgba(13, 26, 36, 0.92));
+    }
+
+    .card h2 {
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: var(--primary);
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      letter-spacing: -0.01em;
+    }
+
+    .card p.card-subtitle {
+      font-size: 0.82rem;
+      color: var(--text-muted);
+      line-height: 1.4;
+      margin-top: -8px;
+    }
+
+    /* Grupos de Configuração */
+    .setting-group {
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+      padding: 10px 0;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .setting-group:last-child {
+      border-bottom: none;
+      padding-bottom: 0;
+    }
+
+    .setting-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.88rem;
+      font-weight: 600;
+    }
+
+    .badge-val {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: var(--primary);
+      background: rgba(0, 240, 255, 0.12);
+      border: 1px solid rgba(0, 240, 255, 0.3);
+      padding: 2px 8px;
+      border-radius: 6px;
+    }
+
+    .setting-desc {
+      font-size: 0.77rem;
+      color: var(--text-muted);
+      line-height: 1.35;
+    }
+
+    /* Form Inputs */
+    .input-group {
+      display: flex;
+      gap: 10px;
+    }
+
+    input, select, button {
+      font-family: inherit;
+      font-size: 0.92rem;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--card-border);
+      outline: none;
+    }
+
+    input[type="text"], input[type="number"] {
+      background: #090d14;
+      color: var(--text);
+      padding: 10px 14px;
+      flex: 1;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: var(--radius-sm);
+      transition: all 0.2s ease;
+    }
+
+    input[type="text"]:focus, input[type="number"]:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 10px rgba(0, 240, 255, 0.2);
+    }
+
+    select {
+      background: #090d14;
+      color: var(--text);
+      padding: 10px 14px;
+      width: 100%;
+      cursor: pointer;
+      border-radius: var(--radius-sm);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      transition: border-color 0.2s;
+    }
+
+    select:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 10px rgba(0, 240, 255, 0.2);
+    }
+
+    /* Range Sliders */
+    input[type="range"] {
+      -webkit-appearance: none;
+      width: 100%;
+      height: 6px;
+      background: #1c2433;
+      border-radius: 6px;
+      outline: none;
+      cursor: pointer;
+      margin: 8px 0;
+      transition: background 0.2s;
+    }
+
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: var(--primary);
+      box-shadow: 0 0 10px rgba(0, 240, 255, 0.8);
+      cursor: pointer;
+      transition: transform 0.15s ease, background 0.15s ease;
+    }
+
+    input[type="range"]::-webkit-slider-thumb:hover {
+      transform: scale(1.2);
+      background: #ffffff;
+    }
+
+    /* Toggle Switches & Labels */
+    .toggle-label {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      cursor: pointer;
+      font-size: 0.88rem;
+      font-weight: 600;
+      user-select: none;
+    }
+
+    .toggle-label input[type="checkbox"] {
+      width: 18px;
+      height: 18px;
+      accent-color: var(--primary);
+      cursor: pointer;
+    }
+
+    /* Buttons */
+    button {
+      background: #1a2332;
+      color: var(--text);
+      padding: 10px 18px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      min-height: 42px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    button:hover {
+      background: #253147;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    }
+
+    button:active {
+      transform: translateY(0);
+    }
+
+    button.btn-primary {
+      background: linear-gradient(135deg, #00b4d8, #0077b6);
+      border: none;
+      color: #fff;
+    }
+
+    button.btn-primary:hover {
+      background: linear-gradient(135deg, #0096c7, #023e8a);
+      box-shadow: 0 0 16px rgba(0, 180, 216, 0.4);
+    }
+
+    button.btn-accent {
+      background: linear-gradient(135deg, #ff0055, #c90044);
+      border: none;
+      color: #fff;
+    }
+
+    button.btn-accent:hover {
+      background: linear-gradient(135deg, #ff1a6b, #b3003b);
+      box-shadow: 0 0 16px rgba(255, 0, 85, 0.4);
+    }
+
+    button.btn-gold {
+      background: linear-gradient(135deg, #f59e0b, #d97706);
+      color: #0b0f19;
+      font-weight: 700;
+      border: none;
+    }
+
+    button.btn-gold:hover {
+      background: linear-gradient(135deg, #fbbf24, #b45309);
+      box-shadow: 0 0 16px rgba(245, 158, 11, 0.4);
+    }
+
+    .btn-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .admin-action-btn {
+      padding: 10px 14px;
+      font-size: 0.85rem;
+      border-radius: var(--radius-sm);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      font-weight: 600;
+    }
+
+    /* 3D State Map Chips Grid */
+    .state-chips-container {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 6px;
+      max-height: 140px;
+      overflow-y: auto;
+      padding: 4px;
+      background: #090d14;
+      border: 1px solid var(--card-border);
+      border-radius: var(--radius-sm);
+    }
+
+    .state-chip {
+      padding: 4px 9px;
+      background: #141c2b;
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 6px;
+      font-size: 0.76rem;
+      font-weight: 600;
+      cursor: pointer;
+      color: var(--text-muted);
+      transition: all 0.2s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .state-chip:hover {
+      background: #1f2a3f;
+      color: #fff;
+    }
+
+    .state-chip.active {
+      background: rgba(0, 240, 255, 0.16);
+      border-color: #00f0ff;
+      color: #00f0ff;
+      box-shadow: 0 0 10px rgba(0, 240, 255, 0.25);
+    }
+
+    /* Camera Mode Segmented Buttons */
+    .cam-mode-group {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 6px;
+      margin-top: 4px;
+    }
+
+    .cam-btn {
+      padding: 8px 10px;
+      font-size: 0.8rem;
+      background: #141c2b;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 6px;
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 2px;
+      min-height: 48px;
+    }
+
+    .cam-btn span.cam-title { font-weight: 700; color: #fff; font-size: 0.82rem; }
+    .cam-btn span.cam-desc { font-size: 0.68rem; color: var(--text-subtle); }
+
+    .cam-btn:hover { background: #1c263a; }
+    .cam-btn.active {
+      background: rgba(0, 240, 255, 0.15);
+      border-color: #00f0ff;
+      color: #00f0ff;
+      box-shadow: 0 0 12px rgba(0, 240, 255, 0.2);
+    }
+    .cam-btn.active span.cam-title { color: #00f0ff; }
+
+    /* Jogador Selecionado Box */
+    .player-selected-box {
+      background: #090d14;
+      border: 1px solid rgba(0, 240, 255, 0.25);
+      border-radius: var(--radius-md);
+      padding: 12px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    /* Active Players List */
+    .active-players-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      max-height: 130px;
+      overflow-y: auto;
+      padding: 4px;
+      background: #090d14;
+      border: 1px solid var(--card-border);
+      border-radius: var(--radius-sm);
+    }
+
+    .player-chip {
+      background: #141c2b;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 20px;
+      padding: 5px 12px;
+      font-size: 0.82rem;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      color: var(--text);
+    }
+
+    .player-chip:hover {
+      background: #1f2a3f;
+      transform: translateY(-1px);
+    }
+
+    .player-chip.selected {
+      border-color: var(--primary);
+      background: rgba(0, 240, 255, 0.16);
+      box-shadow: 0 0 12px rgba(0, 240, 255, 0.25);
+    }
+
+    /* Catálogo de Presentes */
+    .gift-catalog {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+      gap: 10px;
+      max-height: 330px;
+      overflow-y: auto;
+      padding: 2px;
+    }
+
+    .gift-catalog-item {
+      display: grid;
+      grid-template-columns: 44px 1fr;
+      gap: 9px;
+      align-items: center;
+      padding: 9px;
+      background: #0d1117;
+      border: 1px solid var(--card-border);
+      border-radius: 9px;
+      transition: border-color 0.2s ease, transform 0.2s ease;
+    }
+
+    .gift-catalog-item:hover {
+      border-color: rgba(0, 240, 255, 0.3);
+      transform: translateY(-1px);
+    }
+
+    .gift-catalog-item img, .gift-icon-fallback {
+      width: 42px;
+      height: 42px;
+      object-fit: contain;
+      border-radius: 8px;
+      background: #21262d;
+      display: grid;
+      place-items: center;
+      font-size: 22px;
+    }
+
+    .gift-catalog-item strong, .gift-catalog-item small {
+      display: block;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .gift-catalog-item small {
+      color: var(--text-muted);
+      font-size: 0.74rem;
+    }
+
+    .gift-catalog-item.known {
+      border-color: rgba(245, 158, 11, 0.4);
+      background: rgba(245, 158, 11, 0.04);
+    }
+
+    /* Terminal de Logs WebSocket */
+    .logs-container {
+      background: #05080e;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: var(--radius-sm);
+      padding: 14px;
+      height: 220px;
+      overflow-y: auto;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.8rem;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .log-item {
+      padding: 4px 8px;
+      border-radius: 4px;
+      background: rgba(255, 255, 255, 0.02);
+      line-height: 1.4;
+      display: flex;
+      align-items: baseline;
+      gap: 6px;
+    }
+
+    .log-time { color: var(--text-muted); font-size: 0.76rem; }
+    .log-tag { font-weight: 700; font-size: 0.76rem; padding: 1px 6px; border-radius: 4px; }
+    .log-tag.spawn { color: #00f0ff; background: rgba(0, 240, 255, 0.12); }
+    .log-tag.gift { color: #f778ba; background: rgba(247, 120, 186, 0.12); }
+    .log-tag.action { color: #7ee787; background: rgba(126, 231, 135, 0.12); }
+    .log-tag.cut { color: #ffa657; background: rgba(255, 166, 87, 0.12); }
+
+    /* Modal Backdrop */
+    .modal-backdrop {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(4, 7, 13, 0.85);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      z-index: 9999;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+  </style>
+  <script src="/socket.io/socket.io.js"></script>
+</head>
+<body>
+
+  <!-- Header Superior -->
+  <header>
+    <div class="header-branding">
+      <div class="header-icon">🪁</div>
+      <div>
+        <h1>Disputa de Relinho — Dev Simulator</h1>
+        <div class="header-tagline">Centro de Controle & Telemetria em Tempo Real (OBS 3D Studio)</div>
+      </div>
+    </div>
+    <div class="header-badges">
+      <div class="status-badge">
+        <div class="status-dot" id="socketDot"></div>
+        <span id="socketStatus">Desconectado do Servidor</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- Segmented Navigation Bar -->
+  <div class="nav-tabs" id="navTabs">
+    <button class="nav-tab active" onclick="filterCategory('all', this)">🌟 Todos</button>
+    <button class="nav-tab" onclick="filterCategory('visual', this)">🌌 Visual & 3D (OBS)</button>
+    <button class="nav-tab" onclick="filterCategory('audio', this)">🔊 Áudio & Som</button>
+    <button class="nav-tab" onclick="filterCategory('wind', this)">🌬️ Vento & Física</button>
+    <button class="nav-tab" onclick="filterCategory('rules', this)">🏆 Regras & Fila</button>
+    <button class="nav-tab" onclick="filterCategory('player', this)">⚡ Jogador Alvo</button>
+    <button class="nav-tab" onclick="filterCategory('live', this)">📡 Live TikTok</button>
+    <button class="nav-tab" onclick="filterCategory('spawn', this)">🚀 Spawn & Pipas</button>
+    <button class="nav-tab" onclick="filterCategory('gifts', this)">🎁 Presentes</button>
+    <button class="nav-tab" onclick="filterCategory('combat', this)">🍃 Combate & Likes</button>
+    <button class="nav-tab" onclick="filterCategory('reset', this)">🔄 Reset da Arena</button>
+    <button class="nav-tab" onclick="filterCategory('logs', this)">📜 Logs</button>
+  </div>
+
+  <!-- Barra Mestra de Controle e Sincronização em Tempo Real -->
+  <div class="sync-banner">
+    <div class="sync-status">
+      <span style="font-size: 1.25rem;">⚡</span>
+      <span id="settingsSyncText">Configurações sincronizadas em tempo real com o OBS Studio</span>
+    </div>
+    <div class="sync-actions">
+      <button class="btn-primary" id="btnSaveSettings" onclick="saveSettingsNow()" style="padding: 8px 16px; font-size: 0.85rem;">
+        💾 Salvar Configurações
+      </button>
+      <button onclick="resetSettingsModal()" style="background: #21262d; border: 1px solid var(--card-border); padding: 8px 16px; font-size: 0.85rem; color: #ffccd5;">
+        🔄 Padrões Recomendados
+      </button>
+    </div>
+  </div>
+
+  <div class="grid" id="mainGrid">
+
+    <!-- CARD A: Configurações Visuais & Cenário 3D -->
+    <div class="card" data-category="visual">
+      <h2>🎛️ Configurações Visuais & 3D (OBS)</h2>
+      <p class="card-subtitle">
+        Ajustes visuais que afetam imediatamente o canvas 3D no OBS sem recarregar o navegador.
+      </p>
+
+      <!-- Escala das Pipas -->
+      <div class="setting-group">
+        <div class="setting-header">
+          <label for="cfgKiteScale">Tamanho das Pipas (Escala):</label>
+          <span class="badge-val" id="valKiteScale">1.55x</span>
+        </div>
+        <input type="range" id="cfgKiteScale" min="0.8" max="2.5" step="0.05" value="1.55">
+        <div class="setting-desc">Ajuste o tamanho das pipas no céu para caber perfeitamente na sua transmissão (0.8x a 2.5x).</div>
+      </div>
+
+      <!-- Tamanho do Nome da Pipa (NameTag 3D) -->
+      <div class="setting-group">
+        <div class="setting-header">
+          <label for="cfgKiteNameScale">Tamanho do Nome da Pipa (NameTag):</label>
+          <span class="badge-val" id="valKiteNameScale">1.15x</span>
+        </div>
+        <input type="range" id="cfgKiteNameScale" min="0.6" max="2.5" step="0.05" value="1.15">
+        <div class="setting-desc">Ajuste o tamanho do apelido 3D sobre cada pipa para máxima legibilidade na live (0.6x a 2.5x).</div>
+      </div>
+
+      <!-- Tamanho do TOP 5 Live -->
+      <div class="setting-group">
+        <div class="setting-header">
+          <label for="cfgTop5Scale">Tamanho do TOP 5 Live (Escala):</label>
+          <span class="badge-val" id="valTop5Scale">1.00x</span>
+        </div>
+        <input type="range" id="cfgTop5Scale" min="0.7" max="1.4" step="0.05" value="1.00">
+        <div class="setting-desc">Ajuste a escala do card de líderes na transmissão (0.7x a 1.4x).</div>
+      </div>
+
+      <!-- Estilo Visual do TOP 5 Live -->
+      <div class="setting-group">
+        <div class="setting-header">
+          <label for="cfgTop5Style">Estilo Visual do TOP 5 Live:</label>
+        </div>
+        <select id="cfgTop5Style">
+          <option value="glass">💎 Glassmorphism (Vidro translúcido moderno)</option>
+          <option value="cyberpunk">⚡ Cyberpunk Neon (Ciano e Magenta vibrantes)</option>
+          <option value="gold">👑 Ouro Campeão (Dourado escuro luxuoso)</option>
+          <option value="minimal">🎯 Minimalista HUD (Limpo e compacto)</option>
+        </select>
+        <div class="setting-desc">Escolha a identidade visual do placar de líderes na tela.</div>
+      </div>
+
+      <!-- Exibir Detalhes Extras do Ranking -->
+      <div class="setting-group">
+        <div class="setting-header">
+          <label for="cfgTop5ShowExtras">Exibir Detalhes Extras do Ranking:</label>
+        </div>
+        <select id="cfgTop5ShowExtras">
+          <option value="true">✅ Exibir Tudo (Hall da Fama, Recorde e Líder Atual)</option>
+          <option value="false">❌ Apenas TOP 5 (Compacto, sem poluir a tela)</option>
+        </select>
+        <div class="setting-desc">Oculte as seções extras se preferir uma visualização mais enxuta durante batalhas frenéticas.</div>
+      </div>
+
+      <!-- Tema do Cenário & 27 Estados -->
+      <div class="setting-group">
+        <div class="setting-header">
+          <label for="cfgTheme">Mapa & Estado do Brasil (27 Cenários 3D):</label>
+        </div>
+        <select id="cfgTheme">
+          <optgroup label="Sudeste">
+            <option value="RJ">🏖️ Rio de Janeiro (RJ) - Morros & Favelas Cariocas</option>
+            <option value="SP">🏙️ São Paulo (SP) - Metrópole & Prédios Paulistas</option>
+            <option value="MG">⛰️ Minas Gerais (MG) - Cidades Históricas & Serras</option>
+            <option value="ES">🌊 Espírito Santo (ES) - Baía de Vitória & Convento da Penha</option>
+          </optgroup>
+          <optgroup label="Nordeste">
+            <option value="BA">☀️ Bahia (BA) - Pelourinho & Casario Histórico</option>
+            <option value="PE">🎭 Pernambuco (PE) - Recife Antigo & Ladeiras de Olinda</option>
+            <option value="CE">🏄 Ceará (CE) - Dunas de Jericoacoara & Jangadas</option>
+            <option value="RN">🏖️ Rio Grande do Norte (RN) - Dunas de Genipabu</option>
+            <option value="MA">🌊 Maranhão (MA) - Lençóis Maranhenses & Lagoas</option>
+            <option value="AL">🪸 Alagoas (AL) - Litoral dos Corais & Mar Turquesa</option>
+            <option value="PB">🌅 Paraíba (PB) - Falésias do Cabo Branco</option>
+            <option value="SE">🏜️ Sergipe (SE) - Cânion do Xingó & Rio São Francisco</option>
+            <option value="PI">🌵 Piauí (PI) - Serra da Capivara & Cânions</option>
+          </optgroup>
+          <optgroup label="Sul">
+            <option value="PR">🌲 Paraná (PR) - Bosque das Araucárias</option>
+            <option value="RS">🧉 Rio Grande do Sul (RS) - Pampa Gaúcho & Coxilhas</option>
+            <option value="SC">🏞️ Santa Catarina (SC) - Serra do Rio do Rastro</option>
+          </optgroup>
+          <optgroup label="Norte">
+            <option value="AM">🌳 Amazonas (AM) - Selva Amazônica & Encontro das Águas</option>
+            <option value="PA">🦜 Pará (PA) - Baía do Guajará & Manguezais</option>
+            <option value="AC">🌿 Acre (AC) - Floresta Equatorial do Sudoeste</option>
+            <option value="RO">🪵 Rondônia (RO) - Vales do Guaporé</option>
+            <option value="RR">⛰️ Roraima (RR) - Monte Roraima & Lavrado</option>
+            <option value="AP">🌐 Amapá (AP) - Linha do Equador & Floresta</option>
+            <option value="TO">🏜️ Tocantins (TO) - Jalapão & Chapadões Dourados</option>
+          </optgroup>
+          <optgroup label="Centro-Oeste">
+            <option value="DF">🏛️ Distrito Federal (DF) - Céu de Brasília & Cerrado</option>
+            <option value="GO">🌾 Goiás (GO) - Chapada dos Veadeiros & Cerrado</option>
+            <option value="MT">🐆 Mato Grosso (MT) - Pantanal Norte & Chapada</option>
+            <option value="MS">🪷 Mato Grosso do Sul (MS) - Pantanal Sul & Bonito</option>
+          </optgroup>
+        </select>
+        
+        <!-- Chips Visuais de Seleção Rápida de Estados 3D -->
+        <div class="state-chips-container" id="stateChipsContainer">
+          <!-- Gerados dinamicamente no script -->
+        </div>
+        <div class="setting-desc">Muda instantaneamente o mapa 3D para qualquer um dos 27 estados da federação.</div>
+      </div>
+
+      <!-- Modo de Cenário -->
+      <div class="setting-group">
+        <div class="setting-header">
+          <label for="cfgSceneMode">Modo do Cenário no OBS:</label>
+        </div>
+        <select id="cfgSceneMode">
+          <option value="3d">🌌 Cenário 3D Completo (Céu Procedural + Laje + Favelas)</option>
+          <option value="transparent">🪟 Fundo Transparente (Chroma Key / Overlay)</option>
+        </select>
+        <div class="setting-desc">Use fundo transparente caso queira colocar o jogo por cima da sua câmera ou outro fundo no OBS.</div>
+      </div>
+
+      <!-- Ângulo da Câmera 3D (/3d-web-experience) -->
+      <div class="setting-group">
+        <div class="setting-header">
+          <label for="cfgCameraMode">Modo da Câmera 3D:</label>
+        </div>
+        <div class="cam-mode-group">
+          <button type="button" class="cam-btn active" id="camBtnNormal" onclick="selectCameraMode('normal')">
+            <span class="cam-title">🎮 Normal</span>
+            <span class="cam-desc">Frontal Tático</span>
+          </button>
+          <button type="button" class="cam-btn" id="camBtnCinematic" onclick="selectCameraMode('cinematic')">
+            <span class="cam-title">🎬 Cinemático</span>
+            <span class="cam-desc">Ângulo Baixo</span>
+          </button>
+          <button type="button" class="cam-btn" id="camBtnPanoramic" onclick="selectCameraMode('panoramic')">
+            <span class="cam-title">🦅 Panorâmico</span>
+            <span class="cam-desc">Vista Aérea</span>
+          </button>
+        </div>
+        <select id="cfgCameraMode" style="display: none;">
+          <option value="normal" selected>Normal</option>
+          <option value="cinematic">Cinemático</option>
+          <option value="panoramic">Panorâmico</option>
+        </select>
+        <div class="setting-desc">Alterna em tempo real a perspectiva tridimensional da cena no OBS (tecla de atalho C na arena).</div>
+      </div>
+
+      <!-- Opacidade das Linhas 3D -->
+      <div class="setting-group">
+        <div class="setting-header">
+          <label for="cfgLineOpacity">Opacidade das Linhas 3D:</label>
+          <span class="badge-val" id="valLineOpacity">85%</span>
+        </div>
+        <input type="range" id="cfgLineOpacity" min="0.2" max="1.0" step="0.05" value="0.85">
+        <div class="setting-desc">Controla a nitidez visual das linhas de nylon e cerol conectando as pipas à laje.</div>
+      </div>
+
+      <!-- Sombras Suaves 3D -->
+      <div class="setting-group">
+        <label class="toggle-label">
+          <input type="checkbox" id="cfgShadows" checked>
+          <span>Sombras Dinâmicas Suaves (PCF 3D)</span>
+        </label>
+        <div class="setting-desc">Desative caso esteja transmitindo em um computador mais fraco para economizar GPU.</div>
+      </div>
+    </div>
+
+    <!-- CARD B: Áudio & Locutor da Live -->
+    <div class="card" data-category="audio">
+      <h2>🔊 Áudio & Locutor da Live</h2>
+      <p class="card-subtitle">
+        Sintetizador procedural Web Audio e voz TTS esportiva que narra cortes e presentes.
+      </p>
+
+      <!-- Volume Master -->
+      <div class="setting-group">
+        <div class="setting-header">
+          <label for="cfgMasterVol">Volume Geral (Master):</label>
+          <span class="badge-val" id="valMasterVol">100%</span>
+        </div>
+        <input type="range" id="cfgMasterVol" min="0" max="100" step="5" value="100">
+        <div class="setting-desc">Controla todo o som emitido pelo jogo no OBS.</div>
+      </div>
+
+      <!-- Locutor TTS -->
+      <div class="setting-group">
+        <div class="setting-header">
+          <label class="toggle-label">
+            <input type="checkbox" id="cfgNarrator" checked>
+            <span>Locutor da Live (Voz Narradora)</span>
+          </label>
+          <span class="badge-val" id="valNarratorVol">90%</span>
+        </div>
+        <input type="range" id="cfgNarratorVol" min="0" max="100" step="5" value="90">
+        <div class="setting-desc">Narra os cortes ("Tlec! Fulano cortou no retão!") e presentes épicos com voz de narrador.</div>
+      </div>
+
+      <!-- Efeitos Sonoros SFX -->
+      <div class="setting-group">
+        <div class="setting-header">
+          <label class="toggle-label">
+            <input type="checkbox" id="cfgSfx" checked>
+            <span>Efeitos Sonoros Procedurais (SFX)</span>
+          </label>
+          <span class="badge-val" id="valSfxVol">85%</span>
+        </div>
+        <input type="range" id="cfgSfxVol" min="0" max="100" step="5" value="85">
+        <div class="setting-desc">Sons de corte metálico, atrito de cerol, zunido de chilena e faíscas.</div>
+      </div>
+
+      <!-- Caixa de Som da Laje -->
+      <div class="setting-group">
+        <label class="toggle-label">
+          <input type="checkbox" id="cfgBoombox" checked>
+          <span>Caixa de Som Estilizada na Laje</span>
+        </label>
+        <div class="setting-desc">Exibe e ativa a caixa de som estilizada da comunidade na laje dos jogadores.</div>
+      </div>
+    </div>
+
+    <!-- CARD C: Vento & Física da Arena -->
+    <div class="card" data-category="wind">
+      <h2>🌬️ Vento & Física da Arena</h2>
+      <p class="card-subtitle">
+        Controla as correntes de ar, velocidade dos encontros e a agressividade dos relinhos.
+      </p>
+
+      <!-- Intensidade do Vento -->
+      <div class="setting-group">
+        <div class="setting-header">
+          <label for="cfgWindIntensity">Intensidade do Vento:</label>
+        </div>
+        <select id="cfgWindIntensity">
+          <option value="calmo">🍃 Calmo (0.5x - Vento tranquilo)</option>
+          <option value="fraco">🌤️ Fraco (0.7x - Brisa moderada)</option>
+          <option value="moderado" selected>🌬️ Moderado (1.0x - Vento padrão de praia)</option>
+          <option value="forte">💨 Forte (1.6x - Rajadas fortes)</option>
+          <option value="tempestade">🌪️ Tempestade (2.3x - Vendaval extremo)</option>
+        </select>
+        <div class="setting-desc">Mais vento aproxima as pipas e aumenta a frequência de relinhos.</div>
+      </div>
+
+      <!-- Direção Predominante -->
+      <div class="setting-group">
+        <div class="setting-header">
+          <label for="cfgWindDirection">Direção Predominante:</label>
+        </div>
+        <select id="cfgWindDirection">
+          <option value="auto" selected>🔄 Automático (Correntes dinâmicas naturais)</option>
+          <option value="left">⬅️ Vento puxando para a Esquerda</option>
+          <option value="right">➡️ Vento puxando para a Direita</option>
+        </select>
+        <div class="setting-desc">Define se o vento empurra o céu para um lado fixo ou oscila realisticamente.</div>
+      </div>
+
+      <!-- Ritmo de Combate -->
+      <div class="setting-group">
+        <div class="setting-header">
+          <label for="cfgRelinhoPace">Ritmo de Combate dos Relinhos:</label>
+        </div>
+        <select id="cfgRelinhoPace">
+          <option value="calmo">🧘 Calmo (Movimentação suave e espaçada)</option>
+          <option value="normal" selected>⚡ Normal (Equilíbrio dinâmico)</option>
+          <option value="frenetico">🔥 Frenético (Alta agilidade e combate constante)</option>
+        </select>
+        <div class="setting-desc">Modifica o ritmo de oscilação das pipas no ar.</div>
+      </div>
+    </div>
+
+    <!-- CARD D: Regras da Competição & Balanceamento -->
+    <div class="card" data-category="rules">
+      <h2>🏆 Regras da Competição & Balanceamento</h2>
+      <p class="card-subtitle">
+        Parâmetros competitivos de fila, limites de jogadores, coroação e buffs.
+      </p>
+
+      <!-- Limite de Pipas -->
+      <div class="setting-group">
+        <div class="setting-header">
+          <label for="cfgMaxKites">Limite Máximo de Pipas no Céu:</label>
+        </div>
+        <select id="cfgMaxKites">
+          <option value="10">10 Pipas no Ar</option>
+          <option value="20">20 Pipas no Ar</option>
+          <option value="30">30 Pipas no Ar</option>
+          <option value="40" selected>40 Pipas no Ar (Máximo oficial)</option>
+        </select>
+        <div class="setting-desc">Jogadores excedentes entram automaticamente na fila de espera.</div>
+      </div>
+
+      <!-- Win Streak Rei -->
+      <div class="setting-group">
+        <div class="setting-header">
+          <label for="cfgWinStreakKing">Sequência para Rei da Laje:</label>
+        </div>
+        <select id="cfgWinStreakKing">
+          <option value="3">3 Cortes Seguidos</option>
+          <option value="5" selected>5 Cortes Seguidos (Padrão)</option>
+          <option value="10">10 Cortes Seguidos (Mestre Supremo)</option>
+        </select>
+        <div class="setting-desc">Quantos cortes sem cair o jogador precisa para ser coroado Rei da Laje.</div>
+      </div>
+
+      <!-- Proteção de Spawn e Duração Buffs -->
+      <div class="setting-group">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+          <div>
+            <label style="font-size: 0.82rem; font-weight: 600;" for="cfgSpawnProtection">Escudo de Entrada:</label>
+            <input type="number" id="cfgSpawnProtection" min="1" max="10" value="3" style="width: 100%; margin-top: 4px;">
+            <span style="font-size: 0.72rem; color: var(--text-muted);">Segundos invulnerável ao subir</span>
+          </div>
+          <div>
+            <label style="font-size: 0.82rem; font-weight: 600;" for="cfgBuffDuration">Duração dos Buffs:</label>
+            <input type="number" id="cfgBuffDuration" min="10" max="180" step="5" value="60" style="width: 100%; margin-top: 4px;">
+            <span style="font-size: 0.72rem; color: var(--text-muted);">Segundos de cerol/chile</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Regeneração de HP -->
+      <div class="setting-group">
+        <div class="setting-header">
+          <label class="toggle-label">
+            <input type="checkbox" id="cfgHpRegen" checked>
+            <span>Regeneração Contínua de Linha (HP)</span>
+          </label>
+        </div>
+        <select id="cfgHpRegenSpeed" style="margin-top: 6px;">
+          <option value="lenta">Regeneração Lenta (10 minutos)</option>
+          <option value="normal" selected>Regeneração Normal (5 minutos)</option>
+          <option value="rapida">Regeneração Rápida (2 minutos)</option>
+        </select>
+        <div class="setting-desc">Recupera a integridade da linha quando a pipa se afasta de combates.</div>
+      </div>
+    </div>
+
+    <!-- CARD E: Ações Administrativas no Jogador Selecionado -->
+    <div class="card card-highlight-cyan" data-category="player">
+      <h2 style="color: #00f0ff;">⚡ Ações Administrativas no Jogador Selecionado</h2>
+      <p class="card-subtitle">
+        Controles diretos para o streamer aplicar recompensas, manobras ou punições ao vivo.
+      </p>
+
+      <div class="player-selected-box">
+        <div>
+          <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em;">Jogador Selecionado:</div>
+          <strong id="adminSelectedNick" style="font-size: 1.1rem; color: var(--primary);">Nenhum selecionado</strong>
+          <div id="adminSelectedInfo" style="font-size: 0.78rem; color: var(--text-muted); font-family: 'JetBrains Mono', monospace;">Selecione uma pipa na lista de jogadores ativos</div>
+        </div>
+        <span id="adminSelectedBadge" class="badge-val" style="display: none;">ALVO ATIVO</span>
+      </div>
+
+      <!-- Ações Diretas -->
+      <div class="btn-grid">
+        <button class="admin-action-btn btn-gold" id="btnAdminCrown" onclick="executePlayerAction('crown')">
+          👑 Coroar Rei da Laje
+        </button>
+        <button class="admin-action-btn btn-accent" id="btnAdminCut" onclick="executePlayerAction('cut')">
+          ✂️ Cortar Linha (Derrubar)
+        </button>
+      </div>
+
+      <!-- Manobras Especiais -->
+      <div class="setting-group" style="padding-top: 4px;">
+        <label style="font-size: 0.82rem; font-weight: 600;">Disparar Manobra Especial:</label>
+        <div style="display: flex; gap: 8px; margin-top: 4px;">
+          <select id="adminManeuverSelect" style="flex: 1;">
+            <option value="retao">🚀 Retão Paulista (Velocidade & Bote)</option>
+            <option value="mergulho">⬇️ Mergulho Vertical (Ataque Aéreo)</option>
+            <option value="despicada">💨 Despicada Rápida (Manobra Evasiva)</option>
+            <option value="relo_lateral">↔️ Relo Lateral Carioca (Corte de Lado)</option>
+            <option value="voadora">🌪️ Puxão & Voadora (Manobra Radical)</option>
+          </select>
+          <button class="btn-primary" onclick="executePlayerAction('trigger_maneuver')" style="padding: 8px 14px; font-size: 0.85rem;">
+            Disparar
+          </button>
+        </div>
+      </div>
+
+      <!-- Buffs Especiais -->
+      <div class="setting-group" style="padding-top: 4px;">
+        <label style="font-size: 0.82rem; font-weight: 600;">Conceder Upgrade / Buff:</label>
+        <div style="display: flex; gap: 8px; margin-top: 4px;">
+          <select id="adminBuffSelect" style="flex: 1;">
+            <option value="cerol">🌹 Cerol Afiado (Poder de Corte 1.5x)</option>
+            <option value="chile">🍩 Linha Chilena (Super Corte 3.0x)</option>
+            <option value="kevlar">🦫 Kevlar Blindado (+2 Escudos)</option>
+            <option value="tornado">🌪️ Perfume (Tornado no Céu)</option>
+            <option value="mestre_do_ceu">🦁 Leão (Mestre do Céu Épico)</option>
+          </select>
+          <button class="btn-gold" onclick="executePlayerAction('give_buff')" style="padding: 8px 14px; font-size: 0.85rem;">
+            Aplicar
+          </button>
+        </div>
+      </div>
+
+      <!-- Kickar da Arena -->
+      <div style="display: flex; justify-content: flex-end; margin-top: 4px;">
+        <button onclick="executePlayerAction('kick')" style="background: rgba(255, 0, 85, 0.15); border: 1px solid #ff0055; color: #ff7b72; font-size: 0.8rem; padding: 6px 14px;">
+          🥾 Remover da Arena (Kick)
+        </button>
+      </div>
+
+      <div id="adminActionFeedback" style="display: none; padding: 10px 14px; border-radius: var(--radius-sm); font-size: 0.84rem; font-weight: 600; text-align: center;"></div>
+    </div>
+
+    <!-- 1. Conexão Real TikTok Live -->
+    <div class="card" data-category="live">
+      <h2>📡 Conectar à Live Real do TikTok</h2>
+      <p class="card-subtitle">Digite o @username do TikTok que estiver ao vivo para receber eventos reais.</p>
+      <div class="input-group">
+        <input type="text" id="tiktokUsername" placeholder="@seu_perfil" value="" autocomplete="off">
+        <button class="btn-primary" id="btnConnectLive">Conectar</button>
+        <button id="btnDisconnectLive" style="display: none;">Desconectar</button>
+      </div>
+      <div id="liveStatusText" style="font-size: 0.85rem; color: var(--text-muted);">Status: Modo Offline / Simulação Ativo</div>
+      <p style="font-size: 0.78rem; color: var(--text-muted); line-height: 1.4;">O perfil informado será salvo no computador. Ao iniciar o jogo, a conexão será tentada automaticamente. Se a Live ainda não estiver ativa, uma nova tentativa será feita com intervalo progressivo de 10 a 60 segundos.</p>
+      <div id="liveDiagnostics" style="font: 0.82rem/1.5 'JetBrains Mono', monospace; padding: 12px; background:#070a10; border: 1px solid var(--card-border); border-radius:var(--radius-sm); white-space:pre-wrap;">Carregando diagnóstico da conexão…</div>
+    </div>
+
+    <!-- 2. Spawn de Pipas (Simulação) -->
+    <div class="card" data-category="spawn">
+      <h2>🚀 Spawn de Pipas (Entrada por Chat)</h2>
+      <div class="btn-grid">
+        <button class="btn-primary" id="btnSpawnOne">➕ Subir 1 Pipa Bot</button>
+        <button class="btn-primary" id="btnSpawnFive">👥 Subir +5 Pipas</button>
+      </div>
+      <div class="input-group">
+        <input type="text" id="customNick" placeholder="Nick customizado">
+        <button id="btnSpawnCustom">Subir Pipa</button>
+      </div>
+      <div style="font-size: 0.85rem; color: var(--text-muted);">Pipas ativas no céu (clique para selecionar):</div>
+      <div class="active-players-list" id="playersList">
+        <span style="color: var(--text-muted); font-size: 0.8rem;">Nenhuma pipa no ar ainda.</span>
+      </div>
+    </div>
+
+    <!-- 3. Simular Presentes (TikTok Gifts) -->
+    <div class="card" data-category="gifts">
+      <h2>🎁 Simular Presentes (Gifts)</h2>
+      <p class="card-subtitle">Aplica upgrades para o jogador selecionado acima:</p>
+      <div class="btn-grid">
+        <button class="btn-accent" onclick="simulateGift('ROSA')">🌹 Rosa (Cerol 1.5x)</button>
+        <button class="btn-primary" onclick="simulateGift('DONUT')">🍩 Donut (Chile 3x)</button>
+        <button class="btn-gold" onclick="simulateGift('CAPIVARA')">🦫 Capivara (Kevlar)</button>
+        <button style="background: #7928ca; border:none;" onclick="simulateGift('PERFUME')">🌪️ Perfume (Tornado)</button>
+      </div>
+      <button style="background: linear-gradient(135deg, #f72585, #7209b7); border: none;" onclick="simulateGift('LEAO')">🦁 Leão / Universo (Mestre do Céu)</button>
+    </div>
+
+    <!-- Catálogo de Presentes Detectados -->
+    <div class="card" data-category="gifts">
+      <h2>✨ Catálogo de Presentes Detectados</h2>
+      <p class="card-subtitle">Presentes configurados + presentes efetivamente observados na Live. Novos IDs entram automaticamente.</p>
+      <div id="giftCatalogSummary" style="font-size:.8rem;color:var(--text-muted);">Carregando catálogo…</div>
+      <div id="giftCatalog" class="gift-catalog"></div>
+    </div>
+
+    <!-- 4. Comandos de Combate & Interações -->
+    <div class="card" data-category="combat">
+      <h2>🍃 Vento e Comandos de Combate</h2>
+      <p class="card-subtitle">
+        O espectador comenta para subir a pipa e controla manobras. Teste os comandos de combate e resgate:
+      </p>
+      <div class="btn-grid">
+        <button class="btn-primary" onclick="simulateAction('puxar')">⚡ Puxar Linha</button>
+        <button class="btn-primary" onclick="simulateAction('descarregar')">💨 Descarregar</button>
+        <button class="btn-gold" onclick="simulateAction('embicar')">🎯 Embicar</button>
+        <button class="btn-accent" onclick="simulateCatch()">🪁 Resgatar (#pegar)</button>
+      </div>
+      <button class="btn-accent" onclick="simulateLikes()" style="margin-top: 4px;">❤️ Rajada de 50 Likes</button>
+    </div>
+
+    <!-- 5. Painel de Reset & Gerenciamento da Arena -->
+    <div class="card card-highlight-accent" data-category="reset">
+      <h2 style="color: #ff4d79;">🔄 Painel de Reset da Arena</h2>
+      <p class="card-subtitle">
+        Controle mestre para reiniciar a arena, limpar pipas travadas ou zerar placares sem reiniciar o servidor.
+      </p>
+
+      <div style="display: flex; flex-direction: column; gap: 10px;">
+        <button onclick="openResetModal('kites')" style="background: #2a1823; border: 1px solid #ff4d79; color: #ffccd5; font-weight: 600; padding: 11px;">
+          🧹 Limpar Pipas (Nova Rodada)
+        </button>
+        <span style="font-size: 0.76rem; color: var(--text-muted); margin-top: -6px; margin-bottom: 4px;">
+          Remove todas as pipas do céu e esvazia a fila. Mantém o ranking e cortes acumulados.
+        </span>
+
+        <button onclick="openResetModal('stats')" style="background: #262415; border: 1px solid #ffcc00; color: #fff3bf; font-weight: 600; padding: 11px;">
+          🏆 Zerar Placar & Ranking (Nova Temporada)
+        </button>
+        <span style="font-size: 0.76rem; color: var(--text-muted); margin-top: -6px; margin-bottom: 4px;">
+          Zera todos os cortes acumulados, sequências e destaques. Pipas no ar têm pontuação zerada.
+        </span>
+
+        <button onclick="openResetModal('all')" style="background: linear-gradient(135deg, #b3003b, #700024); border: 1px solid #ff0055; color: #fff; font-weight: 700; padding: 11px;">
+          ⚠️ Reset Completo de Fábrica (Full Wipe)
+        </button>
+        <span style="font-size: 0.76rem; color: var(--text-muted); margin-top: -6px;">
+          Limpa pipas, fila, estatísticas, buffs, arquivo no disco e gera nova sessão da arena.
+        </span>
+
+        <label style="display: flex; align-items: center; gap: 8px; font-size: 0.8rem; color: var(--text-muted); margin-top: 6px; cursor: pointer;">
+          <input type="checkbox" id="chkClearProfile" style="width: 16px; height: 16px; accent-color: #ff0055; cursor: pointer;">
+          Também desconectar e apagar perfil salvo do TikTok no reset total
+        </label>
+      </div>
+
+      <div id="resetFeedback" style="display: none; padding: 10px; border-radius: 6px; font-size: 0.85rem; font-weight: 600; text-align: center;"></div>
+    </div>
+
+  </div>
+
+  <!-- Terminal de Logs WebSocket -->
+  <div class="card" data-category="logs" style="margin-top: 10px;">
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+      <h2>📜 Monitor de Eventos WebSocket em Tempo Real</h2>
+      <button onclick="clearLogs()" style="padding: 4px 10px; font-size: 0.75rem; background: rgba(255, 255, 255, 0.05); min-height: 28px;">
+        Limpar Tela
+      </button>
+    </div>
+    <div class="logs-container" id="logsContainer">
+      <div class="log-item"><span class="log-time">[00:00:00]</span> Aguardando eventos...</div>
+    </div>
+  </div>
+
+  <script>
+    const socket = io();
+    let activePlayers = [];
+    let selectedUserId = null;
+
+    const socketDot = document.getElementById('socketDot');
+    const socketStatus = document.getElementById('socketStatus');
+    const logsContainer = document.getElementById('logsContainer');
+    const playersList = document.getElementById('playersList');
+    const giftCatalogEl = document.getElementById('giftCatalog');
+    const giftCatalogSummary = document.getElementById('giftCatalogSummary');
+
+    // 27 Estados do Brasil para Chips Visuais 3D
+    const BRAZIL_STATES = [
+      { code: 'RJ', name: 'Rio de Janeiro', icon: '🏖️' },
+      { code: 'SP', name: 'São Paulo', icon: '🏙️' },
+      { code: 'MG', name: 'Minas Gerais', icon: '⛰️' },
+      { code: 'ES', name: 'Espírito Santo', icon: '🌊' },
+      { code: 'BA', name: 'Bahia', icon: '☀️' },
+      { code: 'PE', name: 'Pernambuco', icon: '🎭' },
+      { code: 'CE', name: 'Ceará', icon: '🏄' },
+      { code: 'PR', name: 'Paraná', icon: '🌲' },
+      { code: 'RS', name: 'Rio G. do Sul', icon: '🧉' },
+      { code: 'SC', name: 'Santa Catarina', icon: '🏞️' },
+      { code: 'AM', name: 'Amazonas', icon: '🌳' },
+      { code: 'PA', name: 'Pará', icon: '🦜' },
+      { code: 'DF', name: 'Brasília (DF)', icon: '🏛️' },
+      { code: 'GO', name: 'Goiás', icon: '🌾' },
+      { code: 'MT', name: 'Mato Grosso', icon: '🐆' },
+      { code: 'MS', name: 'M. Grosso do Sul', icon: '🪷' },
+      { code: 'RN', name: 'Rio G. do Norte', icon: '🏖️' },
+      { code: 'MA', name: 'Maranhão', icon: '🌊' },
+      { code: 'AL', name: 'Alagoas', icon: '🪸' },
+      { code: 'PB', name: 'Paraíba', icon: '🌅' },
+      { code: 'SE', name: 'Sergipe', icon: '🏜️' },
+      { code: 'PI', name: 'Piauí', icon: '🌵' },
+      { code: 'AC', name: 'Acre', icon: '🌿' },
+      { code: 'RO', name: 'Rondônia', icon: '🪵' },
+      { code: 'RR', name: 'Roraima', icon: '⛰️' },
+      { code: 'AP', name: 'Amapá', icon: '🌐' },
+      { code: 'TO', name: 'Tocantins', icon: '🏜️' }
+    ];
+
+    function renderStateChips() {
+      const container = document.getElementById('stateChipsContainer');
+      if (!container) return;
+      container.innerHTML = '';
+      const currentTheme = document.getElementById('cfgTheme')?.value || 'RJ';
+      BRAZIL_STATES.forEach(st => {
+        const chip = document.createElement('div');
+        const isActive = st.code === currentTheme;
+        chip.className = `state-chip ${isActive ? 'active' : ''}`;
+        chip.innerHTML = `<span>${st.icon}</span> <span>${st.code}</span>`;
+        chip.title = `${st.name} (${st.code})`;
+        chip.onclick = () => {
+          const sel = document.getElementById('cfgTheme');
+          if (sel) {
+            sel.value = st.code;
+            renderStateChips();
+            triggerAutoSave();
+          }
+        };
+        container.appendChild(chip);
+      });
+    }
+
+    // Controle de Modo de Câmera 3D
+    function selectCameraMode(mode) {
+      const sel = document.getElementById('cfgCameraMode');
+      if (sel) sel.value = mode;
+      ['Normal', 'Cinematic', 'Panoramic'].forEach(m => {
+        const btn = document.getElementById(`camBtn${m}`);
+        if (btn) {
+          if (m.toLowerCase() === mode.toLowerCase()) {
+            btn.classList.add('active');
+          } else {
+            btn.classList.remove('active');
+          }
+        }
+      });
+      triggerAutoSave();
+    }
+
+    // Filtragem de Categorias
+    function filterCategory(category, tabBtn) {
+      document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+      if (tabBtn) tabBtn.classList.add('active');
+      const cards = document.querySelectorAll('.card');
+      if (category === 'all') {
+        cards.forEach(c => c.style.display = 'flex');
+      } else {
+        cards.forEach(c => {
+          const match = c.getAttribute('data-category') === category;
+          c.style.display = match ? 'flex' : 'none';
+          if (match) c.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        });
+      }
+    }
+
+    function clearLogs() {
+      logsContainer.innerHTML = '<div class="log-item"><span class="log-time">[' + new Date().toLocaleTimeString() + ']</span> Tela limpa. Aguardando novos eventos...</div>';
+    }
+
+    async function refreshGiftCatalog() {
+      try {
+        const data=await fetch('/api/gifts/catalog',{cache:'no-store'}).then(r=>{if(!r.ok)throw Error('catálogo indisponível');return r.json();});
+        const gifts=Array.isArray(data.gifts)?data.gifts:[];
+        giftCatalogEl.replaceChildren();
+        for(const gift of gifts){
+          const card=document.createElement('div');card.className='gift-catalog-item'+(gift.known?' known':'');
+          let visual;
+          if(/^https:\/\/[^\s]+$/i.test(gift.iconUrl||'')){
+            visual=document.createElement('img');visual.src=gift.iconUrl;visual.alt='';visual.referrerPolicy='no-referrer';
+            visual.onerror=()=>{visual.replaceWith(Object.assign(document.createElement('span'),{className:'gift-icon-fallback',textContent:'🎁'}));};
+          }else{visual=document.createElement('span');visual.className='gift-icon-fallback';visual.textContent='🎁';}
+          const info=document.createElement('div'),name=document.createElement('strong'),meta=document.createElement('small'),status=document.createElement('small');
+          name.textContent=String(gift.name||'Presente TikTok').slice(0,70);
+          meta.textContent=(gift.diamonds||0)+' diamantes · recebido '+(gift.count||0)+'×';
+          status.textContent=gift.known
+            ? (gift.benefit+' · '+gift.durationSeconds+'s / máx '+gift.maxDurationSeconds+'s')
+            : (gift.benefit||'ANIMAÇÃO AUTOMÁTICA');
+          info.append(name,meta,status);card.append(visual,info);giftCatalogEl.append(card);
+        }
+        giftCatalogSummary.textContent=gifts.length+' presentes no catálogo · '+gifts.filter(g=>g.observed).length+' observados nesta instalação';
+      }catch(_){giftCatalogSummary.textContent='Catálogo temporariamente indisponível.';}
+    }
+    refreshGiftCatalog();setInterval(refreshGiftCatalog,10000);
+
+    function log(tag, message, tagClass = '') {
+      const now = new Date().toLocaleTimeString();
+      const div = document.createElement('div');
+      div.className = 'log-item';
+      const timeSpan = document.createElement('span');
+      timeSpan.className = 'log-time';
+      timeSpan.textContent = `[${now}]`;
+      const tagSpan = document.createElement('span');
+      tagSpan.className = `log-tag ${tagClass}`;
+      tagSpan.textContent = `[${tag}]`;
+      const textSpan = document.createElement('span');
+      textSpan.textContent = message;
+      div.append(timeSpan, tagSpan, textSpan);
+      while (logsContainer.children.length >= 150) logsContainer.firstElementChild.remove();
+      logsContainer.appendChild(div);
+      logsContainer.scrollTop = logsContainer.scrollHeight;
+    }
+
+    async function syncAdminWithArena() {
+      try {
+        const response = await fetch('/api/competition/arena', { cache: 'no-store' });
+        if (!response.ok) return;
+        const arena = await response.json();
+        if (Array.isArray(arena.players)) {
+          activePlayers = arena.players;
+          renderPlayers();
+        }
+      } catch (_) {}
+    }
+    syncAdminWithArena();
+    setInterval(syncAdminWithArena, 3000);
+
+    socket.on('connect', () => {
+      socketDot.classList.add('online');
+      socketStatus.textContent = 'Conectado ao Servidor :3000';
+      log('SOCKET', 'Conectado com sucesso ao backend WebSocket', 'action');
+      syncAdminWithArena();
+    });
+
+    socket.on('disconnect', () => {
+      socketDot.classList.remove('online');
+      socketStatus.textContent = 'Desconectado';
+      log('SOCKET', 'Conexão perdida', 'cut');
+    });
+
+    socket.on('player:spawn', (data) => {
+      log('SPAWN', `${data.nickname} subiu uma pipa (${data.kiteType})`, 'spawn');
+      syncAdminWithArena();
+    });
+
+    socket.on('game:cut_occurred', data => {
+      syncAdminWithArena();
+    });
+
+    socket.on('gift:received', (data) => {
+      log('GIFT', `${data.uniqueId} enviou ${data.giftName} (${data.upgrade?.lineType || 'buff'})`, 'gift');
+    });
+
+    socket.on('player:action', (data) => {
+      log('ACTION', `Comando '${data.action}' executado`, 'action');
+    });
+
+    socket.on('likes:burst', (data) => {
+      log('LIKES', `Rajada de ${data.totalLikes} curtidas ativada!`, 'gift');
+    });
+
+    socket.on('catch:attempt', (data) => {
+      log('APARAR', `${data.catcherNick} tentou pegar a pipa avoadora!`, 'cut');
+    });
+
+    function updateSelectedPlayerUI() {
+      const p = activePlayers.find(x => String(x.userId) === String(selectedUserId));
+      const nickEl = document.getElementById('adminSelectedNick');
+      const infoEl = document.getElementById('adminSelectedInfo');
+      const badgeEl = document.getElementById('adminSelectedBadge');
+      if (p) {
+        if (nickEl) nickEl.textContent = p.nickname + (p.isKing ? ' 👑' : '');
+        if (infoEl) infoEl.textContent = `Linha: ${p.lineType || 'algodão'} · ID: ${p.userId}`;
+        if (badgeEl) badgeEl.style.display = 'inline-block';
+      } else {
+        if (nickEl) nickEl.textContent = 'Nenhum selecionado';
+        if (infoEl) infoEl.textContent = 'Clique em uma pipa na lista acima para controlar';
+        if (badgeEl) badgeEl.style.display = 'none';
+      }
+    }
+
+    function renderPlayers() {
+      if (!activePlayers || activePlayers.length === 0) {
+        playersList.innerHTML = '<span style="color: var(--text-muted); font-size: 0.8rem;">Nenhuma pipa no ar ainda.</span>';
+        selectedUserId = null;
+        updateSelectedPlayerUI();
+        return;
+      }
+      playersList.innerHTML = '';
+      activePlayers.forEach(p => {
+        const chip = document.createElement('div');
+        const isSel = String(p.userId) === String(selectedUserId);
+        chip.className = `player-chip ${isSel ? 'selected' : ''}`;
+        chip.textContent = `${p.nickname} (${p.lineType || 'algodao'})${p.isKing ? ' 👑' : ''}`;
+        chip.onclick = () => {
+          selectedUserId = p.userId;
+          renderPlayers();
+        };
+        playersList.appendChild(chip);
+      });
+      if (!selectedUserId && activePlayers.length > 0) {
+        selectedUserId = activePlayers[0].userId;
+      }
+      updateSelectedPlayerUI();
+    }
+
+    async function executePlayerAction(action) {
+      const feedback = document.getElementById('adminActionFeedback');
+      if (!selectedUserId) {
+        if (feedback) {
+          feedback.style.display = 'block';
+          feedback.style.background = 'rgba(255, 0, 85, 0.2)';
+          feedback.style.color = '#ff7b72';
+          feedback.textContent = '⚠️ Selecione uma pipa na lista de jogadores ativos antes de executar uma ação!';
+          setTimeout(() => { feedback.style.display = 'none'; }, 3000);
+        }
+        return;
+      }
+
+      let payload = {};
+      if (action === 'trigger_maneuver') {
+        payload = { maneuverName: document.getElementById('adminManeuverSelect').value };
+      } else if (action === 'give_buff') {
+        const buffDurationInput = document.getElementById('cfgBuffDuration');
+        const durationVal = buffDurationInput ? parseInt(buffDurationInput.value, 10) : 60;
+        payload = {
+          lineType: document.getElementById('adminBuffSelect').value,
+          duration: Number.isFinite(durationVal) ? durationVal : 60
+        };
+      }
+
+      try {
+        const res = await fetch('/api/competition/admin-action', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action, userId: selectedUserId, payload })
+        });
+        const data = await res.json();
+        if (data.success) {
+          if (feedback) {
+            feedback.style.display = 'block';
+            feedback.style.background = 'rgba(46, 160, 67, 0.2)';
+            feedback.style.color = '#7ee787';
+            const actionNames = {
+              crown: 'Coroado Rei da Laje 👑',
+              cut: 'Linha cortada no ar ✂️',
+              trigger_maneuver: `Manobra [${payload.maneuverName}] disparada 🚀`,
+              give_buff: `Buff [${payload.lineType}] aplicado 🎁`,
+              kick: 'Jogador removido da arena 🥾'
+            };
+            feedback.textContent = `✓ Sucesso: ${actionNames[action] || action}`;
+            setTimeout(() => { feedback.style.display = 'none'; }, 3500);
+          }
+          log('ADMIN', `Ação executada: ${action} no jogador ${selectedUserId}`, 'action');
+          syncAdminWithArena();
+        } else {
+          if (feedback) {
+            feedback.style.display = 'block';
+            feedback.style.background = 'rgba(255, 0, 85, 0.2)';
+            feedback.style.color = '#ff7b72';
+            feedback.textContent = `Erro: ${data.error || 'Falha ao executar ação'}`;
+            setTimeout(() => { feedback.style.display = 'none'; }, 3500);
+          }
+        }
+      } catch (err) {
+        if (feedback) {
+          feedback.style.display = 'block';
+          feedback.style.background = 'rgba(255, 0, 85, 0.2)';
+          feedback.style.color = '#ff7b72';
+          feedback.textContent = 'Erro de comunicação ao enviar ação.';
+          setTimeout(() => { feedback.style.display = 'none'; }, 3500);
+        }
+      }
+    }
+
+    // --- GERENCIADOR DE CONFIGURAÇÕES GERAIS ---
+    let settingsDebounceTimer = null;
+
+    async function loadSettings() {
+      try {
+        const res = await fetch('/api/settings', { cache: 'no-store' });
+        if (!res.ok) return;
+        const s = await res.json();
+        applySettingsToUI(s);
+      } catch (err) {
+        console.warn('Erro ao carregar configurações:', err);
+      }
+    }
+
+    function applySettingsToUI(s) {
+      if (!s) return;
+      // Visual
+      if (s.kiteScale !== undefined) {
+        const el = document.getElementById('cfgKiteScale');
+        if (el) el.value = s.kiteScale;
+        const b = document.getElementById('valKiteScale');
+        if (b) b.textContent = s.kiteScale + 'x';
+      }
+      if (s.kiteNameScale !== undefined) {
+        const el = document.getElementById('cfgKiteNameScale');
+        if (el) el.value = s.kiteNameScale;
+        const b = document.getElementById('valKiteNameScale');
+        if (b) b.textContent = s.kiteNameScale + 'x';
+      }
+      if (s.top5Scale !== undefined) {
+        const el = document.getElementById('cfgTop5Scale');
+        if (el) el.value = s.top5Scale;
+        const b = document.getElementById('valTop5Scale');
+        if (b) b.textContent = Number(s.top5Scale).toFixed(2) + 'x';
+      }
+      if (s.top5Style !== undefined) {
+        const el = document.getElementById('cfgTop5Style');
+        if (el) el.value = s.top5Style;
+      }
+      if (s.top5ShowExtras !== undefined) {
+        const el = document.getElementById('cfgTop5ShowExtras');
+        if (el) el.value = String(s.top5ShowExtras);
+      }
+      if (s.theme) {
+        const el = document.getElementById('cfgTheme');
+        if (el) el.value = s.theme;
+        renderStateChips();
+      }
+      if (s.sceneMode) {
+        const el = document.getElementById('cfgSceneMode');
+        if (el) el.value = s.sceneMode;
+      }
+      if (s.cameraMode) {
+        const el = document.getElementById('cfgCameraMode');
+        if (el) el.value = s.cameraMode;
+        ['Normal', 'Cinematic', 'Panoramic'].forEach(m => {
+          const btn = document.getElementById(`camBtn${m}`);
+          if (btn) {
+            if (m.toLowerCase() === s.cameraMode.toLowerCase()) {
+              btn.classList.add('active');
+            } else {
+              btn.classList.remove('active');
+            }
+          }
+        });
+      }
+      if (s.lineOpacity !== undefined) {
+        const el = document.getElementById('cfgLineOpacity');
+        if (el) el.value = s.lineOpacity;
+        const b = document.getElementById('valLineOpacity');
+        if (b) b.textContent = Math.round(s.lineOpacity * 100) + '%';
+      }
+      if (s.shadowsEnabled !== undefined) {
+        const el = document.getElementById('cfgShadows');
+        if (el) el.checked = Boolean(s.shadowsEnabled);
+      }
+
+      // Áudio
+      if (s.masterVolume !== undefined) {
+        const el = document.getElementById('cfgMasterVol');
+        if (el) el.value = Math.round(s.masterVolume * 100);
+        const b = document.getElementById('valMasterVol');
+        if (b) b.textContent = Math.round(s.masterVolume * 100) + '%';
+      }
+      if (s.narratorEnabled !== undefined) {
+        const el = document.getElementById('cfgNarrator');
+        if (el) el.checked = Boolean(s.narratorEnabled);
+      }
+      if (s.narratorVolume !== undefined) {
+        const el = document.getElementById('cfgNarratorVol');
+        if (el) el.value = Math.round(s.narratorVolume * 100);
+        const b = document.getElementById('valNarratorVol');
+        if (b) b.textContent = Math.round(s.narratorVolume * 100) + '%';
+      }
+      if (s.sfxEnabled !== undefined) {
+        const el = document.getElementById('cfgSfx');
+        if (el) el.checked = Boolean(s.sfxEnabled);
+      }
+      if (s.sfxVolume !== undefined) {
+        const el = document.getElementById('cfgSfxVol');
+        if (el) el.value = Math.round(s.sfxVolume * 100);
+        const b = document.getElementById('valSfxVol');
+        if (b) b.textContent = Math.round(s.sfxVolume * 100) + '%';
+      }
+      if (s.boomboxEnabled !== undefined) {
+        const el = document.getElementById('cfgBoombox');
+        if (el) el.checked = Boolean(s.boomboxEnabled);
+      }
+
+      // Vento & Física
+      if (s.windIntensity) {
+        const el = document.getElementById('cfgWindIntensity');
+        if (el) el.value = s.windIntensity;
+      }
+      if (s.windDirection) {
+        const el = document.getElementById('cfgWindDirection');
+        if (el) el.value = s.windDirection;
+      }
+      if (s.relinhoPace) {
+        const el = document.getElementById('cfgRelinhoPace');
+        if (el) el.value = s.relinhoPace;
+      }
+
+      // Regras
+      if (s.maxKites) {
+        const el = document.getElementById('cfgMaxKites');
+        if (el) el.value = s.maxKites;
+      }
+      if (s.winStreakKing) {
+        const el = document.getElementById('cfgWinStreakKing');
+        if (el) el.value = s.winStreakKing;
+      }
+      if (s.spawnProtectionSec) {
+        const el = document.getElementById('cfgSpawnProtection');
+        if (el) el.value = s.spawnProtectionSec;
+      }
+      if (s.buffDurationSec) {
+        const el = document.getElementById('cfgBuffDuration');
+        if (el) el.value = s.buffDurationSec;
+      }
+      if (s.hpRegenEnabled !== undefined) {
+        const el = document.getElementById('cfgHpRegen');
+        if (el) el.checked = Boolean(s.hpRegenEnabled);
+      }
+      if (s.hpRegenSpeed) {
+        const el = document.getElementById('cfgHpRegenSpeed');
+        if (el) el.value = s.hpRegenSpeed;
+      }
+    }
+
+    function readSettingsFromUI() {
+      return {
+        kiteScale: parseFloat(document.getElementById('cfgKiteScale').value),
+        kiteNameScale: parseFloat(document.getElementById('cfgKiteNameScale').value),
+        top5Scale: parseFloat(document.getElementById('cfgTop5Scale').value),
+        top5Style: document.getElementById('cfgTop5Style').value,
+        top5ShowExtras: document.getElementById('cfgTop5ShowExtras').value === 'true',
+        theme: document.getElementById('cfgTheme').value,
+        sceneMode: document.getElementById('cfgSceneMode').value,
+        cameraMode: document.getElementById('cfgCameraMode') ? document.getElementById('cfgCameraMode').value : 'normal',
+        lineOpacity: parseFloat(document.getElementById('cfgLineOpacity').value),
+        shadowsEnabled: document.getElementById('cfgShadows').checked,
+
+        masterVolume: parseFloat(document.getElementById('cfgMasterVol').value) / 100,
+        narratorEnabled: document.getElementById('cfgNarrator').checked,
+        narratorVolume: parseFloat(document.getElementById('cfgNarratorVol').value) / 100,
+        sfxEnabled: document.getElementById('cfgSfx').checked,
+        sfxVolume: parseFloat(document.getElementById('cfgSfxVol').value) / 100,
+        boomboxEnabled: document.getElementById('cfgBoombox').checked,
+
+        windIntensity: document.getElementById('cfgWindIntensity').value,
+        windDirection: document.getElementById('cfgWindDirection').value,
+        relinhoPace: document.getElementById('cfgRelinhoPace').value,
+
+        maxKites: parseInt(document.getElementById('cfgMaxKites').value, 10),
+        winStreakKing: parseInt(document.getElementById('cfgWinStreakKing').value, 10),
+        spawnProtectionSec: parseInt(document.getElementById('cfgSpawnProtection').value, 10),
+        buffDurationSec: parseInt(document.getElementById('cfgBuffDuration').value, 10),
+        hpRegenEnabled: document.getElementById('cfgHpRegen').checked,
+        hpRegenSpeed: document.getElementById('cfgHpRegenSpeed').value
+      };
+    }
+
+    async function saveSettingsNow(quiet = false) {
+      const payload = readSettingsFromUI();
+      const syncText = document.getElementById('settingsSyncText');
+      if (syncText && !quiet) syncText.textContent = 'Enviando alterações para o OBS...';
+
+      try {
+        const res = await fetch('/api/settings', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (data.success) {
+          if (syncText) {
+            syncText.textContent = '✓ Configurações salvas e aplicadas em tempo real no OBS!';
+            syncText.style.color = '#7ee787';
+            setTimeout(() => {
+              if (syncText) {
+                syncText.textContent = 'Configurações sincronizadas em tempo real com o OBS Studio';
+                syncText.style.color = '#7ee787';
+              }
+            }, 3000);
+          }
+          log('SETTINGS', 'Configurações atualizadas e salvas com sucesso', 'action');
+        }
+      } catch (err) {
+        if (syncText) {
+          syncText.textContent = '⚠️ Falha ao salvar configurações no servidor';
+          syncText.style.color = '#ff7b72';
+        }
+      }
+    }
+
+    function triggerAutoSave() {
+      const syncText = document.getElementById('settingsSyncText');
+      if (syncText) {
+        syncText.textContent = 'Salvando alterações em tempo real...';
+        syncText.style.color = '#ffcc00';
+      }
+      clearTimeout(settingsDebounceTimer);
+      settingsDebounceTimer = setTimeout(() => {
+        saveSettingsNow(false);
+      }, 350);
+    }
+
+    function initSettingsListeners() {
+      // Sliders com atualização de badge visual instantânea
+      const sliderBindings = [
+        { id: 'cfgKiteScale', badge: 'valKiteScale', suffix: 'x' },
+        { id: 'cfgKiteNameScale', badge: 'valKiteNameScale', suffix: 'x' },
+        { id: 'cfgTop5Scale', badge: 'valTop5Scale', suffix: 'x' },
+        { id: 'cfgLineOpacity', badge: 'valLineOpacity', percent: true },
+        { id: 'cfgMasterVol', badge: 'valMasterVol', percent: true },
+        { id: 'cfgNarratorVol', badge: 'valNarratorVol', percent: true },
+        { id: 'cfgSfxVol', badge: 'valSfxVol', percent: true }
+      ];
+
+      sliderBindings.forEach(b => {
+        const el = document.getElementById(b.id);
+        const badge = document.getElementById(b.badge);
+        if (el && badge) {
+          el.addEventListener('input', () => {
+            badge.textContent = b.percent ? (el.value + '%') : (el.value + b.suffix);
+            triggerAutoSave();
+          });
+        }
+      });
+
+      // Selects e Checkboxes
+      const autoSaveIds = [
+        'cfgTop5Style', 'cfgTop5ShowExtras',
+        'cfgTheme', 'cfgSceneMode', 'cfgCameraMode', 'cfgShadows', 'cfgNarrator',
+        'cfgSfx', 'cfgBoombox', 'cfgWindIntensity', 'cfgWindDirection',
+        'cfgRelinhoPace', 'cfgMaxKites', 'cfgWinStreakKing',
+        'cfgSpawnProtection', 'cfgBuffDuration', 'cfgHpRegen', 'cfgHpRegenSpeed'
+      ];
+
+      autoSaveIds.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) {
+          el.addEventListener('change', () => {
+            if (id === 'cfgTheme') renderStateChips();
+            triggerAutoSave();
+          });
+          if (el.tagName === 'INPUT' && el.type === 'number') {
+            el.addEventListener('input', triggerAutoSave);
+          }
+        }
+      });
+    }
+
+    async function resetSettingsModal() {
+      if (confirm('Deseja restaurar todas as configurações de visual, áudio, física e regras para os padrões recomendados?')) {
+        try {
+          const res = await fetch('/api/settings/reset', { method: 'POST' });
+          const data = await res.json();
+          if (data.success && data.settings) {
+            applySettingsToUI(data.settings);
+            const syncText = document.getElementById('settingsSyncText');
+            if (syncText) {
+              syncText.textContent = '✓ Configurações restauradas para o padrão recomendado!';
+              syncText.style.color = '#7ee787';
+              setTimeout(() => {
+                syncText.textContent = 'Configurações sincronizadas em tempo real com o OBS Studio';
+              }, 3000);
+            }
+            log('SETTINGS', 'Configurações redefinidas para o padrão de fábrica', 'action');
+          }
+        } catch (_) {}
+      }
+    }
+
+    renderStateChips();
+    loadSettings();
+    initSettingsListeners();
+    socket.on('settings:updated', (s) => applySettingsToUI(s));
+
+    // Exibe separadamente o estado do servidor e o estado da Live.
+    const liveStatus = document.getElementById('liveStatusText');
+    const connectButton = document.getElementById('btnConnectLive');
+    const disconnectButton = document.getElementById('btnDisconnectLive');
+    function updateLiveStatus(data) {
+      const connected = Boolean(data.connected);
+      liveStatus.textContent = connected
+        ? (data.phase === 'reconnecting' || data.transportReconnecting ? `Live @${data.username} — recuperando transporte` : data.phase === 'events_active' || data.eventsActive ? `Live @${data.username} — eventos recebidos` : `Sala @${data.username} localizada — aguardando comentários`)
+        : (data.error || 'Live desconectada — simulação disponível');
+      liveStatus.style.color = connected ? 'var(--success)' : 'var(--text-muted)';
+      connectButton.style.display = connected ? 'none' : '';
+      disconnectButton.style.display = connected ? '' : 'none';
+    }
+    socket.on('tiktok:status', updateLiveStatus);
+    async function refreshLiveDiagnostics() {
+      const el = document.getElementById('liveDiagnostics');
+      try {
+        const response = await fetch('/api/competition/health', { cache: 'no-store' });
+        if (!response.ok) throw new Error('Status indisponível');
+        const health = await response.json();
+        const tiktok = health.tiktok || {};
+        const last = tiktok.lastEventAt ? new Date(tiktok.lastEventAt).toLocaleTimeString() : 'nenhum evento confirmado';
+        const phase = tiktok.transportReconnecting ? 'RECONECTANDO TRANSPORTE INTERNO' : tiktok.eventsActive ? 'RECEBENDO EVENTOS' : tiktok.connected ? 'SALA LOCALIZADA / AGUARDANDO EVENTOS' : tiktok.retrying ? 'RECONECTANDO' : 'DESLIGADO';
+        el.textContent = `TikTok: ${phase}\nÚltimo evento: ${last}\nComentários: ${tiktok.eventCounts?.chat || 0} · presentes: ${tiktok.eventCounts?.gift || 0} · curtidas: ${tiktok.eventCounts?.like || 0}\nQuedas detectadas: ${tiktok.failures || 0} · avisos transitórios: ${tiktok.transportWarnings || 0}\nRetentativa interna: ${tiktok.internalRetry ? tiktok.internalRetry.attempt+' de '+tiktok.internalRetry.maxRetries : 'nenhuma'}\nÚltimo erro: ${tiktok.lastError?.code || 'nenhum'}\nArena: ${health.active} pipas · ${health.queue} na fila · FPS ${health.combat?.fps ?? '?'}\nExecutor: ${health.combat?.authorityActive ? 'ativo' : 'aguardando tela do jogo'}\nCheckpoint: ${health.savedAt ? new Date(health.savedAt).toLocaleTimeString() : 'ainda não salvo'}${health.persistError ? ' · FALHA DE GRAVAÇÃO' : ''}`;
+        el.style.color = health.persistError || !tiktok.connected ? '#ff9f91' : tiktok.eventsActive ? '#7ee787' : '#ffdf9a';
+      } catch (_) { el.textContent = 'Diagnóstico temporariamente indisponível. A arena permanece independente do painel.'; }
+    }
+    refreshLiveDiagnostics();
+    setInterval(refreshLiveDiagnostics, 5000);
+    fetch('/api/tiktok/status').then(r => r.json()).then(data => {
+      if (data.savedUsername) document.getElementById('tiktokUsername').value = '@' + data.savedUsername;
+      updateLiveStatus(data);
+      if (data.connecting) liveStatus.textContent = 'Conectando automaticamente ao perfil salvo…';
+      if (data.autoConnectPaused) liveStatus.textContent += ' · Reconexão pausada até clicar Conectar.';
+    }).catch(() => {});
+    disconnectButton.onclick = async () => {
+      await fetch('/api/tiktok/disconnect', { method: 'POST' });
+      updateLiveStatus({ connected: false });
+    };
+    // Botão Conectar Live
+    connectButton.onclick = async () => {
+      const username = document.getElementById('tiktokUsername').value;
+      if (!username.trim()) { liveStatus.textContent = 'Informe o @usuário da Live.'; return; }
+      connectButton.disabled = true;
+      liveStatus.textContent = 'Conectando ao TikTok…';
+      fetch('/api/tiktok/connect', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username })
+      }).then(r => r.json()).then(res => {
+        if (res.success) {
+          updateLiveStatus({ connected: true, username: username.replace(/^@/, '') });
+          log('LIVE', `Conectado a @${username.replace(/^@/, '')}`, 'action');
+        } else {
+          updateLiveStatus({ connected: false, error: res.error || 'Erro ao conectar à Live.' });
+          log('LIVE', 'Conexão não estabelecida.', 'cut');
+        }
+      }).catch(() => updateLiveStatus({ connected: false, error: 'Servidor indisponível. Tente novamente.' }))
+        .finally(() => { connectButton.disabled = false; });
+    };
+
+    // Gerador de Nomes & Avatares Fictícios
+    const botNames = ['Pedrinho_Do_Cerol', 'Rei_Da_Laje', 'Lucas_Pipa_Sp', 'Biel_Do_Chile', 'Carioca_021', 'Menor_Do_Corte', 'Pipoca_Pipoca', 'Danilo_Voadora'];
+    let botCounter = 1;
+
+    function spawnBot(customName = null) {
+      const name = customName || `${botNames[Math.floor(Math.random() * botNames.length)]}_${botCounter++}`;
+      const randomAvatar = `https://i.pravatar.cc/150?u=${encodeURIComponent(name)}`;
+      fetch('/api/simulate/comment', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: `sim_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`,
+          uniqueId: `@${name.toLowerCase()}`,
+          nickname: name,
+          profilePictureUrl: randomAvatar,
+          comment: 'Subir pipa!'
+        })
+      });
+    }
+
+    document.getElementById('btnSpawnOne').onclick = () => spawnBot();
+    document.getElementById('btnSpawnFive').onclick = () => {
+      for (let i = 0; i < 5; i++) {
+        setTimeout(() => spawnBot(), i * 300);
+      }
+    };
+    document.getElementById('btnSpawnCustom').onclick = () => {
+      const inputEl = document.getElementById('customNick');
+      const name = inputEl?.value?.trim();
+      if (name) {
+        spawnBot(name);
+        inputEl.value = '';
+      }
+    };
+
+    window.simulateGift = function(giftName) {
+      if (!selectedUserId && activePlayers.length === 0) {
+        spawnBot();
+      }
+      const targetUser = activePlayers.find(p => p.userId === selectedUserId) || activePlayers[0];
+      if (!targetUser) return;
+
+      fetch('/api/simulate/gift', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: targetUser.userId,
+          uniqueId: targetUser.uniqueId,
+          nickname: targetUser.nickname,
+          giftName: giftName
+        })
+      });
+    };
+
+    window.simulateAction = function(action) {
+      const targetUser = activePlayers.find(p => p.userId === selectedUserId) || activePlayers[0];
+      const uid = targetUser ? targetUser.userId : 'sim_player';
+      fetch('/api/simulate/comment', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: uid,
+          comment: action
+        })
+      });
+    };
+
+    window.simulateCatch = function() {
+      fetch('/api/simulate/comment', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: 'catcher_' + Date.now(),
+          nickname: 'Aparador_Veloz',
+          comment: '#pegar'
+        })
+      });
+    };
+
+    window.simulateLikes = function() {
+      fetch('/api/simulate/likes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ count: 50 })
+      });
+    };
+
+    // Lógica do Painel de Reset
+    let pendingResetScope = null;
+
+    function openResetModal(scope) {
+      pendingResetScope = scope;
+      const modal = document.getElementById('resetModal');
+      const title = document.getElementById('resetModalTitle');
+      const desc = document.getElementById('resetModalDesc');
+
+      if (scope === 'kites') {
+        title.textContent = '🧹 Confirmar Limpeza de Pipas';
+        desc.textContent = 'Isso removerá todas as pipas ativas na tela do OBS e esvaziará a fila de espera. O ranking de cortes da Live será PRESERVADO. Deseja iniciar uma nova rodada?';
+      } else if (scope === 'stats') {
+        title.textContent = '🏆 Confirmar Zeragem do Placar';
+        desc.textContent = 'Isso zerará todos os cortes acumulados, sequências e destaques da Live. As pipas que estiverem voando continuarão no céu com pontuação zerada. Deseja prosseguir?';
+      } else {
+        title.textContent = '⚠️ Confirmar Reset Completo';
+        desc.textContent = 'ATENÇÃO: Isso apagará todas as pipas, fila, estatísticas, recordes e recriará a sessão da arena do zero no OBS e no disco. Esta ação não pode ser desfeita!';
+      }
+
+      modal.style.display = 'flex';
+    }
+
+    function closeResetModal() {
+      pendingResetScope = null;
+      document.getElementById('resetModal').style.display = 'none';
+    }
+
+    async function executeReset() {
+      if (!pendingResetScope) return;
+      const scope = pendingResetScope;
+      const clearProfile = document.getElementById('chkClearProfile')?.checked || false;
+      closeResetModal();
+
+      const feedback = document.getElementById('resetFeedback');
+      feedback.style.display = 'block';
+      feedback.style.background = '#21262d';
+      feedback.style.color = '#ffcc00';
+      feedback.style.border = '1px solid #30363d';
+      feedback.textContent = 'Executando reset da arena...';
+
+      try {
+        const res = await fetch('/api/competition/reset', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ scope, clearProfile })
+        });
+        const data = await res.json();
+        if (data.success) {
+          feedback.style.background = 'rgba(46, 160, 67, 0.2)';
+          feedback.style.color = '#7ee787';
+          feedback.style.border = '1px solid #2ea043';
+          const msg = scope === 'kites' ? 'Pipas limpas com sucesso!' : scope === 'stats' ? 'Placar zerado com sucesso!' : 'Reset completo executado com sucesso!';
+          feedback.textContent = '✓ ' + msg;
+          log('RESET', `Reset da arena executado [escopo: ${scope}]`, 'cut');
+          if (scope === 'kites' || scope === 'all') {
+            activePlayers = [];
+            selectedUserId = null;
+            renderPlayers();
+          }
+          if (clearProfile && scope === 'all') {
+            document.getElementById('tiktokUsername').value = '';
+            updateLiveStatus({ connected: false });
+          }
+          refreshLiveDiagnostics();
+          setTimeout(() => { feedback.style.display = 'none'; }, 4000);
+        } else {
+          feedback.style.background = 'rgba(255, 0, 85, 0.2)';
+          feedback.style.color = '#ff7b72';
+          feedback.style.border = '1px solid #ff0055';
+          feedback.textContent = 'Erro ao resetar: ' + (data.error || 'Falha no servidor');
+        }
+      } catch (err) {
+        feedback.style.background = 'rgba(255, 0, 85, 0.2)';
+        feedback.style.color = '#ff7b72';
+        feedback.style.border = '1px solid #ff0055';
+        feedback.textContent = 'Erro de comunicação ao resetar arena.';
+      }
+    }
+
+    socket.on('arena:reset', (data) => {
+      log('RESET', `Evento de reset recebido [escopo: ${data.scope || 'all'}]`, 'cut');
+      if (data.scope === 'kites' || data.scope === 'all') {
+        activePlayers = [];
+        selectedUserId = null;
+        renderPlayers();
+      } else if (data.scope === 'single_player' && data.kickedId) {
+        activePlayers = activePlayers.filter(p => String(p.userId) !== String(data.kickedId));
+        if (String(selectedUserId) === String(data.kickedId)) {
+          selectedUserId = activePlayers[0]?.userId || null;
+        }
+        renderPlayers();
+      }
+      refreshLiveDiagnostics();
+    });
+  </script>
+
+  <!-- Modal de Confirmação de Reset -->
+  <div id="resetModal" class="modal-backdrop">
+    <div style="background: rgba(18, 26, 42, 0.95); backdrop-filter: blur(16px); border: 2px solid #ff0055; border-radius: var(--radius-lg); max-width: 440px; width: 100%; padding: 24px; display: flex; flex-direction: column; gap: 16px; box-shadow: 0 0 45px rgba(255,0,85,0.4);">
+      <h3 id="resetModalTitle" style="color: #ff4d79; font-size: 1.25rem; display: flex; align-items: center; gap: 8px;">
+        ⚠️ Confirmar Reset
+      </h3>
+      <p id="resetModalDesc" style="font-size: 0.9rem; color: #e6edf3; line-height: 1.5;">
+        Tem certeza que deseja executar este reset?
+      </p>
+      <div style="display: flex; gap: 12px; justify-content: flex-end; margin-top: 8px;">
+        <button onclick="closeResetModal()" style="background: #21262d; color: #f0f6fc; padding: 9px 18px; border-radius: var(--radius-sm);">
+          Cancelar
+        </button>
+        <button id="btnConfirmReset" onclick="executeReset()" style="background: #ff0055; color: #fff; padding: 9px 20px; font-weight: 700; border: none; border-radius: var(--radius-sm);">
+          Confirmar Reset
+        </button>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

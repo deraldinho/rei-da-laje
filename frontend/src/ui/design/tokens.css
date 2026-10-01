@@ -1,0 +1,132 @@
+/**
+ * DESIGN TOKENS ARCHITECTURE — "Kinetic Concrete & Cord"
+ * Diretrizes: /3d-web-experience, /ui-ux-pro-max, /frontend-design, /mobile-design
+ * Transmissão Vertical TikTok Live (9:16) & OBS Studio 2K (1440x2560)
+ */
+
+:root {
+  /* ========================================================================
+   * 1. HIERARQUIA ESPACIAL & ELEVAÇÕES (Z-INDEX)
+   * ======================================================================== */
+  --z-3d-canvas: 0;        /* Three.js WebGL (Domo celeste, relevos 3D, sol, laje) */
+  --z-physics-canvas: 1;   /* PixiJS 2D (Física de pipas, linhas, faíscas de corte) */
+  --z-ui-base: 10;         /* Overlay base do HUD */
+  --z-ui-panels: 20;       /* Header, Leaderboard, Dock de presentes */
+  --z-ui-toasts: 30;       /* Banners temporários, toasts de manobra, killfeed */
+  --z-ui-modals: 40;       /* Alertas críticos e celebrações épicas */
+
+  /* ========================================================================
+   * 2. ZONAS SEGURAS (SAFE ZONES) — TIKTOK LIVE 9:16 VERTICAL
+   * ======================================================================== */
+  --safe-top: clamp(16px, 2.5vh, 48px);
+  --safe-bottom: clamp(16px, 3vh, 52px);
+  --safe-left: clamp(16px, 3vw, 44px);
+  --safe-right: clamp(18px, 4vw, 56px); /* Margem protegida contra botões nativos do TikTok (Curtir, Compartilhar, Seguir) */
+  --combat-zone-top: 10%;                /* Área protegida: livre de modais intrusivos */
+  --combat-zone-bottom: 75%;
+
+  /* ========================================================================
+   * 3. SUPERFÍCIES & GLASSMORPHISM
+   * ======================================================================== */
+  --surface-base: #06131de6;
+  --surface-glass-ultra: rgba(6, 19, 29, 0.72);
+  --surface-glass-card: rgba(10, 28, 44, 0.82);
+  --surface-glass-pill: rgba(12, 33, 52, 0.88);
+  --surface-glass-accent: rgba(245, 158, 11, 0.12);
+  --surface-glass-blur: blur(16px);
+  --surface-glass-blur-sm: blur(8px);
+
+  /* Bordas e Sombras Táticas */
+  --border-subtle: rgba(255, 255, 255, 0.08);
+  --border-strong: rgba(255, 255, 255, 0.16);
+  --border-glass: rgba(255, 255, 255, 0.12);
+  --border-glow-gold: rgba(245, 158, 11, 0.45);
+  --border-glow-cyan: rgba(56, 189, 248, 0.45);
+  --border-glow-rose: rgba(244, 63, 94, 0.45);
+  --shadow-tactile: 0 4px 16px rgba(0, 0, 0, 0.35), 0 1px 3px rgba(0, 0, 0, 0.25);
+  --shadow-elevation: 0 12px 32px rgba(4, 13, 20, 0.65), 0 2px 6px rgba(0, 0, 0, 0.3);
+  --shadow-glow-gold: 0 0 24px rgba(245, 158, 11, 0.35);
+
+  /* ========================================================================
+   * 4. PALETA SEMÂNTICA CROMÁTICA
+   * ======================================================================== */
+  --color-text-main: #f0f6fc;
+  --color-text-muted: #8ba2b5;
+  --color-text-dim: rgba(240, 246, 252, 0.55);
+
+  /* Tokens Semânticos do Combate e Presentes */
+  --color-retao: #ff3b5c;       /* Rosa · Retão (Ataque / Potência) */
+  --color-despicar: #ff9100;    /* Donut · Despicar (Agilidade / Evasão) */
+  --color-aparar: #00e676;      /* Capivara · Aparar (Defesa / Contra-ataque) */
+  --color-perseguir: #d500f9;   /* Perfume · Perseguir / Tornado (Vórtice) */
+  --color-protecao: #ffd700;    /* Leão · Proteção / Escudo Máximo */
+  --color-wind-cyan: #38bdf8;   /* Vento 3D / Atmosfera Celeste */
+  --color-gold-king: #f59e0b;   /* Coroa do Rei da Laje */
+  --color-live-red: #ef4444;    /* Indicador ao Vivo */
+  --color-online-green: #10b981;/* Status Online */
+
+  /* ========================================================================
+   * 5. TIPOGRAFIA TELEMÉTRICA & DISPLAY
+   * ======================================================================== */
+  --font-display: 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-telemetry: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
+
+  /* Escala Tipográfica Fluida */
+  --text-xs: clamp(0.68rem, 0.6rem + 0.35vw, 0.78rem);
+  --text-sm: clamp(0.78rem, 0.7rem + 0.4vw, 0.88rem);
+  --text-base: clamp(0.88rem, 0.8rem + 0.45vw, 1.0rem);
+  --text-lg: clamp(1.05rem, 0.95rem + 0.6vw, 1.25rem);
+  --text-xl: clamp(1.25rem, 1.1rem + 0.8vw, 1.6rem);
+  --text-2xl: clamp(1.6rem, 1.3rem + 1.2vw, 2.2rem);
+
+  /* ========================================================================
+   * 6. FÍSICA DE MOVIMENTO & MICRO-INTERAÇÕES
+   * ======================================================================== */
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ease-out-smooth: cubic-bezier(0.16, 1, 0.3, 1);
+  --duration-fast: 180ms;
+  --duration-normal: 260ms;
+  --duration-slow: 420ms;
+
+  /* Raios de Arredondamento */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --radius-pill: 9999px;
+
+  /* ========================================================================
+   * 7. TOKENS DA EXPERIÊNCIA 3D (/3d-web-experience)
+   * ======================================================================== */
+  --experience-3d-compass-size: 26px;
+  --experience-3d-accent-color: #38bdf8;
+  --experience-3d-indicator-glow: 0 0 14px rgba(56, 189, 248, 0.5);
+  --experience-3d-pulse-anim: pulse-3d-beat 1.8s infinite ease-in-out;
+}
+
+/* Animações e Microinterações do Design System */
+@keyframes pulse-3d-beat {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 0.92;
+  }
+  50% {
+    transform: scale(1.05);
+    opacity: 1;
+    box-shadow: 0 0 16px rgba(56, 189, 248, 0.6);
+  }
+}
+
+@keyframes shimmer-tactile {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+@keyframes crown-glow-beat {
+  0%, 100% {
+    filter: drop-shadow(0 0 6px rgba(245, 158, 11, 0.5));
+  }
+  50% {
+    filter: drop-shadow(0 0 18px rgba(245, 158, 11, 0.95)) drop-shadow(0 0 24px rgba(255, 215, 0, 0.6));
+  }
+}

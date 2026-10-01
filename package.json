@@ -1,0 +1,40 @@
+{
+  "name": "competicao-pipa-live",
+  "version": "1.0.0",
+  "description": "Jogo interativo de disputa de relinho de pipa para TikTok Live",
+  "main": "backend/server.js",
+  "scripts": {
+    "dev": "concurrently \"node backend/server.js\" \"vite frontend\"",
+    "dev:backend": "node backend/server.js",
+    "dev:frontend": "vite frontend",
+    "build": "vite build frontend",
+    "prestart": "vite build frontend",
+    "start": "node backend/server.js",
+    "test": "node --test tests/*.test.cjs",
+    "kill": "powershell -Command \"Get-NetTCPConnection -LocalPort 3000,5173 -ErrorAction SilentlyContinue | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force -ErrorAction SilentlyContinue }; Write-Host 'Portas 3000 e 5173 liberadas!'\"",
+    "restart": "npm run kill && npm run dev"
+  },
+  "dependencies": {
+    "concurrently": "^8.2.2",
+    "cors": "^2.8.5",
+    "express": "^4.19.2",
+    "piratetok-live-js": "^0.1.5",
+    "socket.io": "^4.7.5",
+    "three": "^0.186.1"
+  },
+  "devDependencies": {
+    "howler": "^2.2.4",
+    "pixi.js": "^7.4.2",
+    "socket.io-client": "^4.7.5",
+    "vite": "^5.2.0"
+  },
+  "keywords": [
+    "tiktok-live",
+    "pipa",
+    "relinho",
+    "pixijs",
+    "interactive-game"
+  ],
+  "author": "",
+  "license": "MIT"
+}
