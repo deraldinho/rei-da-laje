@@ -508,3 +508,153 @@ export const LINE_COLORS = Object.freeze({
   tornado: 0xa855f7,
   mestre_do_ceu: 0xffd700
 });
+
+function drawReusablePaperCanvas(canvas, primaryColorHex, secondaryColorHex, patternIndex = 0) {
+  const ctx = canvas.getContext('2d');
+  const c1 = typeof primaryColorHex === 'number'
+    ? '#' + primaryColorHex.toString(16).padStart(6, '0')
+    : (primaryColorHex || '#00f0ff');
+  const c2 = typeof secondaryColorHex === 'number'
+    ? '#' + secondaryColorHex.toString(16).padStart(6, '0')
+    : (secondaryColorHex || '#ff0055');
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.fillStyle = c1;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.fillStyle = c2;
+  const pat = Math.abs(Number(patternIndex) || 0) % 4;
+  if (pat === 0) {
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.lineTo(128, 128);
+    ctx.lineTo(0, 128);
+    ctx.closePath();
+    ctx.fill();
+  } else if (pat === 1) {
+    ctx.fillRect(44, 0, 40, 128);
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.45)';
+    ctx.strokeRect(44, 0, 40, 128);
+  } else if (pat === 2) {
+    ctx.fillRect(0, 0, 64, 64);
+    ctx.fillRect(64, 64, 64, 64);
+    ctx.fillStyle = c1;
+    ctx.fillRect(64, 0, 64, 64);
+    ctx.fillRect(0, 64, 64, 64);
+  } else {
+    ctx.beginPath();
+    ctx.moveTo(64, 0);
+    ctx.lineTo(128, 64);
+    ctx.lineTo(64, 128);
+    ctx.lineTo(0, 64);
+    ctx.closePath();
+    ctx.fill();
+  }
+}
+
+export function createReusableKitePaperTexture() {
+  const canvas = document.createElement('canvas');
+  canvas.width = 128;
+  canvas.height = 128;
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.userData = { ...(texture.userData || {}), reusableSlotTexture: true };
+  drawReusablePaperCanvas(canvas, 0xff5722, 0x00aaff, 0);
+  texture.needsUpdate = true;
+  return texture;
+}
+
+export function paintReusableKitePaperTexture(texture, primaryColorHex, secondaryColorHex, patternIndex = 0) {
+  const canvas = texture?.image;
+  if (!canvas || typeof canvas.getContext !== 'function') return;
+  drawReusablePaperCanvas(canvas, primaryColorHex, secondaryColorHex, patternIndex);
+  texture.userData = {
+    ...(texture.userData || {}),
+    reusableSlotTexture: true,
+    primaryColorHex,
+    secondaryColorHex,
+    patternIndex
+  };
+  texture.needsUpdate = true;
+}
+
+function drawReusableDecalBase(canvas, identity = {}) {
+  const ctx = canvas.getContext('2d');
+  const baseColorHex = identity.baseColorHex;
+  const isKing = Boolean(identity.isKing);
+  const isLeader = Boolean(identity.isLeader);
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(32, 32, 28, 0, Math.PI * 2);
+  ctx.clip();
+  ctx.fillStyle = typeof baseColorHex === 'number'
+    ? '#' + baseColorHex.toString(16).padStart(6, '0')
+    : (baseColorHex || '#1e88e5');
+  ctx.fillRect(0, 0, 64, 64);
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.28)';
+  ctx.beginPath();
+  ctx.moveTo(32, 4);
+  ctx.lineTo(60, 32);
+  ctx.lineTo(32, 60);
+  ctx.lineTo(4, 32);
+  ctx.closePath();
+  ctx.fill();
+  ctx.fillStyle = '#ffffff';
+  ctx.font = '900 24px Outfit, Arial, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(String(identity.nickname || 'P').slice(0, 1).toUpperCase(), 32, 33);
+  ctx.restore();
+  ctx.lineWidth = 3.5;
+  ctx.strokeStyle = isKing ? '#ffd700' : isLeader ? '#00e5ff' : '#ffffff';
+  ctx.beginPath();
+  ctx.arc(32, 32, 28, 0, Math.PI * 2);
+  ctx.stroke();
+}
+
+export function createReusableKiteDecalTexture() {
+  const canvas = document.createElement('canvas');
+  canvas.width = 64;
+  canvas.height = 64;
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.userData = { ...(texture.userData || {}), reusableSlotTexture: true };
+  drawReusableDecalBase(canvas, {});
+  texture.needsUpdate = true;
+  return texture;
+}
+
+export function paintReusableKiteDecalTexture(texture, identity = {}, generation = 0, isCurrent = null) {
+  const canvas = texture?.image;
+  if (!canvas || typeof canvas.getContext !== 'function') return;
+  drawReusableDecalBase(canvas, identity);
+  texture.userData = {
+    ...(texture.userData || {}),
+    reusableSlotTexture: true,
+    identityGeneration: generation,
+    identityNickname: String(identity.nickname || 'P')
+  };
+  texture.needsUpdate = true;
+
+  const profileUrl = String(identity.profileUrl || '').trim();
+  if (!/^https:\/\/[^\s]+$/i.test(profileUrl) || typeof Image === 'undefined') return;
+  const img = new Image();
+  img.crossOrigin = 'anonymous';
+  img.referrerPolicy = 'no-referrer';
+  img.onload = () => {
+    if (texture.userData?.identityGeneration !== generation) return;
+    if (typeof isCurrent === 'function' && !isCurrent(generation)) return;
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, 64, 64);
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(32, 32, 28, 0, Math.PI * 2);
+    ctx.clip();
+    ctx.drawImage(img, 4, 4, 56, 56);
+    ctx.restore();
+    ctx.lineWidth = 3.5;
+    ctx.strokeStyle = identity.isKing ? '#ffd700' : identity.isLeader ? '#00e5ff' : '#ffffff';
+    ctx.beginPath();
+    ctx.arc(32, 32, 28, 0, Math.PI * 2);
+    ctx.stroke();
+    texture.needsUpdate = true;
+  };
+  img.src = profileUrl;
+}
