@@ -76,12 +76,9 @@ export class ThreeLines {
   acquireBrokenRope(id, color = 0xffffff) {
     const key = String(id);
     if (this.brokenRopes3D.has(key)) return this.brokenRopes3D.get(key);
-    let line = this._brokenRopePool.find(item => !item.userData.poolId);
-    if (!line) {
-      line = this._brokenRopePool[0];
-      if (line?.userData.poolId) this.releaseBrokenRope(line.userData.poolId);
-    }
-    if (!line) return null;    line.userData.poolId = key;
+    const line = this._brokenRopePool.find(item => !item.userData.poolId) || null;
+    if (!line) return null;
+    line.userData.poolId = key;
     line.material.color.setHex(color || 0xffffff);
     line.material.opacity = 0.85;
     line.visible = true;

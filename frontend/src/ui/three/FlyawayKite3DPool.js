@@ -12,8 +12,10 @@ import {
   getSharedDecalGeo
 } from './ThreeKites.js';
 import {
-  createKitePaperCanvas,
-  getOrCreateKiteDecalTexture
+  createReusableKitePaperTexture,
+  paintReusableKitePaperTexture,
+  createReusableKiteDecalTexture,
+  paintReusableKiteDecalTexture
 } from './ThreeMaterials.js';
 
 const DEFAULT_POOL_SIZE = 48;
@@ -27,7 +29,7 @@ function geometryForType(type) {
 }
 export function createFlyawayKiteModel3D() {
   const group = new THREE.Group();
-  const paper = createKitePaperCanvas(0xff5722, 0x00aaff, 0);
+  const paper = createReusableKitePaperTexture();
   const bodyMat = new THREE.MeshStandardMaterial({
     map: paper,
     color: 0xffffff,
@@ -53,8 +55,9 @@ export function createFlyawayKiteModel3D() {
   const cabresto = new THREE.LineSegments(
     getSharedCabrestoGeo(false, false), getSharedCabrestoMat());
   group.add(cabresto);
+  const decalTexture = createReusableKiteDecalTexture();
   const decalMat = new THREE.MeshBasicMaterial({
-    map: getOrCreateKiteDecalTexture('Pipa', '', 0xff5722, false, false),
+    map: decalTexture,
     color: 0xffffff,
     side: THREE.DoubleSide,
     transparent: true
@@ -98,11 +101,13 @@ export function createFlyawayKiteModel3D() {
   group.userData = {
     body,
     bodyMat,
+    paperTexture: paper,
     centerStick,
     crossStick,
     cabresto,
     decal,
     decalMat,
+    decalTexture,
     tailGroup,
     tailNodes,
     fitilhos: [],
@@ -141,16 +146,17 @@ export class FlyawayKite3DPool {
       getSharedCabrestoGeo(isRaia, isPeixinho);
     model.userData.decal.geometry = getSharedDecalGeo(isPeixinho);
     model.userData.tailGroup.position.y = isRaia ? -17 : isPeixinho ? -24 : -26;
-    if (appearance?.paperMap) {
-      model.userData.bodyMat.map = appearance.paperMap;
-      model.userData.bodyMat.color.setHex(0xffffff);
-    } else {
-      model.userData.bodyMat.color.setHex(flyaway?.bodyColor || 0xff6633);
-    }
-
-    if (appearance?.decalMap) {
-      model.userData.decalMat.map = appearance.decalMap;
-    }
+    const bodyColor = flyaway?.bodyColor || flyaway?.kiteData?.bodyColor || 0xff6633;
+    const secondaryColor = ((bodyColor ^ 0x00ffff) | 0x330033) & 0xffffff;
+    paintReusableKitePaperTexture(model.userData.paperTexture, bodyColor, secondaryColor, 0);
+    paintReusableKiteDecalTexture(model.userData.decalTexture, {
+      nickname: flyaway?.nickname || flyaway?.kiteData?.nickname || 'Pipa',
+      profileUrl: '',
+      baseColorHex: bodyColor,
+      isKing: false,
+      isLeader: false
+    }, 0, () => true);
+    model.userData.bodyMat.color.setHex(0xffffff);
     const lineColor = flyaway?.kiteData?.line?.color || 0xffffff;
     model.userData.hangingLine.material.color.setHex(lineColor);
     model.userData.hangingLine.material.opacity = 0.85;
@@ -160,16 +166,32 @@ export class FlyawayKite3DPool {
     model.scale.set(0.85, 0.85, 0.85);
   }
 
+  captureAppearance(target, activeSlot) {
+    if (!target || !activeSlot) return false;
+    const copyCanvas = (sourceTexture, targetTexture) => {
+      const source = sourceTexture?.image;
+      const canvas = targetTexture?.image;
+      if (!source || !canvas || typeof canvas.getContext !== 'function') return false;
+      const ctx = canvas.getContext('2d');
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(source, 0, 0, canvas.width, canvas.height);
+      targetTexture.needsUpdate = true;
+      return true;
+    };
+    const paperCopied = copyCanvas(activeSlot.paperTexture, target.userData.paperTexture);
+    const decalCopied = copyCanvas(activeSlot.kiteDecalTexture, target.userData.decalTexture);
+    if (paperCopied || decalCopied) {
+      target.userData.capturedUserId = activeSlot.userId;
+      target.userData.capturedGeneration = activeSlot.generation;
+    }
+    return paperCopied && decalCopied;
+  }
+
   acquireFlyaway(id, flyaway, appearance = null) {
     const key = String(id);
     if (this.active.has(key)) return this.active.get(key);
-    let model = this.items.find(item => !item.userData.poolId);
-    if (!model) {
-      model = this.items.reduce((oldest, item) =>
-        item.userData.acquiredAt < oldest.userData.acquiredAt ? item : oldest,
-      this.items[0]);
-      if (model?.userData.poolId) this.releaseFlyaway(model.userData.poolId);
-    }    if (!model) return null;
+    const model = this.items.find(item => !item.userData.poolId) || null;
+    if (!model) return null;
     this._configure(model, flyaway, appearance);
     model.userData.poolId = key;
     model.userData.acquiredAt = performance.now();
@@ -196,6 +218,8 @@ export class FlyawayKite3DPool {
   dispose() {
     for (const model of this.items) {
       this.parentGroup?.remove(model);
+      model.userData.paperTexture?.dispose();
+      model.userData.decalTexture?.dispose();
       model.userData.bodyMat?.dispose();
       model.userData.decalMat?.dispose();
       model.userData.tailMesh?.geometry?.dispose();

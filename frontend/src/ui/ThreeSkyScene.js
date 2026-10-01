@@ -799,19 +799,20 @@ export class ThreeSkyScene {
       idx++;
     }
 
-    // 4. Limpeza de Inativos: devolve slots ao pool, sem dispose durante a live.
-    const fallingUsers = new Set((fallingKitesList || [])
-      .map(fk => String(fk?.userId || ''))
-      .filter(Boolean));
+    // 4. Limpeza de Inativos: captura a aparência antes de devolver o slot ativo.
+    const fallingByUser = new Map((fallingKitesList || [])
+      .filter(fk => fk?.userId !== undefined && fk?.userId !== null)
+      .map(fk => [String(fk.userId), fk]));
 
     if (this.activeVisualPool) {
-      for (const [userId, visualSlot] of this.activeVisualPool.active.entries()) {
+      for (const [userId, visualSlot] of [...this.activeVisualPool.active.entries()]) {
         if (activeUserIds.has(String(userId))) continue;
-        if (fallingUsers.has(String(userId))) {
-          this._retiredCutAppearance.set(String(userId), {
-            paperMap: visualSlot.paperTexture || null,
-            decalMap: visualSlot.kiteDecalTexture || null
-          });
+        const flyaway = fallingByUser.get(String(userId)) || null;
+        if (flyaway) {
+          const fId = String(flyaway.id || `fk_${flyaway.userId}`);
+          let flyaway3D = this.fallingKites3D.get(fId);
+          if (!flyaway3D) flyaway3D = this.flyawayPool.acquireFlyaway(fId, flyaway);
+          if (flyaway3D) this.flyawayPool.captureAppearance(flyaway3D, visualSlot);
         }
         this.releaseActiveVisual(userId);
       }
@@ -825,11 +826,7 @@ export class ThreeSkyScene {
         const fId = String(fk.id || `fk_${fk.userId}`);
         activeFallingIds.add(fId);
         let fk3d = this.fallingKites3D.get(fId);
-        if (!fk3d) {
-          const appearance = this._retiredCutAppearance.get(String(fk.userId)) || null;
-          fk3d = this.flyawayPool.acquireFlyaway(fId, fk, appearance);
-          this._retiredCutAppearance.delete(String(fk.userId));
-        }
+        if (!fk3d) fk3d = this.flyawayPool.acquireFlyaway(fId, fk);
         if (!fk3d) return;
 
         const fkWorld = this.screenToWorld(fk.x, fk.y, 40);

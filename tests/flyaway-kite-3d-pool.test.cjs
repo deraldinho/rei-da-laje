@@ -45,7 +45,7 @@ test('linha rompida 3D também reutiliza pool', () => {
 
 test('troca de textura da voada não invalida shader já pré-aquecido', () => {
   const configure = poolSource.split('_configure(model, flyaway, appearance = null)')[1]
-    ?.split('acquireFlyaway(')[0] || '';
-  assert.doesNotMatch(configure, /needsUpdate\s*=\s*true/,
+    ?.split('captureAppearance(')[0] || '';
+  assert.doesNotMatch(configure, /(?:bodyMat|decalMat)\.needsUpdate\s*=\s*true|(?:bodyMat|decalMat)\.map\s*=/,
     'trocar uma textura não-nula por outra não deve forçar recompilação do material');
 });
