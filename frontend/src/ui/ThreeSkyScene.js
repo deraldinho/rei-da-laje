@@ -26,6 +26,14 @@ import {
   createKiteModel3D
 } from './three/ThreeKites.js';
 import { ThreeLines } from './three/ThreeLines.js';
+import { FlyawayKite3DPool } from './three/FlyawayKite3DPool.js';
+import { ActiveVisualPool } from './three/ActiveVisualPool.js';
+import {
+  createActiveVisualSlot3D,
+  configureActiveVisualSlot3D,
+  resetActiveVisualSlot3D,
+  disposeActiveVisualSlot3D
+} from './three/ActiveVisualSlot3D.js';
 import { ThreeThemeManager } from './three/themes/ThreeThemeManager.js';
 import { BroadcastDirector } from './three/BroadcastDirector.js';
 import { computeRenderBudget } from './three/RenderBudget.js';
@@ -177,6 +185,8 @@ export class ThreeSkyScene {
     this._tempVecA = new THREE.Vector3();
     this._tempVecB = new THREE.Vector3();
     this.brokenHandRopes3D = new Map();
+    this._deferredDisposals = [];
+    this._retiredCutAppearance = new Map();
 
     if (!this.canvas) return;
 
@@ -317,24 +327,111 @@ export class ThreeSkyScene {
 
     this.kites = new ThreeKites();
     this.kites3D = this.kites.kites3D;
-    this.fallingKites3D = this.kites.fallingKites3D;
     this.dynamicKitesGroup = this.kites.group;
     this.worldGroup.add(this.dynamicKitesGroup);
+    this.flyawayPool = new FlyawayKite3DPool(this.dynamicKitesGroup, 48);
+    this.fallingKites3D = this.flyawayPool.active;
 
     this.lines = new ThreeLines();
     this.lines3D = this.lines.lines3D;
     this.dynamicLinesGroup = this.lines.group;
     this.sparksPoints = this.lines.sparksPoints;
+    this.brokenHandRopes3D = this.lines.brokenRopes3D;
     this.worldGroup.add(this.dynamicLinesGroup);
 
-    // Aplica o tema inicial
+
+    this.activeVisualPool = new ActiveVisualPool({
+      capacity: 48,
+      createSlot: index => createActiveVisualSlot3D(index, {
+        kites: this.dynamicKitesGroup,
+        players: this.dynamicPlayersGroup,
+        lines: this.dynamicLinesGroup
+      }),
+      resetSlot: resetActiveVisualSlot3D,
+      disposeSlot: disposeActiveVisualSlot3D
+    });
+    this._activePoolWarningIds = new Set();
+
+    // Aplica o tema inicial e prÃ©-aquece os materiais usados no corte.
     this.setTheme(this.themeCode);
+    this.prewarmCutVisuals();
+  }
+
+  acquireActiveVisual(userId, kite) {
+    if (!this.activeVisualPool) return null;
+    const uid = String(userId);
+    let slot = this.activeVisualPool.get(uid);
+    if (!slot) slot = this.activeVisualPool.acquire(uid);
+    if (!slot) {
+      this._activePoolWarningIds ||= new Set();
+      if (!this._activePoolWarningIds.has(uid)) {
+        this._activePoolWarningIds.add(uid);
+        console.warn(`[ThreeSkyScene] pool 3D lotado; participante ${uid} sem slot visual.`);
+      }
+      return null;
+    }
+    configureActiveVisualSlot3D(slot, uid, kite, this.time);
+    this.kites3D.set(uid, slot.kite);
+    this.players3D.set(uid, slot.player);
+    this.lines3D.set(uid, slot.line);
+    return slot;
+  }
+
+  releaseActiveVisual(userId) {
+    const uid = String(userId);
+    const slot = this.activeVisualPool?.get(uid) || null;
+    this.kites3D?.delete(uid);
+    this.players3D?.delete(uid);
+    this.lines3D?.delete(uid);
+    this._activePoolWarningIds?.delete(uid);
+    if (!slot) return null;
+    return this.activeVisualPool.release(uid);
+  }
+
+  prewarmCutVisuals() {
+    if (!this.renderer || !this.scene || !this.camera) return;
+    const flyaway = this.flyawayPool?.peekForPrewarm?.();
+    const broken = this.lines?.peekBrokenRopeForPrewarm?.();
+    const flyawayWasVisible = flyaway?.visible;
+    const brokenWasVisible = broken?.visible;
+    if (flyaway) flyaway.visible = true;
+    if (broken) broken.visible = true;
+    try {
+      this.renderer.compile(this.scene, this.camera);
+    } finally {
+      if (flyaway) flyaway.visible = Boolean(flyawayWasVisible);
+      if (broken) broken.visible = Boolean(brokenWasVisible);
+    }
+  }
+
+  _deferDispose(disposer, delayFrames = 3) {
+    if (typeof disposer !== 'function') return;
+    this._deferredDisposals.push({ disposer, frames: Math.max(1, delayFrames | 0) });
+  }
+
+  _drainDeferredDisposals(maxPerFrame = 1) {
+    let executed = 0;
+    for (let i = 0; i < this._deferredDisposals.length && executed < maxPerFrame;) {
+      const item = this._deferredDisposals[i];
+      item.frames -= 1;
+      if (item.frames > 0) { i++; continue; }
+      this._deferredDisposals.splice(i, 1);
+      try { item.disposer(); } catch (_) {}
+      executed++;
+    }
+  }
+
+  _flushDeferredDisposals() {
+    for (const item of this._deferredDisposals.splice(0)) {
+      try { item.disposer(); } catch (_) {}
+    }
   }
 
   setTheme(code) {
     if (!this.themeManager) return this.theme;
     this.theme = this.themeManager.setTheme(code, this.dirLight, this.hemiLight);
     this.themeCode = this.themeManager.themeCode;
+    this.themeManager.setRuntimeLod(this._renderBudget?.ambientLod || 0);
 
     if (this.laje) {
       this.laje.updateCulturalProps(
@@ -402,6 +499,7 @@ export class ThreeSkyScene {
     if (this.renderer?.shadowMap) this.renderer.shadowMap.enabled = effectiveShadows;
     if (this.dirLight) this.dirLight.castShadow = effectiveShadows;
     this.lines?.setIdleLineOpacityScale(next.idleLineOpacityScale);
+    this.themeManager?.setRuntimeLod(next.ambientLod);
     return next;
   }
 
@@ -467,7 +565,8 @@ export class ThreeSkyScene {
     const inUse = new Set();
     for (const [userId, kite] of activeKites.entries()) {
       const normDecalUrl = String(kite.profilePictureUrl || '').trim();
-      const expectedDecalKey = `${normDecalUrl || kite.nickname || 'p'}_${kite.bodyColor}_${kite.isKing ? 1 : 0}_${kite.isLeader ? 1 : 0}`;
+      const identityBodyColor = Number.isFinite(kite.bodyColor) ? kite.bodyColor : 0xff5722;
+      const expectedDecalKey = `${normDecalUrl || kite.nickname || 'p'}_${identityBodyColor}_${kite.isKing ? 1 : 0}_${kite.isLeader ? 1 : 0}`;
       inUse.add(expectedDecalKey);
     }
     for (const k3d of this.kites3D.values()) {
@@ -509,22 +608,18 @@ export class ThreeSkyScene {
       const bonecoZ = -12 + (slot.row || 0) * 14;
       const bonecoScale = Math.min(1.8, Math.max(0.68, (slot.scale || 1) * 1.05));
 
-      // 1. Pipa 3D
+      // 1. Pipa 3D â€” sempre proveniente do pool prÃ©-alocado.
       let k3d = this.kites3D.get(uidStr);
       if (!k3d) {
-        const patIdx = Math.abs(hashStringToInt(uidStr + '_pat')) % 4;
-        const modelTypes = ['tradicional', 'raia', 'peixinho', 'tradicional'];
-        const modelType = modelTypes[Math.abs(hashStringToInt(uidStr + '_model')) % modelTypes.length];
-        k3d = createKiteModel3D(kite.bodyColor || 0xff5722, patIdx, null, modelType);
-        k3d.userData.spawnTime = this.time;
-        this.dynamicKitesGroup.add(k3d);
-        this.kites3D.set(uidStr, k3d);
-      }
-      if (k3d.userData.currentDecalKey !== expectedDecalKey) {
-        const decalTex = getOrCreateKiteDecalTexture(kite.nickname, kite.profilePictureUrl, kite.bodyColor, kite.isKing, kite.isLeader);
-        k3d.userData.decalMat.map = decalTex;
-        k3d.userData.decalMat.needsUpdate = true;
-        k3d.userData.currentDecalKey = expectedDecalKey;
+        const visualSlot = this.acquireActiveVisual(uidStr, kite);
+        if (!visualSlot) {
+          idx++;
+          continue;
+        }
+        k3d = visualSlot.kite;
+      } else if (k3d.userData.currentDecalKey !== expectedDecalKey) {
+        const refreshedSlot = this.acquireActiveVisual(uidStr, kite);
+        if (refreshedSlot) k3d = refreshedSlot.kite;
       }
 
       // NameTag 3D
@@ -704,86 +799,56 @@ export class ThreeSkyScene {
       idx++;
     }
 
-    // 4. Limpeza de Inativos
-    for (const [userId, p3d] of this.players3D.entries()) {
-      if (!activeUserIds.has(String(userId))) {
-        this.dynamicPlayersGroup.remove(p3d);
-        disposeHierarchy(p3d);
-        this.players3D.delete(userId);
+    // 4. Limpeza de Inativos: devolve slots ao pool, sem dispose durante a live.
+    const fallingUsers = new Set((fallingKitesList || [])
+      .map(fk => String(fk?.userId || ''))
+      .filter(Boolean));
+
+    if (this.activeVisualPool) {
+      for (const [userId, visualSlot] of this.activeVisualPool.active.entries()) {
+        if (activeUserIds.has(String(userId))) continue;
+        if (fallingUsers.has(String(userId))) {
+          this._retiredCutAppearance.set(String(userId), {
+            paperMap: visualSlot.paperTexture || null,
+            decalMap: visualSlot.kiteDecalTexture || null
+          });
+        }
+        this.releaseActiveVisual(userId);
       }
     }
 
-    for (const [userId, l3d] of this.lines3D.entries()) {
-      if (!activeUserIds.has(String(userId))) {
-        this.dynamicLinesGroup.remove(l3d);
-        if (l3d.userData?.geo) l3d.userData.geo.dispose();
-        if (l3d.userData?.mat) l3d.userData.mat.dispose();
-        if (l3d.userData?.glowMat) l3d.userData.glowMat.dispose();
-        this.lines3D.delete(userId);
-      }
-    }
-
-    for (const [userId, k3d] of this.kites3D.entries()) {
-      if (!activeUserIds.has(String(userId))) {
-        this.dynamicKitesGroup.remove(k3d);
-        disposeHierarchy(k3d);
-        this.kites3D.delete(userId);
-      }
-    }
-
-    // 5. Pipas Cortadas Caindo com Linha Pendurada Física (FlyawayKite 3D)
+    // 5. Pipas cortadas continuam 100% 3D, usando um modelo leve e pre-alocado.
     const activeFallingIds = new Set();
-    const maxLajeWorldY = lajeWorldY - 140; // Limite de solo da laje e cenário profundo
-
+    const maxLajeWorldY = lajeWorldY - 140;
     if (fallingKitesList && fallingKitesList.length) {
       fallingKitesList.forEach(fk => {
-        const fId = fk.id || `fk_${fk.userId}`;
+        const fId = String(fk.id || `fk_${fk.userId}`);
         activeFallingIds.add(fId);
-
         let fk3d = this.fallingKites3D.get(fId);
         if (!fk3d) {
-          const patIdx = Math.abs(hashStringToInt(fId + '_fkpat')) % 4;
-          fk3d = createKiteModel3D(fk.bodyColor || 0xff5722, patIdx, null, fk.kiteType || 'tradicional');
-          fk3d.scale.set(0.85, 0.85, 0.85);
-
-          // Linha pendurada na pipa voada (FlyawayRope 3D)
-          const lineGeo = new THREE.BufferGeometry();
-          const linePos = new Float32Array(8 * 3);
-          lineGeo.setAttribute('position', new THREE.BufferAttribute(linePos, 3));
-          const lineMat = new THREE.LineBasicMaterial({
-            color: 0xffffff,
-            transparent: true,
-            opacity: 0.85,
-            linewidth: 1.2
-          });
-          const hangingLine = new THREE.Line(lineGeo, lineMat);
-          hangingLine.frustumCulled = false;
-          fk3d.userData.hangingLine = hangingLine;
-          this.dynamicLinesGroup.add(hangingLine);
-
-          this.dynamicKitesGroup.add(fk3d);
-          this.fallingKites3D.set(fId, fk3d);
+          const appearance = this._retiredCutAppearance.get(String(fk.userId)) || null;
+          fk3d = this.flyawayPool.acquireFlyaway(fId, fk, appearance);
+          this._retiredCutAppearance.delete(String(fk.userId));
         }
+        if (!fk3d) return;
 
         const fkWorld = this.screenToWorld(fk.x, fk.y, 40);
         if (fkWorld.y < maxLajeWorldY) {
           activeFallingIds.delete(fId);
           return;
         }
-
         fk3d.position.set(fkWorld.x, fkWorld.y, fkWorld.z);
         fk3d.rotation.z = (fk.rotation || 0) + this.time * 2.8;
         fk3d.rotation.x = Math.sin(this.time * 3.5) * 0.45;
         fk3d.rotation.y += 0.08 * delta;
         ThreeKites.updateTailPhysics(fk3d, this.wind, delta, this.time, fk.vx || 0, fk.vy || 0);
 
-        // Atualiza a linha pendurada 3D presa à pipa voada
         const hangingLine = fk3d.userData.hangingLine;
-        if (hangingLine && hangingLine.geometry) {
+        if (hangingLine?.geometry) {
+          fk3d.updateMatrixWorld(true);
           const posAttr = hangingLine.geometry.attributes.position;
           const posArr = posAttr.array;
           const nodes = fk.flyawayNodes;
-          const attachWorld = fk3d.position;
           const count = 8;
           if (Array.isArray(nodes) && nodes.length >= 2) {
             for (let p = 0; p < count; p++) {
@@ -792,107 +857,71 @@ export class ThreeSkyScene {
               const idxA = Math.floor(sampleIdx);
               const idxB = Math.min(nodes.length - 1, idxA + 1);
               const frac = sampleIdx - idxA;
-              const nA = nodes[idxA];
-              const nB = nodes[idxB];
+              const nA = nodes[idxA], nB = nodes[idxB];
               const nx = nA.x + (nB.x - nA.x) * frac;
               const ny = nA.y + (nB.y - nA.y) * frac;
-              const nodeWorld = this.screenToWorld(nx, ny, attachWorld.z);
-              posArr[p * 3] = nodeWorld.x;
-              posArr[p * 3 + 1] = nodeWorld.y;
-              posArr[p * 3 + 2] = nodeWorld.z;
+              const nodeWorld = this.screenToWorld(nx, ny, fkWorld.z);
+              this._tempVecB.set(nodeWorld.x, nodeWorld.y, nodeWorld.z);
+              fk3d.worldToLocal(this._tempVecB);
+              posArr[p * 3] = this._tempVecB.x;
+              posArr[p * 3 + 1] = this._tempVecB.y;
+              posArr[p * 3 + 2] = this._tempVecB.z;
             }
           } else {
             for (let p = 0; p < count; p++) {
               const t = p / (count - 1);
-              posArr[p * 3] = attachWorld.x + (this.wind ? this.wind.x * 12 * t : 0);
-              posArr[p * 3 + 1] = attachWorld.y - t * 45;
-              posArr[p * 3 + 2] = attachWorld.z;
+              posArr[p * 3] = (this.wind ? this.wind.x * 12 * t : 0);
+              posArr[p * 3 + 1] = -t * 45;
+              posArr[p * 3 + 2] = 0;
             }
           }
           posAttr.needsUpdate = true;
-          if (hangingLine.material) {
-            hangingLine.material.opacity = Math.max(0, Math.min(0.85, (fk.life || 1) / 2));
-          }
+          hangingLine.material.opacity = Math.max(0, Math.min(0.85, (fk.life || 1) / 2));
         }
       });
     }
 
-    for (const [fId, fk3d] of this.fallingKites3D.entries()) {
-      if (!activeFallingIds.has(fId)) {
-        if (fk3d.userData.hangingLine) {
-          this.dynamicLinesGroup.remove(fk3d.userData.hangingLine);
-          if (fk3d.userData.hangingLine.geometry) fk3d.userData.hangingLine.geometry.dispose();
-          if (fk3d.userData.hangingLine.material) fk3d.userData.hangingLine.material.dispose();
-        }
-        this.dynamicKitesGroup.remove(fk3d);
-        disposeHierarchy(fk3d);
-        this.fallingKites3D.delete(fId);
-      }
+    for (const [fId] of this.fallingKites3D.entries()) {
+      if (!activeFallingIds.has(fId)) this.flyawayPool.releaseFlyaway(fId);
     }
 
-    // 5.1 Linhas Quebradas da Mão Caindo na Laje (BrokenHandRope 3D)
+    // 5.1 Linhas quebradas da mao tambem saem de um pool pre-alocado.
     const activeBrokenIds = new Set();
     if (brokenHandRopesList && brokenHandRopesList.length) {
       brokenHandRopesList.forEach((bhr, idx) => {
         const bId = String(bhr.userId || ('bhr_' + idx));
         activeBrokenIds.add(bId);
-
         let br3d = this.brokenHandRopes3D.get(bId);
-        if (!br3d) {
-          const lineGeo = new THREE.BufferGeometry();
-          const linePos = new Float32Array(12 * 3);
-          lineGeo.setAttribute('position', new THREE.BufferAttribute(linePos, 3));
-          const lineMat = new THREE.LineBasicMaterial({
-            color: bhr.lineColor || 0xffffff,
-            transparent: true,
-            opacity: 0.85,
-            linewidth: 1.2
-          });
-          br3d = new THREE.Line(lineGeo, lineMat);
-          br3d.frustumCulled = false;
-          this.dynamicLinesGroup.add(br3d);
-          this.brokenHandRopes3D.set(bId, br3d);
-        }
-
-        if (br3d && br3d.geometry) {
-          const posAttr = br3d.geometry.attributes.position;
-          const posArr = posAttr.array;
-          const nodes = bhr.nodes || [];
-          const count = 12;
-          const zDepth = (this.lajeGroup ? this.lajeGroup.position.z : 480) - 20;
-
-          if (nodes.length >= 2) {
-            for (let p = 0; p < count; p++) {
-              const t = p / (count - 1);
-              const sampleIdx = t * (nodes.length - 1);
-              const idxA = Math.floor(sampleIdx);
-              const idxB = Math.min(nodes.length - 1, idxA + 1);
-              const frac = sampleIdx - idxA;
-              const nA = nodes[idxA];
-              const nB = nodes[idxB];
-              const nx = nA.x + (nB.x - nA.x) * frac;
-              const ny = nA.y + (nB.y - nA.y) * frac;
-              const nodeWorld = this.screenToWorld(nx, ny, zDepth * (1 - t * 0.4));
-              posArr[p * 3] = nodeWorld.x;
-              posArr[p * 3 + 1] = nodeWorld.y;
-              posArr[p * 3 + 2] = nodeWorld.z;
-            }
-          }
-          posAttr.needsUpdate = true;
-          if (br3d.material) {
-            br3d.material.opacity = Math.max(0, Math.min(0.85, (bhr.life / 2.0) * 0.85));
+        if (!br3d) br3d = this.lines.acquireBrokenRope(bId, bhr.lineColor || 0xffffff);
+        if (!br3d?.geometry) return;
+        const posAttr = br3d.geometry.attributes.position;
+        const posArr = posAttr.array;
+        const nodes = bhr.nodes || [];
+        const count = 12;
+        const zDepth = (this.lajeGroup ? this.lajeGroup.position.z : 480) - 20;
+        if (nodes.length >= 2) {
+          for (let p = 0; p < count; p++) {
+            const t = p / (count - 1);
+            const sampleIdx = t * (nodes.length - 1);
+            const idxA = Math.floor(sampleIdx);
+            const idxB = Math.min(nodes.length - 1, idxA + 1);
+            const frac = sampleIdx - idxA;
+            const nA = nodes[idxA], nB = nodes[idxB];
+            const nx = nA.x + (nB.x - nA.x) * frac;
+            const ny = nA.y + (nB.y - nA.y) * frac;
+            const nodeWorld = this.screenToWorld(nx, ny, zDepth * (1 - t * 0.4));
+            posArr[p * 3] = nodeWorld.x;
+            posArr[p * 3 + 1] = nodeWorld.y;
+            posArr[p * 3 + 2] = nodeWorld.z;
           }
         }
+        posAttr.needsUpdate = true;
+        br3d.material.opacity = Math.max(0, Math.min(0.85, (bhr.life / 2.0) * 0.85));
       });
     }
 
-    for (const [bId, br3d] of this.brokenHandRopes3D.entries()) {
-      if (!activeBrokenIds.has(bId)) {
-        this.dynamicLinesGroup.remove(br3d);
-        if (br3d.geometry) br3d.geometry.dispose();
-        if (br3d.material) br3d.material.dispose();
-        this.brokenHandRopes3D.delete(bId);
-      }
+    for (const [bId] of this.brokenHandRopes3D.entries()) {
+      if (!activeBrokenIds.has(bId)) this.lines.releaseBrokenRope(bId);
     }
 
     // 6. Atualização de Faíscas
@@ -929,6 +958,7 @@ export class ThreeSkyScene {
     }
 
     this.renderer.render(this.scene, this.camera);
+    this._drainDeferredDisposals(1);
   }
 
   destroy() {
@@ -947,33 +977,18 @@ export class ThreeSkyScene {
     }
     this.players3D.clear();
 
-    for (const [userId, l3d] of this.lines3D.entries()) {
-      if (l3d.userData?.geo) l3d.userData.geo.dispose();
-      if (l3d.userData?.mat) l3d.userData.mat.dispose();
-      if (l3d.userData?.glowMat) l3d.userData.glowMat.dispose();
-      if (l3d.material) l3d.material.dispose();
-    }
-    this.lines3D.clear();
+    this.lines?.dispose();
+    this.lines3D?.clear();
+    this.brokenHandRopes3D?.clear();
 
     for (const [userId, k3d] of this.kites3D.entries()) {
       disposeHierarchy(k3d);
     }
     this.kites3D.clear();
 
-    for (const [fId, fk3d] of this.fallingKites3D.entries()) {
-      if (fk3d.userData?.hangingLine) {
-        if (fk3d.userData.hangingLine.geometry) fk3d.userData.hangingLine.geometry.dispose();
-        if (fk3d.userData.hangingLine.material) fk3d.userData.hangingLine.material.dispose();
-      }
-      disposeHierarchy(fk3d);
-    }
-    this.fallingKites3D.clear();
-
-    for (const [bId, br3d] of this.brokenHandRopes3D.entries()) {
-      if (br3d.geometry) br3d.geometry.dispose();
-      if (br3d.material) br3d.material.dispose();
-    }
-    this.brokenHandRopes3D.clear();
+    this.flyawayPool?.dispose();
+    this.fallingKites3D?.clear();
+    this._flushDeferredDisposals();
 
     for (const [key, tex] of _kiteDecalTextureCache.entries()) {
       if (typeof tex.dispose === 'function') tex.dispose();

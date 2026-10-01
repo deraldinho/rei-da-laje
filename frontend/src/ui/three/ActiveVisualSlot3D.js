@@ -72,6 +72,7 @@ export function createActiveVisualSlot3D(index, groups) {
 export function configureActiveVisualSlot3D(slot, userId, kiteData = {}, time = 0) {
   if (!slot) return null;
   const uid = String(userId);
+  const wasUnassigned = slot.userId === null || slot.userId === undefined;
   slot.userId = uid;
   const generation = Number(slot.generation) || 0;
   const bodyColor = Number.isFinite(kiteData.bodyColor) ? kiteData.bodyColor : 0xff5722;
@@ -86,7 +87,7 @@ export function configureActiveVisualSlot3D(slot, userId, kiteData = {}, time = 
 
   const identity = {
     nickname: String(kiteData.nickname || 'Jogador'),
-    profileUrl: String(kiteData.profilePictureUrl || ''),
+    profileUrl: String(kiteData.profilePictureUrl || '').trim(),
     baseColorHex: bodyColor,
     isKing: Boolean(kiteData.isKing),
     isLeader: Boolean(kiteData.isLeader)
@@ -107,13 +108,11 @@ export function configureActiveVisualSlot3D(slot, userId, kiteData = {}, time = 
     identity.isKing,
     identity.isLeader
   );
+  const decalKey = `${identity.profileUrl || identity.nickname}_${bodyColor}_${identity.isKing ? 1 : 0}_${identity.isLeader ? 1 : 0}`;
+  slot.kite.userData.currentDecalKey = decalKey;
+  slot.player.userData.currentDecalKey = decalKey;
   slot.kite.userData.currentTagKey = `${identity.nickname}_${identity.isKing ? 1 : 0}_${identity.isLeader ? 1 : 0}`;
-  slot.kite.userData.spawnTime = Number(time) || 0;
-  slot.kite.userData.roll = 0;
-  slot.kite.userData.pitch = 0;
-  slot.kite.userData.yaw = 0;
-  slot.kite.userData.spinAngle = 0;
-  slot.kite.userData.tailWorldNodes = null;
+  if (wasUnassigned) slot.kite.userData.spawnTime = Number(time) || 0;
 
   const playerData = slot.player.userData;
   playerData.skinMat.color.setHex(

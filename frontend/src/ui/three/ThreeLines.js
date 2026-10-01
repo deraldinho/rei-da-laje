@@ -47,6 +47,18 @@ export class ThreeLines {
     this.group.add(this.sparksPoints);
     this.customLineOpacity = 0.88;
     this.idleLineOpacityScale = 1;
+    this.brokenRopes3D = new Map();
+    this._brokenRopePool = [];
+    for (let i = 0; i < 48; i++) {
+      const geo = new THREE.BufferGeometry();
+      geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(12 * 3), 3));      const mat = new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.85 });
+      const line = new THREE.Line(geo, mat);
+      line.visible = false;
+      line.frustumCulled = false;
+      line.userData.poolId = null;
+      this._brokenRopePool.push(line);
+      this.group.add(line);
+    }
   }
 
   setIdleLineOpacityScale(val) {
@@ -59,6 +71,35 @@ export class ThreeLines {
     if (Number.isFinite(num) && num >= 0.1 && num <= 1.0) {
       this.customLineOpacity = num;
     }
+  }
+
+  acquireBrokenRope(id, color = 0xffffff) {
+    const key = String(id);
+    if (this.brokenRopes3D.has(key)) return this.brokenRopes3D.get(key);
+    let line = this._brokenRopePool.find(item => !item.userData.poolId);
+    if (!line) {
+      line = this._brokenRopePool[0];
+      if (line?.userData.poolId) this.releaseBrokenRope(line.userData.poolId);
+    }
+    if (!line) return null;    line.userData.poolId = key;
+    line.material.color.setHex(color || 0xffffff);
+    line.material.opacity = 0.85;
+    line.visible = true;
+    this.brokenRopes3D.set(key, line);
+    return line;
+  }
+
+  releaseBrokenRope(id) {
+    const key = String(id);
+    const line = this.brokenRopes3D.get(key);
+    if (!line) return;
+    line.visible = false;
+    line.userData.poolId = null;
+    this.brokenRopes3D.delete(key);
+  }
+
+  peekBrokenRopeForPrewarm() {
+    return this._brokenRopePool[0] || null;
   }
 
   getOrCreateLine(uidStr) {
@@ -359,6 +400,14 @@ export class ThreeLines {
       if (l3d.material && typeof l3d.material.dispose === 'function') l3d.material.dispose();
     }
     this.lines3D.clear();
+
+    for (const line of this._brokenRopePool) {
+      this.group.remove(line);
+      line.geometry?.dispose();
+      line.material?.dispose();
+    }
+    this._brokenRopePool.length = 0;
+    this.brokenRopes3D.clear();
 
     if (this.sparksPoints && this.sparksPoints.geometry) {
       this.sparksPoints.geometry.dispose();

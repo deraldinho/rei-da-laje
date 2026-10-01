@@ -9,6 +9,7 @@ import {
   disposeHierarchy
 } from '../ThreeMaterials.js';
 import { buildStateTheme } from './ThemeRegistry.js';
+import { StaticSceneBatcher } from '../StaticSceneBatcher.js';
 
 export class ThreeThemeManager {
   constructor(scene, camera, getVisibleBoundsAt) {
@@ -27,6 +28,9 @@ export class ThreeThemeManager {
     this.rotatingWindTurbines = [];
     this.rotatingLighthouses = [];
     this.waterLilies = [];
+    this.runtimeLod = 0;
+    this.staticBatcher = null;
+    this.staticBatchStats = { originalMeshes: 0, batchedMeshes: 0, drawGroups: 0, savedDraws: 0 };
 
     this.initGeometries();
     this.initMaterials();
@@ -819,6 +823,7 @@ export class ThreeThemeManager {
 
         tree.userData = {
           isTree: true,
+          skipStaticBatch: true,
           isLeft,
           normX: Math.max(0.1, Math.min(0.86, normX)),
           depthZ: z,
@@ -853,6 +858,10 @@ export class ThreeThemeManager {
         targetGroup.add(rock);
       }
     });
+
+    if (this.staticBatcher) this.staticBatcher.dispose();
+    this.staticBatcher = new StaticSceneBatcher(this.favelaPropsGroup, { minInstances: 3 });
+    this.staticBatchStats = this.staticBatcher.rebuild();
   }
 
   computeMorroHeight(x, z, isLeft, bounds) {
@@ -1027,6 +1036,8 @@ export class ThreeThemeManager {
         });
       });
     }
+
+    if (this.staticBatcher) this.staticBatchStats = this.staticBatcher.refresh();
 
     if (this.regionalMapGroup) {
       this.regionalMapGroup.children.forEach(child => {
@@ -1206,8 +1217,24 @@ export class ThreeThemeManager {
     }
   }
 
+  setRuntimeLod(lod = 0) {
+    const level = Math.max(0, Math.min(3, Math.floor(Number(lod) || 0)));
+    this.runtimeLod = level;
+    const apply = (items, baseStride = 2) => {
+      const stride = level === 0 ? 1 : baseStride + level - 1;
+      (items || []).forEach((item, index) => {
+        if (item) item.visible = stride === 1 || (index % stride) === 0;
+      });
+    };
+    apply(this.cloudList, 2);
+    apply(this.ambientKiteList, 2);
+    apply(this.flock, 2);
+    if (this.sunMotes) this.sunMotes.visible = level < 3;
+    return level;
+  }
+
   updateAnimations(delta, time, wind) {
-    // 1. Árvores balançando
+    // 1. ÃƒÂrvores balanÃƒÂ§ando
     const windStr = Math.hypot(wind?.x || 0, wind?.y || 0) * 0.15;
     if (this.swayingTrees && this.swayingTrees.length) {
       this.swayingTrees.forEach(tree => {
@@ -1226,7 +1253,7 @@ export class ThreeThemeManager {
       });
     }
 
-    // 3. Turbinas eólicas giratórias
+    // 3. Turbinas eÃƒÂ³licas giratÃƒÂ³rias
     if (this.rotatingWindTurbines && this.rotatingWindTurbines.length) {
       const rotSpeed = 2.4 + windStr * 3.5;
       this.rotatingWindTurbines.forEach(rotor => {
@@ -1234,14 +1261,14 @@ export class ThreeThemeManager {
       });
     }
 
-    // 4. Faróis com feixe rotativo
+    // 4. FarÃƒÂ³is com feixe rotativo
     if (this.rotatingLighthouses && this.rotatingLighthouses.length) {
       this.rotatingLighthouses.forEach(beamGroup => {
         beamGroup.rotation.y += 1.2 * delta;
       });
     }
 
-    // 5. Ondulação da água
+    // 5. OndulaÃƒÂ§ÃƒÂ£o da ÃƒÂ¡gua
     if (this.waterMeshes && this.waterMeshes.length) {
       this.waterMeshes.forEach((mesh, idx) => {
         const baseY = mesh.userData?.baseY || 10;
@@ -1249,7 +1276,7 @@ export class ThreeThemeManager {
       });
     }
 
-    // 6. Vitórias-régias flutuando
+    // 6. VitÃƒÂ³rias-rÃƒÂ©gias flutuando
     if (this.waterLilies && this.waterLilies.length) {
       this.waterLilies.forEach((lily, idx) => {
         const baseY = lily.userData?.baseY || 13;
@@ -1285,7 +1312,7 @@ export class ThreeThemeManager {
       });
     }
 
-    // 10. Bando de pássaros voando em V
+    // 10. Bando de pÃƒÂ¡ssaros voando em V
     if (this.flock && this.flock.length) {
       this.flock.forEach((bird, idx) => {
         const d = bird.userData;
@@ -1301,7 +1328,7 @@ export class ThreeThemeManager {
       });
     }
 
-    // 11. Partículas solares
+    // 11. PartÃƒÂ­culas solares
     if (this.sunMotes && this.particleSpeeds) {
       const pos = this.sunMotes.geometry.attributes.position.array;
       const count = pos.length / 3;
@@ -1317,6 +1344,9 @@ export class ThreeThemeManager {
   }
 
   dispose() {
+    if (this.staticBatcher) this.staticBatcher.dispose();
+    this.staticBatcher = null;
+    this.staticBatchStats = { originalMeshes: 0, batchedMeshes: 0, drawGroups: 0, savedDraws: 0 };
     if (this.regionalMapGroup) {
       disposeHierarchy(this.regionalMapGroup);
       this.regionalMapGroup.clear();

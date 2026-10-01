@@ -9,7 +9,8 @@ export function computeRenderBudget({ quality = 'high', population = 0 } = {}) {
       pixelRatioScale: crowded ? 0.68 : 0.78,
       shadows: false,
       environmentStride: crowded ? 4 : 3,
-      idleLineOpacityScale: crowded ? 0.22 : 0.35
+      idleLineOpacityScale: crowded ? 0.22 : 0.35,
+      ambientLod: crowded ? 3 : 2
     };
   }
 
@@ -18,7 +19,8 @@ export function computeRenderBudget({ quality = 'high', population = 0 } = {}) {
       pixelRatioScale: crowded ? 0.82 : 0.9,
       shadows: false,
       environmentStride: crowded ? 3 : 2,
-      idleLineOpacityScale: crowded ? 0.3 : 0.45
+      idleLineOpacityScale: crowded ? 0.3 : 0.45,
+      ambientLod: 2
     };
   }
 
@@ -27,7 +29,8 @@ export function computeRenderBudget({ quality = 'high', population = 0 } = {}) {
       pixelRatioScale: 0.95,
       shadows: false,
       environmentStride: 2,
-      idleLineOpacityScale: 0.55
+      idleLineOpacityScale: 0.55,
+      ambientLod: 1
     };
   }
 
@@ -35,6 +38,7 @@ export function computeRenderBudget({ quality = 'high', population = 0 } = {}) {
     pixelRatioScale: 1,
     shadows: true,
     environmentStride: 1,
-    idleLineOpacityScale: 1
+    idleLineOpacityScale: 1,
+    ambientLod: 0
   };
 }
