@@ -453,36 +453,42 @@ class TikTokService {
     const { getGiftUpgrade, getGiftUpgradeByValue } = require('./rules/giftConfig');
     const configuredUpgrade = getGiftUpgrade(data.giftId) || getGiftUpgrade(data.giftName);
 
-    // Todo presente recebido produz animação e entra no catálogo, mesmo sem buff configurado.
-    // Presentes desconhecidos não ganham poder de combate sem regra aprovada.
+    // Valor canônico: o nome do presente é apresentação; o tier é resolvido pelo total da sequência.
     const count=Math.min(1000,Math.max(1,Math.floor(Number(data.repeatCount)||1)));
-    const amount=Number.isFinite(Number(data.diamondCount)) && Number(data.diamondCount)>0
-      ? Math.min(1000000,Number(data.diamondCount)) : configuredUpgrade?.cost || 0;
-    const upgrade = configuredUpgrade || getGiftUpgradeByValue(data.giftName, amount);
-    const giftName=String(data.giftName || upgrade?.name || ('Presente #'+String(data.giftId||'?'))).slice(0,90);
-    this.giftCatalog?.observe({giftId:data.giftId,giftName,diamondCount:amount,
+    const unitCoinValue=Number.isFinite(Number(data.diamondCount)) && Number(data.diamondCount)>0
+      ? Math.min(1000000,Number(data.diamondCount)) : Math.max(0,Number(configuredUpgrade?.cost)||0);
+    const totalCoinValue=Math.min(1000000000,unitCoinValue*count);
+    const tierName=data.giftName || configuredUpgrade?.name;
+    const unitUpgrade=getGiftUpgradeByValue(tierName,unitCoinValue);
+    const upgrade=getGiftUpgradeByValue(tierName,totalCoinValue);
+    const sameTier=Boolean(unitUpgrade && upgrade && unitUpgrade.lineType===upgrade.lineType
+      && unitUpgrade.specialAbility===upgrade.specialAbility);
+    const applicationCount=sameTier?count:1;
+    const giftName=String(data.giftName || configuredUpgrade?.name || ('Presente #'+String(data.giftId||'?'))).slice(0,90);
+    this.giftCatalog?.observe({giftId:data.giftId,giftName,diamondCount:unitCoinValue,
       repeatCount:count,iconUrl:data.iconUrl});
     this.io.emit('gift:celebration',{
       userId:data.userId,nickname:String(data.nickname||data.uniqueId||'Espectador').slice(0,60),
-      giftId:String(data.giftId||''),giftName,diamondCount:amount,repeatCount:count,
-      known: Boolean(upgrade), iconUrl:String(data.iconUrl||'').slice(0,1000)
+      giftId:String(data.giftId||''),giftName,diamondCount:unitCoinValue,repeatCount:count,
+      unitCoinValue,totalCoinValue,known:Boolean(upgrade),iconUrl:String(data.iconUrl||'').slice(0,1000)
     });
-    if (this.gameRules.recordGift?.(data.userId, count, amount)) this.onArenaMutation?.();
+    if (this.gameRules.recordGift?.(data.userId,count,unitCoinValue)) this.onArenaMutation?.();
     if (!upgrade) return;
     {
-      const buff = this.buffManager.applyGiftUpgrade(data.userId, upgrade, data.repeatCount);
-      // Evento de manobra: alcance e duração são limitados no cliente; não altera a pontuação diretamente.
-      this.io.emit('competition:maneuver', {
-        userId: data.userId, giftName: upgrade.maneuverGiftName || upgrade.name, giftCost: upgrade.cost,
-        repeatCount: Math.min(20, count)
+      const buff=this.buffManager.applyGiftUpgrade(data.userId,upgrade,applicationCount);
+      // A sequência inteira vira um único tier/manobra pelo valor total; sem recompensa duplicada.
+      this.io.emit('competition:maneuver',{
+        userId:data.userId,giftName:upgrade.maneuverGiftName||upgrade.name,giftCost:totalCoinValue,
+        repeatCount:Math.min(20,applicationCount),unitCoinValue,totalCoinValue
       });
       this.io.emit('gift:received', {
-        userId: data.userId,
-        uniqueId: data.uniqueId,
-        giftId: upgrade.id,
-        giftName: upgrade.name,
-        nickname: data.nickname || data.uniqueId || 'Espectador',
-        diamondCount: data.diamondCount || upgrade.cost,
+        userId:data.userId,
+        uniqueId:data.uniqueId,
+        giftId:String(data.giftId||upgrade.id||''),
+        giftName,
+        nickname:data.nickname||data.uniqueId||'Espectador',
+        diamondCount:unitCoinValue,
+        unitCoinValue,totalCoinValue,
         upgrade: {
           lineType: buff.lineType,
           powerMultiplier: buff.powerMultiplier,

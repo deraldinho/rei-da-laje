@@ -60,7 +60,7 @@ const GIFTS = {
     lineWidth: 4.0,
     shieldCount: 1,
     specialAbility: 'tornado',
-    description: 'Tornado e perseguição por 45s'
+    description: 'Tornado e fluxo denso por 45s'
   },
   // Presente épico: Leão / Universo
   LEAO: {
@@ -95,16 +95,15 @@ function getGiftUpgrade(giftIdOrName) {
 }
 
 
-/** Todo presente real com valor conhecido gera algum poder. Presentes oficiais conhecidos mantêm sua regra específica. */
-function getGiftUpgradeByValue(giftName, diamondCount) {
-  const cost=Math.max(0,Number(diamondCount)||0);
+/** Resolve o tier exclusivamente pelo valor canônico da sequência. */
+function getGiftUpgradeByValue(giftName, coinValue) {
+  const cost=Math.max(0,Number(coinValue)||0);
   if (!(cost > 0)) return null;
   const name=String(giftName||'Presente TikTok').slice(0,90);
-  if (cost >= 10000) return { ...GIFTS.LEAO, id:String(giftName||'dynamic'), name, cost, maneuverGiftName:GIFTS.LEAO.name, durationSeconds:45, maxDurationSeconds:45 };
-  if (cost >= 500) return { ...GIFTS.PERFUME, id:String(giftName||'dynamic'), name, cost, maneuverGiftName:GIFTS.PERFUME.name, durationSeconds:45, maxDurationSeconds:45 };
-  if (cost >= 100) return { ...GIFTS.CAPIVARA, id:String(giftName||'dynamic'), name, cost, maneuverGiftName:GIFTS.CAPIVARA.name, durationSeconds:45, maxDurationSeconds:45 };
-  if (cost >= 10) return { ...GIFTS.DONUT, id:String(giftName||'dynamic'), name, cost, maneuverGiftName:GIFTS.DONUT.name, durationSeconds:30, maxDurationSeconds:45 };
-  return { ...GIFTS.ROSA, id:String(giftName||'dynamic'), name, cost, maneuverGiftName:GIFTS.ROSA.name, durationSeconds:30, maxDurationSeconds:45 };
+  const tier=Object.values(GIFTS).slice().sort((x,y)=>Number(y.cost)-Number(x.cost))
+    .find(config=>cost>=Number(config.cost));
+  if(!tier) return null;
+  return { ...tier, id:String(giftName||'dynamic'), name, cost, maneuverGiftName:tier.name };
 }
 module.exports = {
   GIFTS,

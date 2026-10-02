@@ -51,7 +51,7 @@ test('animação preserva ícone HTTPS do presente e rejeita URL insegura',async
  assert.equal(giftAnimation({giftName:'Rosa',iconUrl:'javascript:alert(1)'}).iconUrl,'');
 });
 
-test('catálogo reconhece Flor e Universo observados mesmo com ID novo',()=>{
+test('catálogo usa valor observado para benefício, independentemente do nome',()=>{
  const dir=fs.mkdtempSync(path.join(os.tmpdir(),'pipa-gift-alias-'));
  const filename=path.join(dir,'gifts.json');
  try{
@@ -63,7 +63,7 @@ test('catálogo reconhece Flor e Universo observados mesmo com ID novo',()=>{
   const universo=catalog.list().find(g=>g.id==='910002');
   assert.equal(flor.known,true);assert.equal(flor.durationSeconds,30);assert.equal(flor.maxDurationSeconds,45);
   assert.equal(universo.known,true);assert.equal(universo.durationSeconds,45);assert.equal(universo.maxDurationSeconds,45);
-  assert.match(flor.benefit,/Cerol/i);assert.match(universo.benefit,/Mestre do Céu/i);
+  assert.match(flor.benefit,/Cerol/i);assert.equal(universo.lineType,'tornado');assert.match(universo.benefit,/Tornado/i);
  }finally{fs.rmSync(dir,{recursive:true,force:true});}
 });
 
