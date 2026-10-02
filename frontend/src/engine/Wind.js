@@ -1,4 +1,5 @@
-﻿import { sampleWindField } from './physics/WindField.js';
+import { sampleWindField } from './physics/WindField.js';
+import { SkyWindDirector } from './physics/SkyWindDirector.js';
 
 /** Correntes compartilhadas: vento e fase de cada pipa conduzem o voo. */
 export class Wind {
@@ -7,6 +8,8 @@ export class Wind {
     direction: 'auto',
     pace: 'normal'
   };
+  static director = new SkyWindDirector({ seed: 0 });
+  static crowdEnergy = 0;
 
   static setSettings(settings) {
     if (!settings) return;
@@ -22,8 +25,16 @@ export class Wind {
     }
   }
 
+  static setCrowdEnergy(value = 0) {
+    Wind.crowdEnergy = Math.max(0, Math.min(1, Number(value) || 0));
+  }
+
   static sample(time) {
-    return sampleWindField(time, Wind.config);
+    const base = sampleWindField(time, Wind.config);
+    const directed = Wind.director.sample(time, base, Wind.crowdEnergy);
+    if (Wind.config.direction === 'left') directed.x = -Math.abs(directed.x);
+    else if (Wind.config.direction === 'right') directed.x = Math.abs(directed.x);
+    return directed;
   }
 
   /**

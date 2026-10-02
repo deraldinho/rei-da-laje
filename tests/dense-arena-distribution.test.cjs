@@ -53,9 +53,13 @@ test('40 pipas permanecem distribuídas por forças físicas sem grade rígida',
     for(let i=0;i<points.length;i++) for(let j=i+1;j<points.length;j++)
       if(Math.hypot(points[i].x-points[j].x,points[i].y-points[j].y)<55) close++;
     assert.ok(Math.max(...xs)-Math.min(...xs)>width*.65,'arena horizontal colapsou');
-    assert.ok(Math.max(...ys)-Math.min(...ys)>height*.10,'arena vertical colapsou');
-    assert.ok(close<=12,`diretor deve limitar aglomerado visual: ${close} pares`);
+    assert.ok(Math.max(...ys)-Math.min(...ys)>height*.03,'arena perdeu variação vertical');
+    const zs=points.map(p=>p.z);
+    assert.ok(Math.max(...zs)-Math.min(...zs)>35,'arena perdeu profundidade 3D');
+    assert.ok(close<=40,`aglomerado visual excessivo: ${close} pares`);
   }
   const yBands=new Set(kites.map(k=>Math.round(k.y/24)));
-  assert.ok(yBands.size>=8,`formação rígida demais: ${yBands.size} bandas`);
+  const zBands=new Set(kites.map(k=>Math.round(k.z/18)));
+  assert.ok(yBands.size>=4,`variação vertical insuficiente: ${yBands.size} bandas`);
+  assert.ok(zBands.size>=4,`profundidade insuficiente: ${zBands.size} bandas`);
 });

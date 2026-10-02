@@ -1,7 +1,6 @@
 import { SpoolController } from './SpoolController.js';
 import { stepKiteAttitude } from './KiteAttitude.js';
 import { computeKiteAerodynamics } from './KiteAerodynamics.js';
-import { computeLiveAssist } from './LiveCombatDirector.js';
 
 const SPARSE_CROSSING_SPEED = 0.72;
 const DENSE_CROSSING_SPEED = 0.34;
@@ -44,6 +43,21 @@ function individuality(kite){
   return .5+.5*Math.sin(phase*1.71+rank*.53);
 }
 
+function localWindForKite(kite,wind,time){
+  const base=wind||{};
+  const phase=Number(kite?.windPhase)||0;
+  const rank=Number(kite?.rooftopPlayer?.layoutIndex)||0;
+  const t=Number(time)||0;
+  const a=Math.sin(t*.13+phase+rank*.17);
+  const b=Math.cos(t*.09+phase*1.37-rank*.11);
+  const depth=clamp(((Number(kite?.z)||28)-28)/224,0,1)-.5;
+  return {...base,
+    x:(Number(base.x)||0)*(.94+.12*(.5+.5*b))+a*.055,
+    y:(Number(base.y)||0)+a*.26+depth*.05,
+    z:(Number(base.z)||0)+b*.12,
+    gust:Math.max(.5,(Number(base.gust)||1)*(1+a*.035))};
+}
+
 function ensureDepth(kite){
   if(kite._physicsDepthInitialized) return;
   const rank=Number(kite?.rooftopPlayer?.layoutIndex);
@@ -59,6 +73,28 @@ function edgeForce(value,min,max,softWidth,strength){
   if(value<min+soft) return (min+soft-value)*strength;
   if(value>max-soft) return -(value-(max-soft))*strength;
   return 0;
+}
+
+function computeBodySeparation(kite,allKites,population){
+  if(!Array.isArray(allKites)||allKites.length<2)return {fx:0,fy:0,fz:0};
+  const spacing=population>=30?84:population>=15?88:92;
+  let fx=0,fy=0,fz=0;
+  for(const other of allKites){
+    if(!other||other===kite)continue;
+    const dx=(Number(kite.x)||0)-(Number(other.x)||0);
+    const dy=(Number(kite.y)||0)-(Number(other.y)||0);
+    const dz=(Number(kite.z)||0)-(Number(other.z)||0);
+    const planar=Math.hypot(dx,dy)||.001;
+    if(planar>=spacing)continue;
+    const strength=(spacing-planar)/spacing*(population>=30?20:16);
+    const verticalDir=Math.abs(dy)>5?dy/planar:(String(kite.userId||'').localeCompare(String(other.userId||''))<=0?-1:1)*.72;
+    fx+=dx/planar*strength*.78;
+    fy+=verticalDir*strength*1.18;
+    if(planar<42&&Math.abs(dz)<34)fz+=(dz>=0?1:-1)*(34-Math.abs(dz))/34*2.4;
+  }
+  const mag=Math.hypot(fx,fy,fz);
+  if(mag>24){const s=24/mag;fx*=s;fy*=s;fz*=s;}
+  return {fx,fy,fz};
 }
 
 function clampAxis(kite,key,velocityKey,min,max){
@@ -113,12 +149,13 @@ export class KiteDynamics {
     const tensionAssist=clamp(Number(intent?.tensionAssist)||0,-.4,.4);
     const effectiveTension=clamp((Number(ropeState.tension)||.58)+tensionAssist*.12,.08,1);
 
+    const localWind=localWindForKite(kite,wind,KiteDynamics._globalTime);
     const attitude=stepKiteAttitude(kite,dt,{
-      wind,tension:effectiveTension,
+      wind:localWind,tension:effectiveTension,
       debicoTorque:debicoTorque+(Number(kite._aeroHeadingTorque)||0)*.18,
       trimPitch:trimPitch+(Number(kite._aeroPitchTorque)||0)*.06
     });
-    const aero=computeKiteAerodynamics(kite,wind,{
+    const aero=computeKiteAerodynamics(kite,localWind,{
       ...ropeState,tension:effectiveTension
     },{trimPitch});
     kite._aeroHeadingTorque=aero.headingTorque;
@@ -148,8 +185,7 @@ export class KiteDynamics {
     const boundaryFx=edgeForce(kite.x,minX,maxX,width*.08,.16);
     const boundaryFy=edgeForce(kite.y,minY,maxY,height*.06,.13);
     const boundaryFz=edgeForce(kite.z,minZ,maxZ,38,.18);
-    kite.liveAssistTime=KiteDynamics._globalTime;
-    const liveAssist=Array.isArray(allKites)?computeLiveAssist(kite,allKites,wind,dt):{fx:0,fy:0,fz:0};
+    const bodySeparation=computeBodySeparation(kite,allKites,population);
     // Correção de acoplamento do tether: a corda discretizada em 12 nós perde parte
     // da reação do cabo no último segmento; o chord devolve essa componente ao corpo.
     const chordFx=(handPos.x-kite.x)*effectiveTension*.07;
@@ -157,9 +193,9 @@ export class KiteDynamics {
 
     const aeroScale=3.15*((kite.likeBoostRemaining||0)>0?1.08:1);
     const gravity=30*kite.mass;
-    const totalFx=aero.fx*1.05+tensionFx+chordFx+forwardX*pull-kite.vx*.62+boundaryFx+liveAssist.fx;
-    const totalFy=gravity+aero.fy*aeroScale+tensionFy+forwardY*pull-kite.vy*.56+boundaryFy+liveAssist.fy;
-    const totalFz=aero.fz*2.35+tensionFz+chordFz+forwardZ*pull*.72-kite.vz*.58+boundaryFz+liveAssist.fz;
+    const totalFx=aero.fx*1.05+tensionFx+chordFx+forwardX*pull-kite.vx*.62+boundaryFx+bodySeparation.fx;
+    const totalFy=gravity+aero.fy*aeroScale+tensionFy+forwardY*pull-kite.vy*.56+boundaryFy+bodySeparation.fy;
+    const totalFz=aero.fz*2.35+tensionFz+chordFz+forwardZ*pull*.72-kite.vz*.58+boundaryFz+bodySeparation.fz;
 
     const ax=totalFx/kite.mass,ay=totalFy/kite.mass,az=totalFz/kite.mass;
     kite.vx+=ax*dt;

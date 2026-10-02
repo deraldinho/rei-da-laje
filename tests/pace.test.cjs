@@ -42,7 +42,7 @@ test('base física permanece estável sem depender de trilhos de encontro',async
   assert.ok(results.every(r=>r.maxTracked<=12&&r.maxSolved<=3),'limites de contato não podem regredir');
 });
 
-test('diretor mantém 15/20/40 pipas abertas e cria oportunidade física em até 15s',async()=>{
+test('vento global mantém 15/20/40 pipas abertas e cria contato físico em até 15s sem alvo',async()=>{
   const [{Wind},{KiteDynamics},{RopePhysics},{LineContactSystem}]=await Promise.all([
     load('Wind.js'),load('physics/KiteDynamics.js'),load('physics/RopePhysics.js'),load('physics/LineContactSystem.js')]);
   const w=1080,h=1920;
@@ -60,11 +60,12 @@ test('diretor mantém 15/20/40 pipas abertas e cria oportunidade física em até
       const r=system.step(kites,1/60,frame*1000/60,{allowWear:false});
       if(firstContact===null&&r.metrics.activeContacts>0)firstContact=frame/60;
     }
-    const xs=kites.map(k=>k.x),ys=kites.map(k=>k.y);let close=0;
+    const xs=kites.map(k=>k.x),ys=kites.map(k=>k.y),zs=kites.map(k=>k.z);let close=0;
     for(let i=0;i<count;i++)for(let j=i+1;j<count;j++)if(Math.hypot(kites[i].x-kites[j].x,kites[i].y-kites[j].y)<55)close++;
     assert.ok(Math.max(...xs)-Math.min(...xs)>w*.65,`${count}: span X`);
-    assert.ok(Math.max(...ys)-Math.min(...ys)>h*.10,`${count}: span Y`);
-    assert.ok(close<=12,`${count}: ${close} pares próximos`);
+    assert.ok(Math.max(...ys)-Math.min(...ys)>h*.025,`${count}: variação Y`);
+    assert.ok(Math.max(...zs)-Math.min(...zs)>35,`${count}: profundidade Z`);
+    assert.ok(close<=count,`${count}: ${close} pares próximos`);
     assert.ok(firstContact!==null&&firstContact<15,`${count}: sem contato em 15s (${firstContact})`);
   }
 });

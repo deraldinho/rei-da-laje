@@ -93,7 +93,7 @@ export class PlayerIntentController{
             this.tensionAssist=-.12;
           }else if(progress<.52){
             this.spoolCommand=.48;
-            this.debicoTorque=dir*1.08*gain;
+            this.debicoTorque=dir*1.18*gain;
             this.trimPitch=.10;
             this.tensionAssist=-.08;
           }else{
