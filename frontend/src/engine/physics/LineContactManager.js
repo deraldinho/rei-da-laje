@@ -76,15 +76,18 @@ export class LineContactManager {
       const rotationGap = 6;
       if (this._stepId - this._lastTrackingRotationStep >= rotationGap) {
         let victim = null;
-        let victimServiceAge = Infinity;
+        let victimScore = Infinity;
         let victimContactTime = -Infinity;
+        const minResidenceSec = this.config.minContactTime + this.config.engagementRampSec + this.config.releaseGraceSec;
         for (const item of this.contacts.values()) {
           if (item.phase === 'RELEASE') { victim = item; break; }
-          const lastService = item._lastSolvedStep >= 0 ? item._lastSolvedStep : item._firstTouchedStep;
-          const serviceAge = Math.max(0, this._stepId - lastService);
-          if (serviceAge < victimServiceAge || (serviceAge === victimServiceAge && item.contactTime > victimContactTime)) {
+          // Nunca recicle um contato enquanto ele ainda está construindo a própria
+          // janela física de engajamento; isso reiniciava a rampa antes da abrasão.
+          if (item.contactTime < minResidenceSec) continue;
+          this._score(item);
+          if (item.score < victimScore || (Math.abs(item.score-victimScore)<1e-9 && item.contactTime > victimContactTime)) {
             victim = item;
-            victimServiceAge = serviceAge;
+            victimScore = item.score;
             victimContactTime = item.contactTime;
           }
         }

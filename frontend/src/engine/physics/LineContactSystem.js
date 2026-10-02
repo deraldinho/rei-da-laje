@@ -103,17 +103,27 @@ export class LineContactSystem {
     this.manager.endStep(now);
     this.manager.selectForSolve(this._solved);
 
-    let abrasionUpdates=0;
     for(const contact of this._solved){
       this._fxContacts.push(contact);
       this._couplingJobs.push({pairKey:contact.pairKey,ropeA:contact.kiteA?.rope,ropeB:contact.kiteB?.rope,inter:contact});
-      if(!allowWear||this._cutLosers.has(contact.lineAId)||this._cutLosers.has(contact.lineBId)) continue;
-      integrateLineAbrasion(contact,contact.kiteA,contact.kiteB,dt,this.config);
-      abrasionUpdates++;
-      const cut=applyLineWearAndEvaluateBreak(contact,contact.kiteA,contact.kiteB,this.config);
-      if(cut&&!this._cutLosers.has(String(cut.loser?.userId??''))){
-        cut.pairKey=contact.pairKey; cut.contact=contact;
-        this._cuts.push(cut); this._cutLosers.add(String(cut.loser.userId));
+    }
+
+    // O budget de `maxSolvedContacts` protege apenas o solver pesado/acoplamento.
+    // Abrasão é integração escalar barata e precisa avançar em todo contato físico
+    // rastreado; caso contrário, ao saturar 12 contatos a própria otimização muda
+    // a taxa física de desgaste em até 4x.
+    let abrasionUpdates=0;
+    if(allowWear){
+      for(const contact of this.manager.contacts.values()){
+        if(!contact.active||contact.phase==='RELEASE') continue;
+        if(this._cutLosers.has(contact.lineAId)||this._cutLosers.has(contact.lineBId)) continue;
+        integrateLineAbrasion(contact,contact.kiteA,contact.kiteB,dt,this.config);
+        abrasionUpdates++;
+        const cut=applyLineWearAndEvaluateBreak(contact,contact.kiteA,contact.kiteB,this.config);
+        if(cut&&!this._cutLosers.has(String(cut.loser?.userId??''))){
+          cut.pairKey=contact.pairKey; cut.contact=contact;
+          this._cuts.push(cut); this._cutLosers.add(String(cut.loser.userId));
+        }
       }
     }
 
