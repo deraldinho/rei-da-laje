@@ -29,6 +29,9 @@ import { LifecycleBag } from './LifecycleBag.js';
 import { SocketSubscriptionBag } from './SocketSubscriptionBag.js';
 import { AparoController } from './AparoController.js';
 import { stabilizeSpawnKite } from './SpawnLayout.js';
+import { CrowdEnergy } from './physics/CrowdEnergy.js';
+import { LineDensityField } from './physics/LineDensityField.js';
+import { planGiftManeuver } from './physics/GiftManeuverAI.js';
 
 export class GameApp {
   constructor(socket) {
@@ -40,6 +43,8 @@ export class GameApp {
     this.kites = new Map(); // userId -> Kite
     this.fallingKites = [];
     this.windTime = 0;
+    this.crowdEnergy = new CrowdEnergy();
+    this.lineDensityField = new LineDensityField();
     this.cutCooldowns = new Map();
     this.relinhoPhysicsConfig = sanitizeRelinhoPhysicsConfig();
     this.relinhoContactSystem = new LineContactSystem(this.relinhoPhysicsConfig);
@@ -529,16 +534,23 @@ export class GameApp {
       const maneuverName = selectGiftManeuver(data?.giftName) || String(data?.giftName || 'retao');
       const stats = maneuverStats(maneuverName, data?.giftCost, data?.repeatCount);
       if (!stats) return;
+      stats.plan = planGiftManeuver(kite, stats, Wind.sample(this.windTime), this.lineDensityField);
       kite.setManeuver(stats);
       this.hud.showManeuver(kite.nickname, stats.name);
+    });
+    this._socketSubscriptions.on('competition:comment', (data) => {
+      const text = String(data?.text || '').trim();
+      if (!text) return;
+      const energy = this.crowdEnergy.accept({ userId:data?.userId, text });
+      const kite = this.kites.get(String(data?.userId || ''));
+      if (kite) kite.inputBuffer?.addComment(text, data?.userId, {
+        wind: Wind.sample(this.windTime), lineDensity:this.lineDensityField, engagement:energy
+      });
     });
     this._socketSubscriptions.on('competition:chat_action', (data) => {
       if (!data?.userId || !data?.action) return;
       const kite = this.kites.get(data.userId);
-      if (kite) {
-        kite.inputBuffer?.addComment(data.action, data.nickname);
-        startChatAction(kite, data.action);
-      }
+      if (kite) startChatAction(kite, data.action);
     });
     this._socketSubscriptions.on('competition:queue', data => this.hud.updateQueue(data?.length || 0));
     this._socketSubscriptions.on('competition:champion_cut', data => this.hud.showChampionCut(data?.winnerNick, data?.loserNick));
@@ -1000,6 +1012,7 @@ export class GameApp {
     delta = Math.max(0, Math.min(delta, 3));
     this.runtimeProfiler.frame(delta * (1000 / 60));
     this.windTime += delta / 60;
+    Wind.setCrowdEnergy(this.crowdEnergy.step(delta / 60));
     const currentWind = Wind.sample(this.windTime);
     this.runtimeProfiler.begin('hud');
     this.hud.updateWind(currentWind);
@@ -1043,7 +1056,7 @@ export class GameApp {
       // 1º: Intenções físicas, mãos e manobras (sem render Pixi aqui)
       for (const kite of physicsKites) {
         this.syncLineToPlayerHand(kite);
-        applyManeuverMovement(kite, physicsKites, fixedDelta, currentWind);
+        applyManeuverMovement(kite, physicsKites, fixedDelta, currentWind, this.lineDensityField);
         applyChatAction(kite, fixedDelta, currentWind);
       }
 
@@ -1052,6 +1065,7 @@ export class GameApp {
       for (const kite of physicsKites) {
         kite.update(fixedDt * 60, currentWind, physicsKites.length, physicsKites);
       }
+      this.lineDensityField.update(physicsKites, this.windTime * 1000);
 
       // 3º: Vórtices e atratores de vento
       for (const kite of physicsKites) {

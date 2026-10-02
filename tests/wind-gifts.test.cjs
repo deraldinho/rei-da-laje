@@ -12,16 +12,18 @@ function setup() {
   const rules=new GameRules(40), buffs=new BuffManager(io);
   return {events,rules,buffs,service:new TikTokService(io,rules,buffs)};
 }
-test('qualquer comentário entra e comandos exatos controlam a própria pipa', () => {
+test('qualquer comentário entra e é encaminhado como gesto nativo da live', () => {
   const {service,rules,events}=setup();
   for(const comment of ['oi','puxar','1','descarregar','embicar','#pegar']) {
     service.handleChatMessage({userId:comment,nickname:comment,comment});
     assert.ok(rules.activePlayers.has(comment));
   }
-  const actions=events.filter(e=>e.name==='competition:chat_action');
-  assert.deepEqual(actions.map(e=>e.data.action),['puxar','puxar','descarregar','embicar','pegar']);
-  service.handleChatMessage({userId:'oi',nickname:'oi',comment:'puxar'});
-  assert.equal(events.filter(e=>e.name==='competition:chat_action').at(-1).data.userId,'oi');
+  const comments=events.filter(e=>e.name==='competition:comment');
+  assert.equal(comments.length,6);
+  assert.deepEqual(comments.map(e=>e.data.text),['oi','puxar','1','descarregar','embicar','#pegar']);
+  assert.equal(events.filter(e=>e.name==='competition:chat_action').length,0);
+  service.handleChatMessage({userId:'oi',nickname:'oi',comment:'bora de novo 🔥'});
+  assert.equal(events.filter(e=>e.name==='competition:comment').at(-1).data.userId,'oi');
   assert.equal(rules.activePlayers.size,6);
 });
 test('presente não coloca pipa no céu sem comentário', () => {

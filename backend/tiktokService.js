@@ -34,7 +34,7 @@ class TikTokService {
     this.internalRetry = null;
     this.recentGiftMessages = new Map();
     this.chatCommandState = new Map();
-    this.chatActionsEnabled = true;
+    this.chatActionsEnabled = false;
     this.activityMonitor = new LiveActivityMonitor();
     this.replayStore = null;
   }
@@ -428,6 +428,14 @@ class TikTokService {
     }
     if (result && result.status === 'spawn') {
       this.io.emit('player:spawn', playerSpawnPayload(result.player,this.buffManager));
+    }
+    if (result && ['spawn','already_active','queued'].includes(result.status)) {
+      this.io.emit('competition:comment', {
+        userId:data.userId,
+        nickname:result.player?.nickname || data.nickname,
+        text:String(data.comment || '').slice(0,180),
+        status:result.status
+      });
     }
     if (this.chatActionsEnabled && command && result && (result.status === 'spawn' || result.status === 'already_active')) {
       this.emitChatActionThrottled(data.userId,result.player?.nickname || data.nickname,command);
