@@ -1,16 +1,16 @@
-# Hybrid Live Kite Combat â€” Design Specification
+# Hybrid Live Kite Combat — Design Specification
 
 Date: 2026-10-02
 Status: Awaiting user review
-Scope: CompetiÃ§Ã£o de Pipa TikTok Live
+Scope: Competição de Pipa TikTok Live
 
 ## 1. Goal
 
 Build a TikTok Live kite-combat system that combines three responsibilities without mixing them:
 
-1. **Live 2D-style arena behavior** â€” the wind continuously reorganizes the whole sky and naturally creates opportunities for line crossings.
-2. **3D kite-control mechanics** â€” spool, tension, slack, attitude, apparent wind, inertia and pull/release determine how each kite actually moves.
-3. **Experimental 3D line physics** â€” only real line-to-line contact in 3D may create relinho, abrasion, fatigue and breakage.
+1. **Live 2D-style arena behavior** — the wind continuously reorganizes the whole sky and naturally creates opportunities for line crossings.
+2. **3D kite-control mechanics** — spool, tension, slack, attitude, apparent wind, inertia and pull/release determine how each kite actually moves.
+3. **Experimental 3D line physics** — only real line-to-line contact in 3D may create relinho, abrasion, fatigue and breakage.
 
 The game must feel like a continuous free-for-all with up to 40 simultaneous kites. There is no target selection, duel queue, combat lane or opponent lock during normal play.
 
@@ -34,11 +34,11 @@ Core rule:
 
 The system is intentionally split into five independent layers:
 
-1. `SkyWindDirector` â€” global arena motion and wind phases.
-2. `CommentGestureEngine` â€” short native physical influence from chat engagement.
-3. `GiftManeuverAI` â€” temporary intelligent piloting after gifts.
-4. Existing 3D kite/rope physics â€” authority over actual motion.
-5. Existing 3D contact/material physics â€” authority over wear and cut results.
+1. `SkyWindDirector` — global arena motion and wind phases.
+2. `CommentGestureEngine` — short native physical influence from chat engagement.
+3. `GiftManeuverAI` — temporary intelligent piloting after gifts.
+4. Existing 3D kite/rope physics — authority over actual motion.
+5. Existing 3D contact/material physics — authority over wear and cut results.
 
 ## 4. Normal arena behavior: `SkyWindDirector`
 
@@ -78,7 +78,7 @@ For an active player's kite, a valid comment is transformed into a short physica
 - nearby line-density information at coarse resolution;
 - engagement score and anti-spam state.
 
-The result is a bounded intent envelope such as `spoolCommand`, `debicoTorque`, `trimPitch`, `tensionAssist`, duration and intensity. Typical duration is 0.3â€“2.0 seconds.
+The result is a bounded intent envelope such as `spoolCommand`, `debicoTorque`, `trimPitch`, `tensionAssist`, duration and intensity. Typical duration is 0.3–2.0 seconds.
 
 The engine may bias a gesture toward a reachable region with more line traffic, but it never selects a player. Its purpose is to increase the chance of a useful crossing while preserving physical uncertainty.
 
@@ -88,7 +88,7 @@ Comment quality means useful live engagement, not grammar quality. Scoring may c
 
 All accepted comments also contribute to a bounded global engagement signal:
 
-`CrowdEnergy âˆˆ [0, 1]`
+`CrowdEnergy ∈ [0, 1]`
 
 It rises with unique, non-spam participation and decays smoothly with time. It may modulate only arena-level parameters such as gust amplitude, wind-transition cadence and flight variability within safe bounds.
 
@@ -107,7 +107,7 @@ A chat burst therefore makes the sky feel more active without turning comments i
 A gift temporarily enables intelligent piloting for the receiving kite. This is the only normal subsystem allowed to plan a multi-step maneuver.
 
 It does not choose a victim. It searches for a physically reachable path through high line-density space while respecting current wind, attitude, spool state, tension, arena bounds and maneuver duration.
-For a retÃ£o, the planning sequence is conceptually:
+For a retão, the planning sequence is conceptually:
 
 1. sample current wind and coarse line-density field;
 2. score a small fixed set of reachable headings/corridors;
@@ -117,7 +117,7 @@ For a retÃ£o, the planning sequence is conceptually:
 6. recover tension and pull;
 7. let `KiteDynamics` and `RopePhysics` determine the actual trajectory.
 
-Other gift maneuvers use the same rule: plan controls, never coordinates. Mergulho scores descending corridors; laÃ§ada scores curved/high-density corridors; aparada prepares tension for nearby incoming line traffic.
+Other gift maneuvers use the same rule: plan controls, never coordinates. Mergulho scores descending corridors; laçada scores curved/high-density corridors; aparada prepares tension for nearby incoming line traffic.
 
 When the maneuver expires, control returns automatically to wind + normal comment influence.
 
@@ -125,7 +125,7 @@ The existing gift-value/economy layer resolves which virtual material buff, dura
 
 ## 8. `LineDensityField`
 
-Gift and comment assistance need spatial awareness without O(NÂ²) target logic. A coarse 3D density field is built from existing rope segments at a low update rate.
+Gift and comment assistance need spatial awareness without O(N²) target logic. A coarse 3D density field is built from existing rope segments at a low update rate.
 
 The implementation should reuse broad-phase-compatible spatial information where practical. A small fixed grid or spatial hash is sufficient; it must not allocate per segment every frame.
 The field stores only what maneuver planning needs: line-segment density and optional local direction/tension summaries. It never awards damage or declares contact.
@@ -197,7 +197,7 @@ Under heavy gift load:
 
 ## 13. Migration from current implementation
 
-Keep Tasks 1â€“7 of the current physical-kite-line work unless a test proves a targeted correction is required.
+Keep Tasks 1–7 of the current physical-kite-line work unless a test proves a targeted correction is required.
 
 The current `LiveCombatDirector` direction from Task 8 is superseded. Remove opponent/pair-oriented encounter steering and replace its arena responsibility with `SkyWindDirector` plus optional body-separation only.
 `PlayerIntentController`, `SpoolController`, `KiteAttitude`, `KiteAerodynamics`, `KiteDynamics`, `RopePhysics`, material mechanics, structural fatigue, broad/narrow phase and abrasion remain the physical execution stack.
@@ -234,7 +234,7 @@ Integration tests must prove:
 Pacing targets for the standard live preset:
 
 - 40 active kites: after warm-up, at least one real geometric contact should occur within a 10-second rolling window;
-- 15â€“20 active kites: at least one real geometric contact opportunity within 15 seconds;
+- 15–20 active kites: at least one real geometric contact opportunity within 15 seconds;
 - no requirement that a contact causes a cut; material and physics remain authoritative.
 
 Performance gates remain unchanged or stricter: 40 kites, no uncaught exceptions, 60 Hz physics target, `maxTracked <= 12`, `maxSolved <= 3`, no unbounded allocations, and browser benchmark budgets must not be loosened to make the feature pass.
@@ -257,7 +257,7 @@ Those systems may consume the physical interfaces defined here but must remain s
 
 ## 17. Existing implementation checkpoint
 
-The current branch already contains the approved physical foundations from Tasks 1â€“7 and an interim Task 8 implementation. The implementation plan must replace only the superseded encounter-steering behavior, preserving verified physics.
+The current branch already contains the approved physical foundations from Tasks 1–7 and an interim Task 8 implementation. The implementation plan must replace only the superseded encounter-steering behavior, preserving verified physics.
 
 The interrupted Task 9 browser benchmark also exposed a structural-load normalization issue: material `maxTension` must genuinely reduce `loadRatio` under the same physical load. That correction must be completed and covered by regression tests before final performance verification.
 
