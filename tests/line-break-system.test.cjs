@@ -55,3 +55,13 @@ test('ruptura simultânea idêntica usa desempate determinístico estável',asyn
   assert.equal(result.winner.userId,'a'); assert.equal(result.loser.userId,'b');
   assert.equal(result.segmentIndex,3); assert.equal(result.segmentT,.7);
 });
+test('falha estrutural converge no mesmo descritor localizado de ruptura',async()=>{
+  const [{applyLineWearAndEvaluateBreak},{DEFAULT_RELINHO_PHYSICS_CONFIG}]=await Promise.all([
+    import(`${breakUrl}?t=${Date.now()}-struct`),import(configUrl)]);
+  const a=await makeKite('a'),b=await makeKite('b');
+  a.rope.structuralFailure={broke:true,cause:'tension',segmentIndex:1,segmentT:.5,point:{x:30,y:70,z:0}};
+  const c={...hit(),lineAId:'a',lineBId:'b',wearDeltaA:0,wearDeltaB:0,abrasionRateA:0,abrasionRateB:0};
+  const result=applyLineWearAndEvaluateBreak(c,a,b,DEFAULT_RELINHO_PHYSICS_CONFIG);
+  assert.equal(result.loser,a);assert.equal(result.winner,b);assert.equal(result.cause,'tension');
+  assert.equal(result.segmentIndex,1);assert.equal(result.segmentT,.5);
+});

@@ -1,5 +1,6 @@
 import { getLineMaterial } from './LineMaterial.js';
 import { RopeConstraintSolver } from './RopeConstraintSolver.js';
+import { evaluateStructuralLoad } from './LineStructuralModel.js';
 
 /**
  * RopePhysics - Simulação Dinâmica de Linha de Pipa baseada em XPBD/Verlet
@@ -24,6 +25,10 @@ export class RopePhysics {
     this.segmentWear = new Float32Array(this.nodeCount - 1);
     this.spoolLength = 0;
     this.tension = 0.58;
+    this.structuralLoad = 0;
+    this.structuralFatigue = 0;
+    this._structuralOverloadTime = 0;
+    this.structuralFailure = null;
     this._directDistance = 0;
     this._spoolControlled = false;
     this._minSpoolRatio = 0.85;
@@ -194,6 +199,9 @@ export class RopePhysics {
     // strain >= 0.98 indica linha reta e esticada; strain < 0.85 indica bastante folga
     const rawTension = Math.max(0.08, Math.min(1.0, 0.12 + (strain - 0.75) * 3.5));
     this.tension = Math.max(0.08, Math.min(1.0, this.tension + (rawTension - this.tension) * Math.min(1.0, safeDt * 8)));
+    const loadRatio = this.tension * 0.72 + Math.max(0, strain - 0.96) * 4.2;
+    this.structuralLoad = Math.max(0, this.material.maxTension * loadRatio);
+    evaluateStructuralLoad(this, this.material, safeDt);
 
     this.updateAABB();
   }
