@@ -220,5 +220,88 @@
     "distributed40AvgMsMax": 2,
     "distributed40MaxMsMax": 8,
     "dense40AvgMsMax": 4
+  },
+  "browser": {
+    "generatedAt": "2026-10-02T19:11:39.316Z",
+    "samples": 240,
+    "p95Ms": 18.700000047683716,
+    "p99Ms": 26.5,
+    "maxMs": 27.5,
+    "maxTracked": 12,
+    "maxSolved": 3,
+    "maxCold": 89,
+    "maxActive": 12,
+    "manager": {
+      "createdContacts": 12,
+      "reusedContacts": 24,
+      "droppedContacts": 179,
+      "expiredContacts": 4,
+      "rotatedContacts": 20,
+      "activeContacts": 12,
+      "selectedContacts": 3,
+      "trackedContacts": 12,
+      "poolSize": 12
+    },
+    "profiler": {
+      "samples": 240,
+      "fps": 60.00000000000021,
+      "quality": "high",
+      "frame": {
+        "avgMs": 16.666666666666607,
+        "maxMs": 16.666666666666668,
+        "p95Ms": 16.666666666666668,
+        "p99Ms": 16.666666666666668
+      },
+      "sections": {
+        "hud": {
+          "avgMs": 0.03374999662240346,
+          "maxMs": 0.3000001907348633,
+          "p95Ms": 0.10000014305114746,
+          "p99Ms": 0.10000014305114746
+        },
+        "render3d": {
+          "avgMs": 14.00958334505558,
+          "maxMs": 25.5,
+          "p95Ms": 16.100000143051147,
+          "p99Ms": 23
+        },
+        "collision": {
+          "avgMs": 0.3862499952316284,
+          "maxMs": 3.299999952316284,
+          "p95Ms": 0.7000000476837158,
+          "p99Ms": 1.5999999046325684
+        },
+        "physics": {
+          "avgMs": 1.4691666593154271,
+          "maxMs": 4.400000095367432,
+          "p95Ms": 2.299999952316284,
+          "p99Ms": 3.5
+        },
+        "render2d": {
+          "avgMs": 0.2591666708389918,
+          "maxMs": 0.5,
+          "p95Ms": 0.40000009536743164,
+          "p99Ms": 0.40000009536743164
+        },
+        "serialization": {
+          "avgMs": 2.299999952316284,
+          "maxMs": 2.299999952316284,
+          "p95Ms": 2.299999952316284,
+          "p99Ms": 2.299999952316284
+        }
+      },
+      "gauges": {
+        "drawCalls": 1428,
+        "triangles": 48314,
+        "staticSavedDraws": 890,
+        "relinhoCandidates": 0,
+        "relinhoNarrowChecks": 12,
+        "relinhoContacts": 12,
+        "relinhoSolved": 3
+      }
+    },
+    "count": 40,
+    "drawCalls": 1428,
+    "uncaughtExceptions": 0
   }
 }
