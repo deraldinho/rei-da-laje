@@ -10,9 +10,10 @@
  *   4. Intenções de Controle (comentários/presentes: reelVelocity, liftIntent, steerIntent).
  */
 const SPARSE_CROSSING_SPEED = 0.72;
+const DENSE_CROSSING_SPEED = 0.34;
 
 export function sparseCruiseTarget(kite, population = 2, globalTime = 0, width = 1080, height = 1920) {
-  const count = Math.max(2, Math.min(4, Math.floor(Number(population) || 2)));
+  const count = Math.max(2, Math.min(8, Math.floor(Number(population) || 2)));
   const layoutIndex = Number(kite?.rooftopPlayer?.layoutIndex);
   const hasLayoutIndex = Number.isFinite(layoutIndex);
   const rank = hasLayoutIndex ? ((Math.floor(layoutIndex) % count) + count) % count : 0;
@@ -29,6 +30,28 @@ export function sparseCruiseTarget(kite, population = 2, globalTime = 0, width =
   return {
     x: w * (0.5 + crossingWave * 0.34),
     y: h * (0.28 + verticalWave * 0.075)
+  };
+}
+
+export function denseCruiseTarget(kite, population = 40, globalTime = 0, width = 1080, height = 1920) {
+  const count = Math.max(9, Math.min(40, Math.floor(Number(population) || 40)));
+  const layoutIndex = Number(kite?.rooftopPlayer?.layoutIndex);
+  const rank = Number.isFinite(layoutIndex) ? ((Math.floor(layoutIndex) % count) + count) % count : 0;
+  const rows = count >= 28 ? 4 : count >= 18 ? 3 : 2;
+  const cols = Math.max(2, Math.ceil(count / rows));
+  const row = rank % rows;
+  const col = Math.min(cols - 1, Math.floor(rank / rows));
+  const w = Math.max(320, Number(width) || 1080);
+  const h = Math.max(480, Number(height) || 1920);
+  const t = Number.isFinite(globalTime) ? globalTime : 0;
+  const phase = row * (Math.PI / 2) + col * 0.61;
+  const baseX = w * (0.12 + (col / Math.max(1, cols - 1)) * 0.76);
+  const baseY = h * (0.20 + (row / Math.max(1, rows - 1)) * 0.14);
+  const x = baseX + Math.sin(t * DENSE_CROSSING_SPEED + phase) * w * 0.045;
+  const y = baseY + Math.cos(t * 0.28 + phase * 0.6) * h * 0.012;
+  return {
+    x: Math.max(w * 0.10, Math.min(w * 0.90, x)),
+    y: Math.max(h * 0.18, Math.min(h * 0.38, y))
   };
 }
 
@@ -123,8 +146,8 @@ export class KiteDynamics {
 
     // Balanço aerodinâmico natural da pipa no céu (dança ao sabor da brisa)
     const swayTimer = (kite.oscillationTimer || 0) * 1.5 + (kite.windPhase || 0);
-    const sparse = population <= 4;
-    // Com poucas pipas, o balanço precisa ser muito maior para gerar cruzamentos
+    const sparse = population <= 8;
+    // Em arenas pequenas/médias, o balanço precisa ser maior para gerar cruzamentos reais
     const swayAmpX = sparse ? 55.0 : 18.0;
     const swayAmpY = sparse ? 35.0 : 12.0;
     const naturalSwayFx = Math.sin(swayTimer) * swayAmpX + (sparse ? Math.sin(swayTimer * 0.37) * 30.0 : 0);
@@ -211,19 +234,20 @@ export class KiteDynamics {
       cruiseX = target.x;
       cruiseY = target.y;
     } else {
-      cruiseX = Number.isFinite(kite.targetX) ? kite.targetX : (width * 0.5);
-      cruiseY = Number.isFinite(kite.targetY) ? kite.targetY : (height * 0.26);
+      const target = denseCruiseTarget(kite, population, KiteDynamics._globalTime, width, height);
+      cruiseX = target.x;
+      cruiseY = target.y;
     }
 
     // Sustentação restauradora de altitude: quanto mais a pipa descer em relação ao céu,
-    // maior a sustentação ascencional do vento contra a face inferior da pipa (-Y)
+    // maior a sustentação ascencional do vento contra a face inferior da pipa (-Y).
+    // Em arena cheia a mola vertical também mantém as faixas legíveis sob vento forte.
     const altitudeError = kite.y - cruiseY;
-    const restoringLiftFy = -altitudeError * (sparse ? 1.8 : 1.55);
+    const restoringLiftFy = -altitudeError * (sparse ? 1.8 : 1.95);
 
-    // Força lateral de corredor: com sparse, a mola é FORTE para que as pipas
-    // sigam fielmente o cruiseX calculado pela convergência (antes era 0.15 e
-    // as pipas não chegavam ao destino). Com muitas pipas, mantém dispersão.
-    const lateralCorridorFx = -(kite.x - cruiseX) * (sparse ? 0.55 : 0.35);
+    // Força lateral de corredor: em arena cheia precisa vencer o arrasto comum do vento;
+    // sem isso dezenas de pipas acumulam na mesma borda da tela.
+    const lateralCorridorFx = -(kite.x - cruiseX) * (sparse ? 0.55 : 1.15);
 
     // A linha equilibra a sustentação; atenuamos a componente vertical para não afundar a pipa na laje
     const balancedTensionFy = tensionFy * 0.12;

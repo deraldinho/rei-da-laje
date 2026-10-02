@@ -73,3 +73,15 @@ test('cap de descoberta gira entre regiões densas e não deixa pares do fim da 
   }
   assert.equal(sawLatePair,true,'par zA|zB nunca recebeu orçamento de descoberta');
 });
+
+test('16 linhas em 8 duelos locais descobrem os 8 pares sem gastar budget em combinações distantes', async () => {
+  const { LineBroadPhase } = await import(`${moduleUrl}?t=${Date.now()}-local-pairs`);
+  const broad = new LineBroadPhase({ maxDiscoveryChecksPerScan: 96 });
+  const list=[];
+  for(let pair=0;pair<8;pair++){
+    const x=pair*220;
+    list.push(kite(`a${pair}`,x,x+80,0,100),kite(`b${pair}`,x+20,x+100,10,110));
+  }
+  const candidates=broad.scan(list,16);
+  assert.ok(candidates.length>=8,`esperava 8 duelos locais, recebeu ${candidates.length}`);
+});

@@ -19,7 +19,7 @@ test('ritmo físico de encontros e cortes em arenas verticais e horizontais',asy
   const [{Wind},{KiteDynamics},{RopePhysics},{LineContactSystem}]=await Promise.all([
     load('Wind.js'),load('physics/KiteDynamics.js'),load('physics/RopePhysics.js'),load('physics/LineContactSystem.js')]);
   const results=[];
-  for(const [w,h] of [[390,844],[1080,1920],[1920,1080]]) for(const count of [2,3,4]){
+  for(const [w,h] of [[390,844],[1080,1920],[1920,1080]]) for(const count of [2,3,4,5,8]){
     KiteDynamics._globalTime=0; KiteDynamics._lastFrame=-1; KiteDynamics._stepFrame=0;
     const kites=Array.from({length:count},(_,i)=>makeKite(RopePhysics,`p${i}`,i,count,w,h));
     const system=new LineContactSystem();

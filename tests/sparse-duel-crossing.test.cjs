@@ -32,9 +32,22 @@ test('3 e 4 sobreviventes mantêm fases distribuídas sem colapsar no mesmo alvo
   }
 });
 
+test('5 e 8 pipas também recebem alvos de cruzamento distribuídos para manter combate vivo', async () => {
+  const { sparseCruiseTarget } = await import(`${dynamicsUrl}?t=${Date.now()}-live-multi`);
+  for (const count of [5,8]) {
+    for (const time of [0,2.1,5.4,9.7]) {
+      const targets=Array.from({length:count},(_,rank)=>sparseCruiseTarget(kite(rank,count),count,time,width,height));
+      const unique=new Set(targets.map(roundedPoint));
+      assert.equal(unique.size,count,`${count} pipas precisam de corredores próprios em t=${time}`);
+      const avgX=targets.reduce((sum,p)=>sum+p.x,0)/count;
+      assert.ok(Math.abs(avgX-width/2)<1e-6,'grupo deve cruzar o centro sem colapsar em leque');
+    }
+  }
+});
+
 test('layoutIndex determina a fase sparse, independente do windPhase aleatório', async () => {
   const { sparseCruiseTarget } = await import(`${dynamicsUrl}?t=${Date.now()}-phase`);
-  for(const count of [2,3,4]){
+  for(const count of [2,3,4,5,8]){
     for(let rank=0;rank<count;rank++){
       const a=sparseCruiseTarget(kite(rank,count,.01),count,2.3,width,height);
       const b=sparseCruiseTarget(kite(rank,count,5.99),count,2.3,width,height);

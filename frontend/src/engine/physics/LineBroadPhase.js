@@ -53,29 +53,31 @@ export class LineBroadPhase {
 
     let outIndex = 0;
     const count = this._entries.length;
-    const totalPairs = (count * (count - 1)) / 2;
-    if (totalPairs > 0) {
-      let pairIndex = this._pairCursor % totalPairs;
-      const budget = Math.min(totalPairs, this.maxDiscoveryChecksPerScan);
-      for (let visited = 0; visited < budget; visited++) {
-        let remainder = pairIndex;
-        let i = 0;
-        let rowSize = count - 1;
-        while (rowSize > 0 && remainder >= rowSize) {
-          remainder -= rowSize;
-          i++;
-          rowSize--;
-        }
-        const j = i + 1 + remainder;
+    if (count > 1) {
+      const start = this._pairCursor % count;
+      let outerVisited = 0;
+      let budgetHit = false;
+      for (let offset = 0; offset < count && !budgetHit; offset++) {
+        const i = (start + offset) % count;
         const a = this._entries[i];
-        const b = this._entries[j];
-        metrics.checks++;
-
-        if (b.minX > a.maxX + radius || a.minX > b.maxX + radius) {
-          metrics.rejectedX++;
-        } else if (b.minY > a.maxY + radius || a.minY > b.maxY + radius) {
-          metrics.rejectedY++;
-        } else {
+        outerVisited++;
+        for (let j = i + 1; j < count; j++) {
+          const b = this._entries[j];
+          // Sweep-line: como as entradas estão ordenadas por minX, todo o restante
+          // também estará fora do alcance. Esse descarte não consome narrow budget.
+          if (b.minX > a.maxX + radius) {
+            metrics.rejectedX += count - j;
+            break;
+          }
+          if (metrics.checks >= this.maxDiscoveryChecksPerScan) {
+            budgetHit = true;
+            break;
+          }
+          metrics.checks++;
+          if (b.minY > a.maxY + radius || a.minY > b.maxY + radius) {
+            metrics.rejectedY++;
+            continue;
+          }
           const candidate = this._candidate(outIndex++);
           const aFirst = a.id <= b.id;
           candidate.pairKey = aFirst ? `${a.id}|${b.id}` : `${b.id}|${a.id}`;
@@ -83,9 +85,10 @@ export class LineBroadPhase {
           candidate.kiteB = aFirst ? b.kite : a.kite;
           this._candidates.push(candidate);
         }
-        pairIndex = (pairIndex + 1) % totalPairs;
       }
-      this._pairCursor = pairIndex;
+      // Rotaciona o ponto inicial quando o budget não cobrir toda a arena.
+      // Assim regiões tardias recebem descoberta sem desperdiçar checks em pares distantes.
+      this._pairCursor = budgetHit ? (start + Math.max(1, outerVisited)) % count : (start + 1) % count;
     } else {
       this._pairCursor = 0;
     }
