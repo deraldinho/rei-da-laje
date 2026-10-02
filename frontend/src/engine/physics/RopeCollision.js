@@ -113,7 +113,7 @@ export class RopeCollision {
       return collisionMiss(out, { minDistance: closestInfo.distance, deltaZ, dist2D, reason: 'Z_SEPARATION' });
     }
 
-    const effectiveDist = Number.isFinite(options.maxZDistance) ? dist2D : closestInfo.distance;
+    const effectiveDist = closestInfo.distance;
     if (effectiveDist > contactRadius) {
       return collisionMiss(out, { minDistance: closestInfo.distance, deltaZ, dist2D });
     }

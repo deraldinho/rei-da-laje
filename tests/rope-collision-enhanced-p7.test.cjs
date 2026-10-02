@@ -55,13 +55,18 @@ test('Item 3: Profundidade 3D (Z-Aware Collision) - Rejeita relinho entre planos
   assert.equal(distantZHit.reason, 'Z_SEPARATION');
   assert.ok(distantZHit.deltaZ > 85, `Delta Z deve ser superior ao limite: ${distantZHit.deltaZ}`);
 
-  // Caso 2: Cruzam em X e Y, no mesmo plano ou planos próximos (separação Z de 20 unidades)
+  // Caso 2: X/Y cruzam e passam pelo gate de Z, mas a distância euclidiana 3D ainda excede o raio.
   ropeA.resetPositions({ x: 100, y: 900, z: 120 }, { x: 800, y: 300, z: 120 });
   ropeB.resetPositions({ x: 800, y: 900, z: 140 }, { x: 100, y: 300, z: 140 });
+  const nearButSeparate = RopeCollision.checkRopeCollision(ropeA, ropeB, 4.5, { maxZDistance: 85 });
+  assert.equal(nearButSeparate.hit, false, 'Gate de Z não substitui proximidade física 3D');
+  assert.ok(nearButSeparate.minDistance > 9);
 
-  const closeZHit = RopeCollision.checkRopeCollision(ropeA, ropeB, 4.5, { maxZDistance: 85 });
-  assert.equal(closeZHit.hit, true, 'Cordas no mesmo corredor aéreo Z devem colidir normalmente');
-  assert.ok(closeZHit.deltaZ <= 85);
+  // Caso 3: aproximação real em X/Y/Z dentro do raio físico da cápsula.
+  ropeB.resetPositions({ x: 800, y: 900, z: 127 }, { x: 100, y: 300, z: 127 });
+  const true3DHit = RopeCollision.checkRopeCollision(ropeA, ropeB, 4.5, { maxZDistance: 85 });
+  assert.equal(true3DHit.hit, true, 'Cordas só colidem quando a menor distância 3D entra no raio de contato');
+  assert.ok(true3DHit.distance <= true3DHit.contactRadius);
 });
 
 test('Item 4: Two-Way Coupling - constraint de não-penetração move ambos os fios sem injetar impulso', async () => {
