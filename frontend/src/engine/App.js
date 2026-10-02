@@ -1011,7 +1011,7 @@ export class GameApp {
 
   gameLoop(delta) {
     delta = Math.max(0, Math.min(delta, 3));
-    this.runtimeProfiler.frame(delta * (1000 / 60));
+    this.runtimeProfiler.beginFrame();
     this.windTime += delta / 60;
     Wind.setCrowdEnergy(this.crowdEnergy.step(delta / 60));
     const currentWind = Wind.sample(this.windTime);
@@ -1148,10 +1148,15 @@ export class GameApp {
     this.runtimeProfiler.gauge('relinhoSolved', result.metrics.solvedContacts || 0);
 
     const wallNow = Date.now();
+    // Estado visual barato acompanha todos os contatos físicos que acumulam abrasão.
+    // O budget pesado continua restrito a result.fxContacts / couplingJobs.
+    for (const contact of result.contacts.values()) {
+      if (!contact?.active || contact.phase === 'RELEASE') continue;
+      stampRelinhoVisualState(contact, wallNow);
+    }
     for (const contact of result.fxContacts) {
       const kA = contact.kiteA, kB = contact.kiteB;
       if (!kA || !kB) continue;
-      stampRelinhoVisualState(contact, wallNow);
       const contactStrength = Math.min(1.5, 0.65 + Math.hypot(contact.relativeVx || 0, contact.relativeVy || 0) * 0.025);
       kA.line?.triggerContact?.(contactStrength);
       kB.line?.triggerContact?.(contactStrength);
@@ -1168,8 +1173,11 @@ export class GameApp {
       if (visibleSparks > 0) {
         this.sparks.emit(contact.x, contact.y, visibleSparks);
         if (this.threeScene && !this.threeScene.disabled) {
-          const avgZ = ((Number(kA.z) || 0) + (Number(kB.z) || 0)) * 0.5 || 120;
-          const p3d = this.threeScene.screenToWorld(contact.x, contact.y, avgZ);
+          const a3d = this.threeScene.kites3D?.get?.(String(kA.userId));
+          const b3d = this.threeScene.kites3D?.get?.(String(kB.userId));
+          const contactDepth = a3d && b3d ? (a3d.position.z + b3d.position.z) * 0.5
+            : ((Number(a3d?.position?.z) || Number(b3d?.position?.z) || 120));
+          const p3d = this.threeScene.screenToWorld(contact.x, contact.y, contactDepth);
           this.threeScene.emitSpark3D(p3d.x, p3d.y, p3d.z, visibleSparks, kA.line?.color || 0xffea00);
         }
       }
@@ -1209,6 +1217,7 @@ export class GameApp {
     }
 
     this.hud.setCombatCompact((result.metrics.activeContacts || 0) > 0);
+    this.runtimeProfiler.endFrame();
   }
   checkAparos(delta, currentWind) {
     return this.aparoController.check({

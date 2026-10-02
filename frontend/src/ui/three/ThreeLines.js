@@ -142,6 +142,10 @@ export class ThreeLines {
       }
     }
 
+    if (l3d.userData.glowLine) {
+      l3d.userData.glowLine.visible = isLineActive || this.idleLineOpacityScale > 0.25;
+    }
+
     if (l3d.userData.glowMat) {
       if (relinhoRoleActive && relinhoGlowColor !== null) {
         l3d.userData.glowMat.color.setHex(relinhoGlowColor);

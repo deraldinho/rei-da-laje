@@ -104,7 +104,10 @@ test('P13 - BroadcastDirector: segue o vento e preserva o grupo em quadro', asyn
   const camera = new THREE.PerspectiveCamera(46, 1080 / 1920, 1, 3600);
   const basePos = new THREE.Vector3(0, 0, 720); camera.position.copy(basePos);
   const director = new BroadcastDirector(camera, basePos);
-  const kitesMap = new Map([['1', { isInCombat: true }], ['2', { isInCombat: true }]]);
+  const kitesMap = new Map([
+    ['1', { isInCombat: true, x: 360, y: 720, screenWidth: 1080, screenHeight: 1920 }],
+    ['2', { isInCombat: true, x: 720, y: 760, screenWidth: 1080, screenHeight: 1920 }]
+  ]);
   const kites3D = new Map([
     ['1', { position: new THREE.Vector3(-140, 20, 100) }],
     ['2', { position: new THREE.Vector3(140, 40, 120) }]

@@ -38,6 +38,7 @@ import {
 import { ThreeThemeManager } from './three/themes/ThreeThemeManager.js';
 import { BroadcastDirector } from './three/BroadcastDirector.js';
 import { computeRenderBudget } from './three/RenderBudget.js';
+import { applyKiteVisualLod } from './three/KiteVisualLod.js';
 import { projectKitePerspectiveDepth } from './three/KitePerspective.js';
 
 // 1. Constante de cores das linhas congelada para alta performance
@@ -813,6 +814,9 @@ export class ThreeSkyScene {
       if (kite.isKing) k3d.userData.crown.rotation.y = this.time * 2.2;
       k3d.userData.shieldMesh.visible = Boolean(kite.shieldActive || kite.hasKevlarBuff);
       k3d.userData.tornadoMesh.visible = Boolean(kite.tornadoActive || (kite.maneuver && kite.maneuver.name === 'tenteio'));
+
+      const visualLod = Number(this._renderBudget?.kiteDetailLod) || 0;
+      applyKiteVisualLod(k3d, visualLod, Boolean(kite.isKing || kite.isLeader));
 
       // Rabiola 3D Dinâmica (Física de linha real no World Space)
       ThreeKites.updateTailPhysics(k3d, this.wind, delta, this.time, vx, vy);

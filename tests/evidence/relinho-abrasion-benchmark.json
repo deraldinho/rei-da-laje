@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-02T21:30:38.580Z",
+  "generatedAt": "2026-10-02T23:10:00.878Z",
   "node": "v26.3.0",
   "fixedDt": 0.016666666666666666,
   "scenarios": [
@@ -8,10 +8,10 @@
       "mode": "distributed",
       "ticks": 480,
       "timing": {
-        "avgMs": 0.007240416666666653,
-        "maxMs": 0.2207000000000079,
-        "p95Ms": 0.011499999999998067,
-        "p99Ms": 0.04010000000000957
+        "avgMs": 0.007501666666666828,
+        "maxMs": 0.2986000000000075,
+        "p95Ms": 0.012600000000006162,
+        "p99Ms": 0.041499999999999204
       },
       "maxCandidates": 0,
       "maxColdNarrowChecks": 0,
@@ -25,18 +25,18 @@
       "createdContacts": 0,
       "reusedContacts": 0,
       "poolSize": 12,
-      "heapDeltaBytes": 28040,
-      "heapDeltaMB": 0.02674102783203125
+      "heapDeltaBytes": 28160,
+      "heapDeltaMB": 0.02685546875
     },
     {
       "count": 2,
       "mode": "dense",
       "ticks": 480,
       "timing": {
-        "avgMs": 0.04040708333333279,
-        "maxMs": 0.5356999999999914,
-        "p95Ms": 0.05920000000000414,
-        "p99Ms": 0.1109000000000151
+        "avgMs": 0.05165874999999982,
+        "maxMs": 0.5072000000000116,
+        "p95Ms": 0.10090000000002419,
+        "p99Ms": 0.21940000000000737
       },
       "maxCandidates": 1,
       "maxColdNarrowChecks": 0,
@@ -50,18 +50,18 @@
       "createdContacts": 1,
       "reusedContacts": 0,
       "poolSize": 12,
-      "heapDeltaBytes": 106944,
-      "heapDeltaMB": 0.10198974609375
+      "heapDeltaBytes": 134784,
+      "heapDeltaMB": 0.1285400390625
     },
     {
       "count": 10,
       "mode": "distributed",
       "ticks": 480,
       "timing": {
-        "avgMs": 0.012151041666666333,
-        "maxMs": 0.2686999999999955,
-        "p95Ms": 0.022199999999998,
-        "p99Ms": 0.04970000000000141
+        "avgMs": 0.012140625000000385,
+        "maxMs": 0.3386000000000138,
+        "p95Ms": 0.022999999999996135,
+        "p99Ms": 0.05449999999999022
       },
       "maxCandidates": 0,
       "maxColdNarrowChecks": 0,
@@ -75,18 +75,18 @@
       "createdContacts": 0,
       "reusedContacts": 0,
       "poolSize": 12,
-      "heapDeltaBytes": 63184,
-      "heapDeltaMB": 0.0602569580078125
+      "heapDeltaBytes": 31336,
+      "heapDeltaMB": 0.02988433837890625
     },
     {
       "count": 10,
       "mode": "dense",
       "ticks": 480,
       "timing": {
-        "avgMs": 0.17478729166666718,
-        "maxMs": 1.7985999999999933,
-        "p95Ms": 0.3248000000000104,
-        "p99Ms": 0.5217999999999847
+        "avgMs": 0.18896375000000099,
+        "maxMs": 1.725500000000011,
+        "p95Ms": 0.36590000000001055,
+        "p99Ms": 0.6083999999999605
       },
       "maxCandidates": 45,
       "maxColdNarrowChecks": 34,
@@ -100,18 +100,18 @@
       "createdContacts": 12,
       "reusedContacts": 95,
       "poolSize": 12,
-      "heapDeltaBytes": 107016,
-      "heapDeltaMB": 0.10205841064453125
+      "heapDeltaBytes": 100880,
+      "heapDeltaMB": 0.0962066650390625
     },
     {
       "count": 20,
       "mode": "distributed",
       "ticks": 480,
       "timing": {
-        "avgMs": 0.01440625000000028,
-        "maxMs": 0.5190000000000055,
-        "p95Ms": 0.026299999999991996,
-        "p99Ms": 0.043099999999981264
+        "avgMs": 0.015002916666665556,
+        "maxMs": 0.5529000000000224,
+        "p95Ms": 0.026800000000037016,
+        "p99Ms": 0.08039999999999736
       },
       "maxCandidates": 0,
       "maxColdNarrowChecks": 0,
@@ -125,18 +125,18 @@
       "createdContacts": 0,
       "reusedContacts": 0,
       "poolSize": 12,
-      "heapDeltaBytes": 47704,
-      "heapDeltaMB": 0.04549407958984375
+      "heapDeltaBytes": 48000,
+      "heapDeltaMB": 0.0457763671875
     },
     {
       "count": 20,
       "mode": "dense",
       "ticks": 480,
       "timing": {
-        "avgMs": 0.3254112499999992,
-        "maxMs": 1.2428000000000452,
-        "p95Ms": 0.7182000000000244,
-        "p99Ms": 0.8344000000000165
+        "avgMs": 0.353727500000002,
+        "maxMs": 1.2090999999999212,
+        "p95Ms": 0.7869999999999777,
+        "p99Ms": 0.9108999999999696
       },
       "maxCandidates": 96,
       "maxColdNarrowChecks": 93,
@@ -150,18 +150,18 @@
       "createdContacts": 12,
       "reusedContacts": 95,
       "poolSize": 12,
-      "heapDeltaBytes": 28368,
-      "heapDeltaMB": 0.0270538330078125
+      "heapDeltaBytes": 27200,
+      "heapDeltaMB": 0.02593994140625
     },
     {
       "count": 40,
       "mode": "distributed",
       "ticks": 480,
       "timing": {
-        "avgMs": 0.025414791666667942,
-        "maxMs": 0.23019999999996799,
-        "p95Ms": 0.048199999999951615,
-        "p99Ms": 0.07360000000005584
+        "avgMs": 0.02829041666666517,
+        "maxMs": 0.28520000000003165,
+        "p95Ms": 0.05239999999992051,
+        "p99Ms": 0.10900000000003729
       },
       "maxCandidates": 0,
       "maxColdNarrowChecks": 0,
@@ -175,18 +175,18 @@
       "createdContacts": 0,
       "reusedContacts": 0,
       "poolSize": 12,
-      "heapDeltaBytes": -197144,
-      "heapDeltaMB": -0.18801116943359375
+      "heapDeltaBytes": -197000,
+      "heapDeltaMB": -0.18787384033203125
     },
     {
       "count": 40,
       "mode": "dense",
       "ticks": 480,
       "timing": {
-        "avgMs": 0.44214395833333386,
-        "maxMs": 1.4404000000000678,
-        "p95Ms": 1.110300000000052,
-        "p99Ms": 1.2758000000000038
+        "avgMs": 0.4723341666666689,
+        "maxMs": 1.552500000000009,
+        "p95Ms": 1.1213000000000193,
+        "p99Ms": 1.3472000000000435
       },
       "maxCandidates": 96,
       "maxColdNarrowChecks": 96,
@@ -200,13 +200,13 @@
       "createdContacts": 12,
       "reusedContacts": 95,
       "poolSize": 12,
-      "heapDeltaBytes": 72064,
-      "heapDeltaMB": 0.0687255859375
+      "heapDeltaBytes": 71904,
+      "heapDeltaMB": 0.068572998046875
     }
   ],
   "cutProbe": {
-    "firstCutTick": 88,
-    "firstCutSec": 1.4666666666666666,
+    "firstCutTick": 90,
+    "firstCutSec": 1.5,
     "totalCuts": 1,
     "duplicates": 0,
     "maxTracked": 1,
@@ -222,21 +222,21 @@
     "dense40AvgMsMax": 4
   },
   "browser": {
-    "generatedAt": "2026-10-02T22:23:23.922Z",
+    "generatedAt": "2026-10-02T23:31:40.874Z",
     "samples": 240,
-    "p95Ms": 30.100000143051147,
-    "p99Ms": 38.19999980926514,
-    "maxMs": 128.5,
+    "p95Ms": 27.5,
+    "p99Ms": 34.200000047683716,
+    "maxMs": 35.5,
     "maxTracked": 12,
     "maxSolved": 3,
     "maxCold": 96,
     "maxActive": 12,
     "manager": {
       "createdContacts": 12,
-      "reusedContacts": 41,
-      "droppedContacts": 3918,
-      "expiredContacts": 1,
-      "rotatedContacts": 40,
+      "reusedContacts": 47,
+      "droppedContacts": 3603,
+      "expiredContacts": 5,
+      "rotatedContacts": 42,
       "activeContacts": 12,
       "selectedContacts": 3,
       "trackedContacts": 12,
@@ -244,64 +244,64 @@
     },
     "profiler": {
       "samples": 240,
-      "fps": 60.00000000000021,
-      "quality": "high",
+      "fps": 55.8594204709116,
+      "quality": "medium",
       "frame": {
-        "avgMs": 16.666666666666607,
-        "maxMs": 16.666666666666668,
-        "p95Ms": 16.666666666666668,
-        "p99Ms": 16.666666666666668
+        "avgMs": 17.90208332935969,
+        "maxMs": 35.10000014305115,
+        "p95Ms": 27,
+        "p99Ms": 33.299999952316284
       },
       "sections": {
         "hud": {
-          "avgMs": 0.04625000456968943,
-          "maxMs": 0.6000001430511475,
+          "avgMs": 0.04250000019868215,
+          "maxMs": 0.20000004768371582,
           "p95Ms": 0.10000014305114746,
           "p99Ms": 0.20000004768371582
         },
         "render3d": {
-          "avgMs": 19.68791666229566,
-          "maxMs": 111.90000009536743,
-          "p95Ms": 27.300000190734863,
-          "p99Ms": 31.200000047683716
+          "avgMs": 15.830833340684572,
+          "maxMs": 32,
+          "p95Ms": 24,
+          "p99Ms": 29.200000047683716
         },
         "collision": {
-          "avgMs": 0.5408333410819371,
-          "maxMs": 2.5999999046325684,
-          "p95Ms": 1.2000000476837158,
-          "p99Ms": 1.5999999046325684
+          "avgMs": 0.49874999026457467,
+          "maxMs": 2.299999952316284,
+          "p95Ms": 1,
+          "p99Ms": 1.2000000476837158
         },
         "physics": {
-          "avgMs": 1.8774999996026358,
-          "maxMs": 13.5,
-          "p95Ms": 3.4000000953674316,
-          "p99Ms": 5.300000190734863
+          "avgMs": 1.588749995827675,
+          "maxMs": 4,
+          "p95Ms": 2.6000001430511475,
+          "p99Ms": 3
         },
         "render2d": {
-          "avgMs": 0.37041666309038795,
-          "maxMs": 2.200000047683716,
-          "p95Ms": 0.5999999046325684,
-          "p99Ms": 0.7000000476837158
+          "avgMs": 0.3183333386977514,
+          "maxMs": 0.8000001907348633,
+          "p95Ms": 0.5,
+          "p99Ms": 0.5999999046325684
         },
         "serialization": {
-          "avgMs": 2.299999952316284,
-          "maxMs": 2.299999952316284,
-          "p95Ms": 2.299999952316284,
-          "p99Ms": 2.299999952316284
+          "avgMs": 3.5999999046325684,
+          "maxMs": 3.5999999046325684,
+          "p95Ms": 3.5999999046325684,
+          "p99Ms": 3.5999999046325684
         }
       },
       "gauges": {
-        "drawCalls": 1622,
-        "triangles": 82704,
+        "drawCalls": 1244,
+        "triangles": 44988,
         "staticSavedDraws": 890,
-        "relinhoCandidates": 96,
-        "relinhoNarrowChecks": 107,
+        "relinhoCandidates": 0,
+        "relinhoNarrowChecks": 12,
         "relinhoContacts": 12,
         "relinhoSolved": 3
       }
     },
-    "count": 38,
-    "drawCalls": 1622,
+    "count": 40,
+    "drawCalls": 1244,
     "uncaughtExceptions": 0
   }
 }

@@ -42,7 +42,7 @@ try{
   stage='configure-durable';
   await evaluate(`(() => { const g=window.__PIPA_GAME__; for(const k of g.kites.values()){
     k.spawnProtection=0; k.isAscending=false;
-    if(k.rope?.material) k.rope.material={...k.rope.material,cutResistance:1e9};
+    if(k.rope?.material) k.rope.material={...k.rope.material,cutResistance:1e9,maxTension:1e9};
   } return true; })()`);
   stage='prewarm-manual';
   await evaluate(`(() => { const g=window.__PIPA_GAME__; g.app.ticker.stop(); for(let i=0;i<12;i++) g.gameLoop(1); return true; })()`);

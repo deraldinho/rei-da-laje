@@ -1,7 +1,7 @@
 function percentile(values, p) {
   if (!values.length) return 0;
   const sorted = [...values].sort((a, b) => a - b);
-  const index = Math.min(sorted.length - 1, Math.max(0, Math.ceil((p / 100) * sorted.length) - 1));
+  const index = Math.min(values.length - 1, Math.max(0, Math.ceil((p / 100) * values.length) - 1));
   return sorted[index];
 }
 
@@ -24,6 +24,7 @@ export class RuntimeProfiler {
     this.sections = new Map();
     this.active = new Map();
     this.gauges = Object.create(null);
+    this._frameStartedAt = null;
   }
   _push(list, value) {
     if (!Number.isFinite(value) || value < 0) return;
@@ -51,6 +52,19 @@ export class RuntimeProfiler {
     this._push(this.frames, Number(deltaMs));
   }
 
+  beginFrame() {
+    this._frameStartedAt = this.now();
+    return this._frameStartedAt;
+  }
+
+  endFrame() {
+    if (!Number.isFinite(this._frameStartedAt)) return 0;
+    const elapsed = Math.max(0, this.now() - this._frameStartedAt);
+    this._frameStartedAt = null;
+    this.frame(elapsed);
+    return elapsed;
+  }
+
   gauge(name, value) {
     const numeric = Number(value);
     if (!name || !Number.isFinite(numeric)) return;
@@ -62,7 +76,9 @@ export class RuntimeProfiler {
     this.sections.clear();
     this.active.clear();
     this.gauges = Object.create(null);
+    this._frameStartedAt = null;
   }
+
   snapshot() {
     const frame = summarize(this.frames);
     const sections = {};

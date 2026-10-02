@@ -50,3 +50,39 @@ test('App alimenta quality e métricas WebGL no profiler', () => {
   assert.match(code, /runtimeProfiler\.gauge\('drawCalls'/);
   assert.match(code, /runtimeProfiler\.gauge\('triangles'/);
 });
+
+test('RuntimeProfiler mede duração real do gameLoop para qualidade adaptativa', async () => {
+  const { RuntimeProfiler } = await load('frontend/src/engine/RuntimeProfiler.js');
+  let now = 100;
+  const profiler = new RuntimeProfiler({ now: () => now, windowSize: 8 });
+  profiler.beginFrame();
+  now += 52;
+  assert.equal(profiler.endFrame(), 52);
+  const snap = profiler.snapshot();
+  assert.equal(snap.samples, 1);
+  assert.equal(snap.frame.avgMs, 52);
+  assert.equal(snap.quality, 'low');
+});
+
+test('GameApp não usa delta simulado como tempo real do profiler', () => {
+  const code = read('frontend/src/engine/App.js');
+  assert.match(code, /runtimeProfiler\.beginFrame\(\)/);
+  assert.match(code, /runtimeProfiler\.endFrame\(\)/);
+  assert.doesNotMatch(code, /runtimeProfiler\.frame\(delta\s*\*/);
+});
+
+
+test('budget de arena cheia reduz detalhes pequenos antes de tocar na física', async () => {
+  const { computeRenderBudget } = await load('frontend/src/ui/three/RenderBudget.js');
+  const crowded = computeRenderBudget({ quality: 'medium', population: 40 });
+  const overloaded = computeRenderBudget({ quality: 'low', population: 40 });
+  assert.equal(crowded.kiteDetailLod, 1);
+  assert.equal(overloaded.kiteDetailLod, 2);
+});
+
+
+test('ThreeSkyScene aplica LOD de pipa sem esconder destaque de Rei ou Líder', () => {
+  const code = read('frontend/src/ui/ThreeSkyScene.js');
+  assert.match(code, /applyKiteVisualLod\(k3d,\s*visualLod/);
+  assert.match(code, /kite\.isKing\s*\|\|\s*kite\.isLeader/);
+});
