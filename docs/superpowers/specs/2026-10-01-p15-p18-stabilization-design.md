@@ -4,7 +4,7 @@
 **Status:** Implementado e validado em 2026-10-01. Gates P15.3–P18 GREEN, com evidências reproduzíveis registradas no checkpoint 87.
 
 ## Objetivo
-Estabilizar o projeto Competição de Pipa TikTok Live de ponta a ponta, preservando tudo que já está funcional e concluindo P15.3, P16, P17 e P18 em uma única linha de trabalho.
+Estabilizar o projeto Rei da Laje de ponta a ponta, preservando tudo que já está funcional e concluindo P15.3, P16, P17 e P18 em uma única linha de trabalho.
 
 ## Restrições globais
 - Preservar todas as features já verdes: entrada por comentário, presentes, manobras, vento, relinho, TOP 5, Rei da Laje, persistência e corte canônico P15.2.

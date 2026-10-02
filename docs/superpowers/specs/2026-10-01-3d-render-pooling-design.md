@@ -1,7 +1,7 @@
 # Design: pools 3D e corte sem travamento
 
 Data: 2026-10-01
-Projeto: Competição de pipa TikTok Live
+Projeto: Rei da Laje
 Status: aguardando revisão final do usuário
 
 ## Objetivo

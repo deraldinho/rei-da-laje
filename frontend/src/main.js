@@ -8,5 +8,5 @@ const socket = io();
 window.addEventListener('DOMContentLoaded', () => {
   const game = new GameApp(socket);
   window.__PIPA_GAME__ = game; // para debug fácil no console
-  console.log('🪁 Jogo de Disputa de Relinho TikTok Live inicializado!');
+  console.log('🪁 Rei da Laje inicializado!');
 });

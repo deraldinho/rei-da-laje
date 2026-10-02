@@ -1,6 +1,6 @@
 # Checkpoint 32 — Auditoria Geral do Projeto e Painel de Reset da Arena
 
-Data: 26/09/2026 — Projeto Disputa de Relinho (TikTok Live).
+Data: 26/09/2026 — Projeto Rei da Laje (TikTok Live).
 
 ---
 

@@ -35,3 +35,9 @@ Thumbs.db
 backups/
 
 .worktrees/
+# Segredos e configuracao local
+.env
+.env.*
+!.env.example
+*.pem
+*.key

@@ -44,7 +44,7 @@ graph TD
 
 ## 2. Design Tokens Architecture (`tokens.css`)
 
-Criado o arquivo canônico [frontend/src/ui/design/tokens.css](file:///c:/Users/deral/Competi%C3%A7%C3%A3o%20de%20pipa%20tiktok%20live/frontend/src/ui/design/tokens.css), importado nativamente no `game.css` e linkado em `index.html`.
+Criado o arquivo canônico [frontend/src/ui/design/tokens.css](file:///c:/Users/deral/Rei%20da%20Laje/frontend/src/ui/design/tokens.css), importado nativamente no `game.css` e linkado em `index.html`.
 
 ### 2.1 Hierarquia Espacial & Z-Index
 - `--z-3d-canvas: 0`: Three.js WebGL (Sol, nuvens, morros, monumento e laje 3D).
@@ -125,7 +125,7 @@ Conecta a cena 3D diretamente à telemetria e controle do streamer:
 
 ## 4. Facade Pattern no `HUD.js`
 
-O arquivo [frontend/src/ui/HUD.js](file:///c:/Users/deral/Competi%C3%A7%C3%A3o%20de%20pipa%20tiktok%20live/frontend/src/ui/HUD.js) foi transformado em uma **Fachada Orquestradora Limpa**:
+O arquivo [frontend/src/ui/HUD.js](file:///c:/Users/deral/Rei%20da%20Laje/frontend/src/ui/HUD.js) foi transformado em uma **Fachada Orquestradora Limpa**:
 - Preserva 100% dos métodos e propriedades públicas requeridas por `App.js`, testes unitários e testes end-to-end do OBS.
 - Getters e setters transparentes garantem integridade total de estado (`currentLeaderId`, `competitionRankEnabled`, etc.).
 - Desacoplamento arquitetural: novos componentes ou recursos de UI podem ser criados e testados isoladamente sem risco de efeitos colaterais nos demais subsistemas.

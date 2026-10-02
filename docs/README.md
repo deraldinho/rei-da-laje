@@ -5,7 +5,7 @@
 - [Vento automático e presentes: implementação atual e testes](08_vento_automatico_e_presentes.md)
 - Os planos abaixo são histórico de concepção. Em caso de divergência sobre comandos, resgate ou presentes, prevalece o documento atual acima.
 
-# 🪁 Documentação do Jogo: Disputa de Relinho no TikTok Live
+# 🪁 Documentação do Jogo: Rei da Laje
 
 Toda a documentação e planos do projeto estão organizados na pasta `docs/`:
 

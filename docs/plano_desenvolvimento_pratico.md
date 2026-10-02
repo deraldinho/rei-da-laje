@@ -52,7 +52,7 @@ flowchart TD
 1. Criar `package.json` com scripts integrados:
    ```json
    {
-     "name": "competicao-pipa-live",
+     "name": "rei-da-laje",
      "version": "1.0.0",
      "scripts": {
        "dev": "concurrently \"node backend/server.js\" \"vite frontend\"",

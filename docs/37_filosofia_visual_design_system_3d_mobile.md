@@ -1,6 +1,6 @@
 # 37. Síntese Visual: Filosofia, Design System Frontend, Mobile 9:16 e Experiência 3D
 
-Este documento consolida a convergência das 4 diretrizes ativadas (`/canvas-design`, `/frontend-design`, `/mobile-design`, `/3d-web-experience`) aplicadas à identidade do jogo **Disputa de Relinho (TikTok Live)**.
+Este documento consolida a convergência das 4 diretrizes ativadas (`/canvas-design`, `/frontend-design`, `/mobile-design`, `/3d-web-experience`) aplicadas à identidade do jogo **Rei da Laje**.
 
 ---
 

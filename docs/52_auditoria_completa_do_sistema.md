@@ -15,7 +15,7 @@
 
 ## 1. Visão Geral da Auditoria
 
-Foi realizada uma auditoria técnica profunda de ponta a ponta em todos os subsistemas do projeto **Disputa de Relinho (TikTok Live)**, abrangendo:
+Foi realizada uma auditoria técnica profunda de ponta a ponta em todos os subsistemas do projeto **Rei da Laje**, abrangendo:
 1. **Infraestrutura Backend**: Servidor Express, Socket.io, regras de negócio e controle de autoridade local.
 2. **Conexão TikTok Live**: Ciclo de vida do supervisor de workers, resiliência de transporte, cookies de sessão (`ttwid`) e tratamento anti-shadowban.
 3. **Persistência e Estado**: Atomicidade de `arena-state.json`, persistência de perfil em `live-profile.json` e autocura periódica.

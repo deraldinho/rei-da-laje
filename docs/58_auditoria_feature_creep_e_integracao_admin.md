@@ -1,7 +1,7 @@
 # Checkpoint 58: Auditoria de Feature Creep, Isolação de Código Zumbi e Conexão do Painel Admin
 
 ## 1. Contexto e Motivação
-Durante o ciclo de desenvolvimento da aplicação de live interativa do TikTok (**Competição de Pipa - O Rei da Laje**), dezenas de mecânicas, regras e subsistemas visuais/sonoros foram prototipados. Conforme a dinâmica real da live se estabeleceu (com foco em combates 3D por presentes do TikTok e cenário temático dos 27 estados brasileiros), algumas funcionalidades planejadas em documentações anteriores (`docs/01` a `docs/04` e planos conceituais) foram descontinuadas, substituídas ou deixadas pela metade no código-fonte.
+Durante o ciclo de desenvolvimento da aplicação de live interativa do TikTok (**Rei da Laje**), dezenas de mecânicas, regras e subsistemas visuais/sonoros foram prototipados. Conforme a dinâmica real da live se estabeleceu (com foco em combates 3D por presentes do TikTok e cenário temático dos 27 estados brasileiros), algumas funcionalidades planejadas em documentações anteriores (`docs/01` a `docs/04` e planos conceituais) foram descontinuadas, substituídas ou deixadas pela metade no código-fonte.
 
 Esta auditoria catalogou todo o legado de **Feature Creep** e executou duas frentes de ação simultâneas:
 1. **Conectar e Finalizar**: Estabelecer a comunicação de ponta a ponta das configurações de jogabilidade do Admin (`/admin.html`) que estavam desconectadas do runtime (`winStreakKing`, `hpRegenEnabled`, `hpRegenSpeed`).

@@ -655,7 +655,7 @@ app.get('/', (req, res) => {
 // Inicia Servidor
 server.listen(PORT, HOST, () => {
   console.log(`=================================================`);
-  console.log(`🪁 Servidor Pipa TikTok Live rodando em http://${HOST}:${PORT}`);
+  console.log(`🪁 Servidor Rei da Laje rodando em http://${HOST}:${PORT}`);
   console.log(`🎮 Tela do Jogo (OBS Studio): http://${HOST}:${PORT}/`);
   console.log(`🛠️ Painel Admin Dev:         http://${HOST}:${PORT}/admin`);
   console.log(`=================================================`);

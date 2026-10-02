@@ -1,7 +1,7 @@
 {
-  "name": "competicao-pipa-live",
+  "name": "rei-da-laje",
   "version": "1.0.0",
-  "description": "Jogo interativo de disputa de relinho de pipa para TikTok Live",
+  "description": "Rei da Laje - jogo interativo de combate de pipas para TikTok Live",
   "main": "backend/server.js",
   "scripts": {
     "dev": "concurrently \"node backend/server.js\" \"vite frontend\"",

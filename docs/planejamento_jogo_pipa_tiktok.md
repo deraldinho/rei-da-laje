@@ -1,4 +1,4 @@
-# 🪁 Planejamento do Jogo: Disputa de Relinho no TikTok Live
+# 🪁 Planejamento do Jogo: Rei da Laje
 
 Toda a documentação foi separada e organizada em arquivos modulares na pasta `doc/`:
 

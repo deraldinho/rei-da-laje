@@ -1,6 +1,6 @@
 # Checkpoint 25 — TOP 5 competitivo e animações visuais de manobras
 
-Data: 24/09/2026. Implementação em `C:\Users\deral\Competição de pipa tiktok live`, sem recarregar OBS nem reiniciar intencionalmente o backend principal (porta 3000). Prévia isolada em `frontend/dist-preview`.
+Data: 24/09/2026. Implementação em `C:\Users\deral\Rei da Laje`, sem recarregar OBS nem reiniciar intencionalmente o backend principal (porta 3000). Prévia isolada em `frontend/dist-preview`.
 
 ## TOP ranking / Hall da Fama
 
