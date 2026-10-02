@@ -33,3 +33,5 @@ Thumbs.db
 
 # Rollback local
 backups/
+
+.worktrees/
