@@ -19,7 +19,7 @@ function textQuality(text,engagement=0){
   const reaction=Math.min(1,(text.match(/[^\p{L}\p{N}\s]/gu)||[]).length/4);
   return clamp(.16+Math.min(1,text.length/70)*.34+diversity*.22+reaction*.10+clamp(engagement,0,1)*.18,.12,1);
 }
-export function createCommentGesture({text='',userId='',kite=null,wind=null,engagement=0}={}){
+export function createCommentGesture({text='',userId='',kite=null,wind=null,lineDensity=null,engagement=0}={}){
   const clean=normalize(text);
   if(!clean)return null;
   const seed=hash32(`${String(userId||'')}|${clean}`),q=textQuality(clean,engagement);
@@ -29,7 +29,16 @@ export function createCommentGesture({text='',userId='',kite=null,wind=null,enga
   const tension=clamp(Number(kite?.lineTension)||.58,0,1);
   const spoolBias=slack<.08?.12:tension>.82?.18:0;
   const spoolCommand=clamp((r1*2-1)*(.42+.38*q)+spoolBias,-1,1);
-  const debicoTorque=clamp((r2*2-1)*(.50+.60*q)+windDir*.10*q,-1.2,1.2);
+  let densityBias=0;
+  if(lineDensity?.scoreCorridor){
+    const origin={x:Number(kite?.x)||0,y:Number(kite?.y)||0,z:Number(kite?.z)||0};
+    try{
+      const right=Math.max(0,Number(lineDensity.scoreCorridor(origin,{x:1,y:0,z:0},220))||0);
+      const left=Math.max(0,Number(lineDensity.scoreCorridor(origin,{x:-1,y:0,z:0},220))||0);
+      densityBias=clamp((right-left)/(right+left+1)*.82*q,-.72,.72);
+    }catch{densityBias=0;}
+  }
+  const debicoTorque=clamp((r2*2-1)*(.24+.34*q)+windDir*.08*q+densityBias,-1.2,1.2);
   const trimPitch=clamp((r3*2-1)*(.10+.20*q),-.4,.4);
   const tensionAssist=clamp((r4*2-1)*(.10+.22*q)-spoolCommand*.06,-.4,.4);
   const duration=clamp(.30+1.45*(.35*q+.65*unit(seed,5)),.3,2);
