@@ -15,7 +15,7 @@
   "sfxEnabled": true,
   "sfxVolume": 0.85,
   "boomboxEnabled": true,
-  "windIntensity": "tempestade",
+  "windIntensity": "forte",
   "windDirection": "auto",
   "relinhoPace": "frenetico",
   "relinhoPhysics": {

@@ -1,6 +1,8 @@
 import { SpoolController } from './SpoolController.js';
 import { stepKiteAttitude } from './KiteAttitude.js';
 import { computeKiteAerodynamics } from './KiteAerodynamics.js';
+import { enforceForwardWind } from './ForwardWind.js';
+import { flightConePlanes, steerInsideFlightCone, limitFlightConeVelocity } from './FlightCone.js';
 
 const SPARSE_CROSSING_SPEED = 0.72;
 const DENSE_CROSSING_SPEED = 0.34;
@@ -55,11 +57,14 @@ function localWindForKite(kite,wind,time){
   // windInfluence representa sensibilidade aerodinâmica de força. Como lift/drag
   // crescem aproximadamente com v², aplicamos sqrt(influence) na velocidade.
   const sensitivity=Math.sqrt(clamp(Number(kite?.windInfluence)||1,.65,1.6));
-  return {...base,
-    x:((Number(base.x)||0)*(.86+.28*(.5+.5*b))+a*.14+c*.06)*sensitivity,
+  const local={...base,
+    x:(base.flightCone
+      ? (Number(base.x)||0)*.35+Math.sin(t*.38+phase+rank*.17)*.58+c*.16
+      : (Number(base.x)||0)*(.86+.28*(.5+.5*b))+a*.14+c*.06)*sensitivity,
     y:((Number(base.y)||0)+a*.38+c*.12+depth*.05)*sensitivity,
     z:((Number(base.z)||0)+b*.30+c*.14)*sensitivity,
     gust:Math.max(.5,(Number(base.gust)||1)*(1+a*.07+c*.03))};
+  return base.flightCone ? enforceForwardWind(local) : local;
 }
 
 function ensureDepth(kite){
@@ -188,7 +193,10 @@ export class KiteDynamics {
     const totalFy=gravity+aero.fy*aeroScale+tensionFy+chordFy+tetherY*pull-kite.vy*.56+bodySeparation.fy;
     const totalFz=aero.fz*2.35+tensionFz+chordFz+tetherZ*pull*.72-kite.vz*.58+bodySeparation.fz;
 
-    const ax=totalFx/kite.mass,ay=totalFy/kite.mass,az=totalFz/kite.mass;
+    const cone=localWind.flightCone?flightConePlanes(kite):null;
+    const force={x:totalFx,y:totalFy,z:totalFz};
+    if(cone)steerInsideFlightCone(kite,force,cone);
+    const ax=force.x/kite.mass,ay=force.y/kite.mass,az=force.z/kite.mass;
     kite.vx+=ax*dt;
     kite.vy+=ay*dt;
     kite.vz+=az*dt;
@@ -197,6 +205,8 @@ export class KiteDynamics {
     kite.vx*=damping;
     kite.vy*=damping;
     kite.vz*=damping;
+
+    if(cone)limitFlightConeVelocity(kite,cone,dt);
 
     kite.x+=kite.vx*dt*60;
     kite.y+=kite.vy*dt*60;
