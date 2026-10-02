@@ -1,7 +1,7 @@
 {
   "kiteScale": 1.55,
   "kiteNameScale": 1.15,
-  "theme": "RJ",
+  "theme": "BA",
   "sceneMode": "3d",
   "cameraMode": "normal",
   "lineOpacity": 0.85,
@@ -15,9 +15,9 @@
   "sfxEnabled": true,
   "sfxVolume": 0.85,
   "boomboxEnabled": true,
-  "windIntensity": "moderado",
+  "windIntensity": "tempestade",
   "windDirection": "auto",
-  "relinhoPace": "normal",
+  "relinhoPace": "frenetico",
   "relinhoPhysics": {
     "abrasionK": 0.04,
     "frictionMultiplier": 1,

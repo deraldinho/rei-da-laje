@@ -98,43 +98,23 @@ test('P12 - ManeuverQueue: prioridade de presentes e transições suaves', async
   assert.equal(queue.queue.length, 2, 'Manobra anterior deve voltar para a fila');
 });
 
-test('P13 - BroadcastDirector: enquadramento inteligente e reação de corte', async () => {
+test('P13 - BroadcastDirector: segue o vento e preserva o grupo em quadro', async () => {
   const THREE = await import('three');
   const { BroadcastDirector } = await import('../frontend/src/ui/three/BroadcastDirector.js');
-
   const camera = new THREE.PerspectiveCamera(46, 1080 / 1920, 1, 3600);
-  const basePos = new THREE.Vector3(0, 0, 720);
-  camera.position.copy(basePos);
-
+  const basePos = new THREE.Vector3(0, 0, 720); camera.position.copy(basePos);
   const director = new BroadcastDirector(camera, basePos);
-  assert.equal(director.currentMode, 'overview');
-
-  // Corte recente
-  director.triggerCutFocus(120, 50, 100);
-  assert.equal(director.currentMode, 'cut');
-  assert.ok(director.eventTimer > 0, 'Corte deve ativar timer de foco no corte');
-
-  // Passo de atualização
-  director.update(0.1, new Map(), new Map());
-  assert.ok(camera.position.z < 720, 'Câmera deve aproximar no corte');
-
-  // Simula término do tempo de foco no corte
-  director.eventTimer = 0;
-  director.update(0.1, new Map(), new Map());
-  assert.equal(director.currentMode, 'overview');
-
-  // Simula combate com linhas cruzadas
-  const kitesMap = new Map();
-  kitesMap.set('1', { isInCombat: true });
-  kitesMap.set('2', { isInCombat: true });
-
-  const kites3D = new Map();
-  kites3D.set('1', { position: new THREE.Vector3(-40, 20, 100) });
-  kites3D.set('2', { position: new THREE.Vector3(60, 40, 120) });
-
-  director.update(0.016, kitesMap, kites3D);
-  assert.equal(director.currentMode, 'combat');
-  assert.ok(director.targetLookAt.x > -40 && director.targetLookAt.x < 60, 'Foco no centro do combate');
+  const kitesMap = new Map([['1', { isInCombat: true }], ['2', { isInCombat: true }]]);
+  const kites3D = new Map([
+    ['1', { position: new THREE.Vector3(-140, 20, 100) }],
+    ['2', { position: new THREE.Vector3(140, 40, 120) }]
+  ]);
+  director.triggerCutFocus(900, 700, 100);
+  director.update(0.016, kitesMap, kites3D, { x: 1, y: 0, z: 0, gust: 1 });
+  assert.equal(director.currentMode, 'wind-follow');
+  assert.ok(director.targetLookAt.x > 0, 'vento +X deve antecipar a câmera para +X');
+  assert.ok(director.targetPos.z >= basePos.z, 'câmera deve abrir para manter o grupo visível');
+  assert.ok(Math.abs(director.targetLookAt.x) < 220, 'evento não pode puxar a câmera para fora do grupo');
 });
 
 test('Validação de corte em tela vertical 1432x2428 não rejeita com POINT_MISMATCH', () => {

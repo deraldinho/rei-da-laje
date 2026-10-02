@@ -17,7 +17,7 @@ test('decolagem usa KiteDynamics desde o primeiro frame e não interpola até ta
 
 test('renderer 3D copia posição física sem trajetória visual paralela',()=>{
   const source=fs.readFileSync(scenePath,'utf8');
-  const start=source.indexOf('const depthOffset = Number.isFinite(kite.z)');
+  const start=source.indexOf('const depthOffset = projectKitePerspectiveDepth(kite');
   const end=source.indexOf('// Barra de HP',start);
   const block=source.slice(start,end);
   assert.doesNotMatch(block,/takeoffProg|currentWorldPos\.lerp|MathUtils\.lerp\(/);
@@ -54,7 +54,7 @@ test('spawn layout inicializa uma única vez durante proteção',async()=>{
 
 test('tamanho aparente vem da perspectiva e não de escala artificial por z',()=>{
   const source=fs.readFileSync(scenePath,'utf8');
-  const start=source.indexOf('const depthOffset = Number.isFinite(kite.z)');
+  const start=source.indexOf('const depthOffset = projectKitePerspectiveDepth(kite');
   const end=source.indexOf('// Barra de HP',start);
   const block=source.slice(start,end);
   assert.doesNotMatch(block,/k3d\.position\.z\s*\/\s*600|dynamicScale\s*=.*position\.z/);

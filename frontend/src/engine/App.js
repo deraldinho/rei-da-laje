@@ -32,6 +32,7 @@ import { stabilizeSpawnKite } from './SpawnLayout.js';
 import { CrowdEnergy } from './physics/CrowdEnergy.js';
 import { LineDensityField } from './physics/LineDensityField.js';
 import { planGiftManeuver } from './physics/GiftManeuverAI.js';
+import { stampRelinhoVisualState } from './physics/RelinhoVisualState.js';
 
 export class GameApp {
   constructor(socket) {
@@ -1150,6 +1151,7 @@ export class GameApp {
     for (const contact of result.fxContacts) {
       const kA = contact.kiteA, kB = contact.kiteB;
       if (!kA || !kB) continue;
+      stampRelinhoVisualState(contact, wallNow);
       const contactStrength = Math.min(1.5, 0.65 + Math.hypot(contact.relativeVx || 0, contact.relativeVy || 0) * 0.025);
       kA.line?.triggerContact?.(contactStrength);
       kB.line?.triggerContact?.(contactStrength);

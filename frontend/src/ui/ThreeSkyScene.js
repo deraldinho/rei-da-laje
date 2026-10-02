@@ -38,6 +38,7 @@ import {
 import { ThreeThemeManager } from './three/themes/ThreeThemeManager.js';
 import { BroadcastDirector } from './three/BroadcastDirector.js';
 import { computeRenderBudget } from './three/RenderBudget.js';
+import { projectKitePerspectiveDepth } from './three/KitePerspective.js';
 
 // 1. Constante de cores das linhas congelada para alta performance
 const LINE_COLORS = Object.freeze({
@@ -765,7 +766,7 @@ export class ThreeSkyScene {
       }
 
       // Posição e atitude vêm exclusivamente do estado físico da pipa.
-      const depthOffset = Number.isFinite(kite.z) ? kite.z : 140;
+      const depthOffset = projectKitePerspectiveDepth(kite, this.camera?.position?.z ?? 830);
       const worldTarget = this.screenToWorld(kite.x, kite.y, depthOffset);
       k3d.userData.targetWorldPos.set(worldTarget.x, worldTarget.y, worldTarget.z);
       k3d.userData.currentWorldPos.copy(k3d.userData.targetWorldPos);
@@ -1014,7 +1015,7 @@ export class ThreeSkyScene {
     if (kites) this.syncEntities(kites, fallingKites || [], sparks || null, delta, brokenHandRopes || []);
     if (this.director) {
       const dtSec = Math.max(0.002, Number.isFinite(delta) ? delta / 60 : 1 / 60);
-      this.director.update(dtSec, kites, this.kites3D);
+      this.director.update(dtSec, kites, this.kites3D, this.wind);
     }
     this.render();
   }
