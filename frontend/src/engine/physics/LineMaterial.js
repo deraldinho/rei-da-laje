@@ -126,3 +126,13 @@ export function getLineMaterial(lineType = 'algodao') {
   const key=LINE_ALIASES[normalized]||normalized;
   return LINE_MATERIALS[key] || LINE_MATERIALS.algodao;
 }
+
+/** Resolve propriedades tribológicas efetivas de um par de linhas. */
+export function getLinePairProperties(materialA,materialB){
+  const a=typeof materialA==='string'?getLineMaterial(materialA):(materialA||LINE_MATERIALS.algodao);
+  const b=typeof materialB==='string'?getLineMaterial(materialB):(materialB||LINE_MATERIALS.algodao);
+  const friction=Math.sqrt(Math.max(.001,Number(a.friction)||0)*Math.max(.001,Number(b.friction)||0));
+  const abrasivenessA=Math.max(.05,Number(a.abrasiveness)||1)/Math.max(.05,Number(b.abrasionResistance)||1);
+  const abrasivenessB=Math.max(.05,Number(b.abrasiveness)||1)/Math.max(.05,Number(a.abrasionResistance)||1);
+  return {friction,abrasivenessA,abrasivenessB};
+}

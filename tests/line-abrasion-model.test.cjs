@@ -83,3 +83,30 @@ test('trocar A/B preserva a física quando velocidades relativas e slides são t
   assert.ok(Math.abs(forward.abrasionRateA-reverse.abrasionRateB)<1e-12,'wear da mesma linha A deve ser invariável');
   assert.ok(Math.abs(forward.abrasionRateB-reverse.abrasionRateA)<1e-12,'wear da mesma linha B deve ser invariável');
 });
+test('propriedades do par têm fricção simétrica e abrasividade direcional',async()=>{
+  const {getLineMaterial,getLinePairProperties}=await import(`${materialUrl}?pair=${Date.now()}`);
+  assert.equal(typeof getLinePairProperties,'function');
+  const cotton=getLineMaterial('algodao'),crystal=getLineMaterial('cristal');
+  const ab=getLinePairProperties(cotton,crystal),ba=getLinePairProperties(crystal,cotton);
+  assert.ok(Number.isFinite(ab.friction)&&ab.friction>0);assert.equal(ab.friction,ba.friction);
+  assert.ok(Math.abs(ab.abrasivenessA-ba.abrasivenessB)<1e-12);
+  assert.ok(Math.abs(ab.abrasivenessB-ba.abrasivenessA)<1e-12);
+  assert.ok(ab.abrasivenessB>ab.abrasivenessA,'cristal deve atacar algodão mais que o inverso');
+});
+
+test('tiers virtuais aumentam monotonicamente a fricção do par contra algodão',async()=>{
+  const {getLineMaterial,getLinePairProperties}=await import(`${materialUrl}?tiers=${Date.now()}`);
+  const cotton=getLineMaterial('algodao');
+  const values=['cerol','lampada','acrilico','pedra','cristal','chilena']
+    .map(type=>getLinePairProperties(getLineMaterial(type),cotton).friction);
+  for(let i=1;i<values.length;i++)assert.ok(values[i]>values[i-1],`${i}: ${values}`);
+});
+
+test('ausência explícita de contato geométrico mantém desgaste zero',async()=>{
+  const [{integrateLineAbrasion},{DEFAULT_RELINHO_PHYSICS_CONFIG},{getLineMaterial}]=await Promise.all([
+    import(`${abrasionUrl}?nocontact=${Date.now()}`),import(configUrl),import(materialUrl)]);
+  const a=kite('a',getLineMaterial('cristal'),.9),b=kite('b',getLineMaterial('algodao'),.9);
+  const c={hit:false,contactTime:1,vSlide:20,normalForce:1,slideA:20,slideB:-20,tensionA:.9,tensionB:.9};
+  integrateLineAbrasion(c,a,b,1/60,DEFAULT_RELINHO_PHYSICS_CONFIG);
+  assert.equal(c.wearDeltaA||0,0);assert.equal(c.wearDeltaB||0,0);
+});
