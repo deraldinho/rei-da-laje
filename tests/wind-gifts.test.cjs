@@ -54,14 +54,15 @@ test('spawn inclui presente recebido antes do comentário', () => {
 });
 test('vento muda direção e movimenta pipas sem comandos', async () => {
   const p=path.join(__dirname,'../frontend/src/engine/Wind.js');
-  const {Wind}=await import('data:text/javascript;base64,'+Buffer.from(fs.readFileSync(p,'utf8')).toString('base64'));
+  const {Wind}=await import(require('node:url').pathToFileURL(p).href+'?t='+Date.now());
   const k={x:400,y:200,screenWidth:800,screenHeight:600,windPhase:1,windInfluence:1,likeBoostRemaining:0};
   const initial={x:k.x,y:k.y};
   for(let n=0;n<600;n++) Wind.move(k,1,n/60);
   assert.ok(Math.hypot(k.x-initial.x,k.y-initial.y)>30);
   assert.ok(k.x>=30 && k.x<=770 && k.y>=40 && k.y<=390);
-  const samples=Array.from({length:100},(_,i)=>Wind.sample(i).x);
-  assert.ok(samples.some(x=>x>0)&&samples.some(x=>x<0));
+  Wind.setSettings({windDirection:'left'}); assert.ok(Wind.sample(20).x<0);
+  Wind.setSettings({windDirection:'right'}); assert.ok(Wind.sample(20).x>0);
+  Wind.setSettings({windDirection:'auto'});
 });
 
 test('vento e dinâmica física geram contato abrasivo e corte sem ação do espectador', async () => {
@@ -83,7 +84,7 @@ test('vento e dinâmica física geram contato abrasivo e corte sem ação do esp
   assert.ok(maxTracked<=12); assert.ok(maxSolved<=3);
 });
 test('redemoinho atrai no máximo três pipas elegíveis', async () => {
-  const {Wind}=await import('data:text/javascript;base64,'+Buffer.from(fs.readFileSync(path.join(__dirname,'../frontend/src/engine/Wind.js'),'utf8')).toString('base64'));
+  const {Wind}=await import(require('node:url').pathToFileURL(path.join(__dirname,'../frontend/src/engine/Wind.js')).href+'?t='+Date.now());
   const owner={x:100,y:100};
   const others=Array.from({length:5},(_,i)=>({x:120+i*15,y:100,isAscending:false,spawnProtection:0}));
   const start=others.map(k=>k.x);

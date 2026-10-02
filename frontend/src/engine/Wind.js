@@ -1,3 +1,5 @@
+﻿import { sampleWindField } from './physics/WindField.js';
+
 /** Correntes compartilhadas: vento e fase de cada pipa conduzem o voo. */
 export class Wind {
   static config = {
@@ -21,35 +23,18 @@ export class Wind {
   }
 
   static sample(time) {
-    const t = Number.isFinite(time) ? time : 0;
-    const mult = Wind.config.intensityMultiplier || 1.0;
-    let dirBias = 0;
-    if (Wind.config.direction === 'left') dirBias = -1.2;
-    else if (Wind.config.direction === 'right') dirBias = 1.2;
-
-    const baseSpeed = Wind.config.pace === 'frenetico' ? 1.4 : (Wind.config.pace === 'calmo' ? 0.7 : 1.0);
-    const effectiveTime = t * baseSpeed;
-
-    return {
-      time: effectiveTime,
-      x: ((Math.sin(effectiveTime * 0.31) * 1.4 + Math.sin(effectiveTime * 0.79) * 0.55) + dirBias) * mult,
-      y: (Math.cos(effectiveTime * 0.43) * 0.7) * mult,
-      z: (Math.sin(effectiveTime * 0.23) * 0.65) * mult,
-      gust: (0.7 + (Math.sin(effectiveTime * 0.19) + 1) * 0.35) * mult,
-      turbulence: (Math.sin(effectiveTime * 1.8) * 0.18 + Math.cos(effectiveTime * 3.4) * 0.08) * mult,
-      current: Math.sin(effectiveTime * 0.13) > 0.68 ? 'updraft' : Math.sin(effectiveTime * 0.13) < -0.68 ? 'downdraft' : Math.cos(effectiveTime * 0.17) > 0.93 ? 'crosswind' : 'normal'
-    };
+    return sampleWindField(time, Wind.config);
   }
 
   /**
    * Amostra o vento considerando o gradiente de altitude real:
-   * No alto do céu o vento é mais forte e laminar; perto da laje sofre atrito urbano.
+   * No alto do cÃ©u o vento Ã© mais forte e laminar; perto da laje sofre atrito urbano.
    */
   static sampleAt(time, y = 300, screenHeight = 1920) {
     const base = Wind.sample(time);
     const h = Number.isFinite(screenHeight) && screenHeight > 0 ? screenHeight : 1920;
     const altitudeRatio = Math.max(0, Math.min(1, (h - (Number.isFinite(y) ? y : 300)) / h));
-    const altitudeFactor = 0.75 + altitudeRatio * 0.45; // 0.75 na base até 1.20 no alto
+    const altitudeFactor = 0.75 + altitudeRatio * 0.45; // 0.75 na base atÃ© 1.20 no alto
     return {
       ...base,
       x: base.x * altitudeFactor,
