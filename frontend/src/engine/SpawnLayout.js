@@ -15,6 +15,7 @@ export function spawnTargetForRank(rank, total, width, height) {
 export function stabilizeSpawnKite(kite, rank, total, width, height) {
   if (!kite || kite.spawnLayoutEligible === false) return false;
   if (!kite.isAscending || !(Number(kite.spawnProtection) > 0)) return false;
+  if (kite._spawnPhysicsInitialized) return false;
 
   const target = spawnTargetForRank(rank, total, width, height);
   kite.targetX = target.x;
@@ -23,6 +24,8 @@ export function stabilizeSpawnKite(kite, rank, total, width, height) {
   kite.y = Math.min(height * 0.58, target.y + 45);
   kite.vx = 0;
   kite.vy = 0;
+  kite.vz = Number.isFinite(kite.vz) ? kite.vz : 0;
+  kite._spawnPhysicsInitialized = true;
 
   const handX = Number.isFinite(kite.line?.visualBaseX) ? kite.line.visualBaseX : kite.baseX;
   const handY = Number.isFinite(kite.line?.visualBaseY) ? kite.line.visualBaseY : kite.baseY;

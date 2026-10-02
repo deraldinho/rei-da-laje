@@ -764,66 +764,27 @@ export class ThreeSkyScene {
         k3d.userData.nameTag.position.y = 20.5 + (nScale - 1) * 3;
       }
 
-      // Profundidade 3D é estado físico; o renderer apenas projeta esse valor.
+      // Posição e atitude vêm exclusivamente do estado físico da pipa.
       const depthOffset = Number.isFinite(kite.z) ? kite.z : 140;
       const worldTarget = this.screenToWorld(kite.x, kite.y, depthOffset);
       k3d.userData.targetWorldPos.set(worldTarget.x, worldTarget.y, worldTarget.z);
+      k3d.userData.currentWorldPos.copy(k3d.userData.targetWorldPos);
+      k3d.position.copy(k3d.userData.targetWorldPos);
 
-      const vx = kite.vx !== undefined ? kite.vx : 0;
-      const vy = kite.vy !== undefined ? kite.vy : 0;
-
-      // Decolagem física
-      const age = this.time - (k3d.userData.spawnTime || 0);
-      if (age < 0.6) {
-        const takeoffProg = age / 0.6;
-        k3d.userData.currentWorldPos.set(
-          THREE.MathUtils.lerp(bonecoX, worldTarget.x, takeoffProg),
-          THREE.MathUtils.lerp(lajeWorldY + 15, worldTarget.y, takeoffProg),
-          THREE.MathUtils.lerp(480, worldTarget.z, takeoffProg)
-        );
-      } else {
-        const followSpeed = Math.min(1.0, 0.85 * delta);
-        k3d.userData.currentWorldPos.lerp(k3d.userData.targetWorldPos, followSpeed);
-      }
-      k3d.position.copy(k3d.userData.currentWorldPos);
-
-
-      // Atitude física é autoritativa; velocidade é fallback para checkpoints antigos.
+      const vx = Number(kite.vx) || 0;
+      const vy = Number(kite.vy) || 0;
       const physRot = Number.isFinite(kite.rotation) ? kite.rotation : 0;
-      let targetRoll = Number.isFinite(kite.roll) ? kite.roll
+      const targetRoll = Number.isFinite(kite.roll) ? kite.roll
         : -Math.max(-0.75, Math.min(0.75, (vx * 0.065) - physRot * 0.85));
-      let targetPitch = Number.isFinite(kite.pitch) ? kite.pitch
+      const targetPitch = Number.isFinite(kite.pitch) ? kite.pitch
         : Math.max(-0.55, Math.min(0.65, vy * 0.052)) - 0.22;
-      let targetYaw = Number.isFinite(kite.heading) ? kite.heading
+      const targetYaw = Number.isFinite(kite.heading) ? kite.heading
         : Math.max(-0.5, Math.min(0.5, (vx * 0.045) - physRot * 0.5));
 
-      if (kite.maneuver && kite.maneuver.name) {
-        const m = String(kite.maneuver.name).toLowerCase();
-        if (m === 'tenteio') {
-          targetRoll += Math.sin(this.time * 26 + idx) * 0.42;
-          targetPitch += Math.cos(this.time * 26 + idx) * 0.25;
-        } else if (m === 'desbicada' || m === 'despicar') {
-          targetPitch += 0.75;
-          targetRoll += (vx >= 0 ? 0.4 : -0.4);
-        } else if (m === 'puxao' || m === 'retao') {
-          targetPitch -= 0.55;
-          targetRoll *= 0.5;
-        } else if (m === 'mergulho') {
-          targetPitch += 0.85;
-        }
-      }
-
-      // O relinho vibra a LINHA, não o corpo inteiro da pipa. A física de
-      // KiteDynamics já reage à tensão; jitter sintético aqui sincronizava grupos.
-
-      k3d.userData.roll = THREE.MathUtils.lerp(k3d.userData.roll, targetRoll, 0.45 * delta);
-      k3d.userData.pitch = THREE.MathUtils.lerp(k3d.userData.pitch, targetPitch, 0.45 * delta);
-      k3d.userData.yaw = THREE.MathUtils.lerp(k3d.userData.yaw, targetYaw, 0.45 * delta);
-
-      k3d.rotation.set(0, 0, 0);
-      k3d.rotation.x = k3d.userData.pitch;
-      k3d.rotation.z = k3d.userData.roll;
-      k3d.rotation.y = k3d.userData.yaw;
+      k3d.userData.roll = targetRoll;
+      k3d.userData.pitch = targetPitch;
+      k3d.userData.yaw = targetYaw;
+      k3d.rotation.set(targetPitch, targetYaw, targetRoll);
 
       const dynamicScale = Math.max(0.65, Math.min(1.45, 0.95 + (k3d.position.z / 600) * 0.4)) * this.customKiteScale;
       k3d.scale.set(dynamicScale, dynamicScale, dynamicScale);

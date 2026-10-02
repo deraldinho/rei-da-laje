@@ -627,24 +627,13 @@ export class Kite extends PIXI.Container {
     this.lineSlack=Math.max(0,(this.lineSlack||0)-delta/28);
     this.updateManeuverVisual(delta);
 
-    // Animação inicial de subida e física newtoniana completa
+    // Física autoritativa desde o primeiro frame; proteção de spawn bloqueia combate, não movimento.
     const safeDt = Math.max(0.2, Number.isFinite(delta) ? delta : 1);
     const safeDtSec = Math.max(0.002, safeDt / 60);
-    const prevPhysX = this.x;
-    const prevPhysY = this.y;
-    if (this.isAscending) {
-      this.y += (this.targetY - this.y) * 0.05 * delta;
-      this.x += (this.targetX - this.x) * 0.05 * delta;
-      if (Math.abs(this.y - this.targetY) < 25) {
-        this.isAscending = false;
-      }
-      this.vx = (this.x - prevPhysX) / safeDt;
-      this.vy = (this.y - prevPhysY) / safeDt;
-    } else {
-      const curWind = (typeof windTime === 'object' && windTime !== null) ? windTime : { x: windX, y: 0 };
-      KiteDynamics.step(this, safeDtSec, curWind, population, physicsKites);
-      this.contactSpeed = Math.hypot(this.vx, this.vy);
-    }
+    const curWind = (typeof windTime === 'object' && windTime !== null) ? windTime : { x: windX, y: 0 };
+    KiteDynamics.step(this, safeDtSec, curWind, population, physicsKites);
+    this.contactSpeed = Math.hypot(this.vx, this.vy, this.vz || 0);
+    if (this.isAscending && this.spawnProtection <= 0) this.isAscending = false;
 
     if (!Number.isFinite(this.x)) this.x = Number.isFinite(this.targetX) ? this.targetX : (this.screenWidth * 0.5);
     if (!Number.isFinite(this.y)) this.y = Number.isFinite(this.targetY) ? this.targetY : (this.screenHeight * 0.35);

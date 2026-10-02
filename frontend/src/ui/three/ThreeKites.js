@@ -675,53 +675,19 @@ export class ThreeKites {
       k3d.userData.currentTagKey = expectedTagKey;
     }
 
-    // 2. Posicionamento 3D no céu e decolagem física
-    const depthOffset = (idx % 5) * 8 - 16;
-    const swayTime = time * 2.2 + idx * 1.35;
-    const windDriftX = Math.sin(swayTime) * 6;
-    const windDriftY = Math.cos(swayTime * 0.8) * 4;
-    const windDriftZ = Math.sin(swayTime * 0.6) * 4;
-
+    // 2. Posição e atitude autoritativas vindas da física.
+    const depthOffset = Number.isFinite(kite.z) ? kite.z : 140;
     const kitePos3D = screenToWorldFn(kite.x, kite.y, depthOffset);
+    k3d.position.set(kitePos3D.x, kitePos3D.y, kitePos3D.z);
 
-    if (!k3d.userData.spawnTime) k3d.userData.spawnTime = time;
-    const age = time - k3d.userData.spawnTime;
-    const isAscendingVisual = Boolean(kite.isAscending || age < 1.8);
-    if (isAscendingVisual && age < 2.0) {
-      const t = Math.min(1, Math.max(0, age / 1.8));
-      const easeOut = 1 - Math.pow(1 - t, 3);
-      const startY = lajeWorldY + 24;
-      const startZ = 430;
-      const curX = bonecoX + (kitePos3D.x + windDriftX - bonecoX) * easeOut;
-      const curY = startY + (kitePos3D.y + windDriftY - startY) * easeOut;
-      const curZ = startZ + (kitePos3D.z + windDriftZ - startZ) * easeOut;
-      k3d.position.set(curX, curY, curZ);
-    } else {
-      k3d.position.set(kitePos3D.x + windDriftX, kitePos3D.y + windDriftY, kitePos3D.z + windDriftZ);
-    }
+    const vx = Number(kite.vx) || 0, vy = Number(kite.vy) || 0;
+    const physRot = Number.isFinite(kite.rotation) ? kite.rotation : 0;
+    const physicalPitch = Number.isFinite(kite.pitch) ? kite.pitch : -Math.min(0.55, Math.max(-0.55, vy * 0.045));
+    const physicalRoll = Number.isFinite(kite.roll) ? kite.roll : Math.min(0.65, Math.max(-0.65, vx * 0.04 - physRot));
+    const physicalYaw = Number.isFinite(kite.heading) ? kite.heading : Math.max(-0.5, Math.min(0.5, vx * 0.04));
+    k3d.rotation.set(physicalPitch, physicalYaw, physicalRoll);
 
-    // 3. Orientação 3D (Pitch, Roll, Yaw) reagindo a manobras
     const pose = maneuverPose(kite.maneuver, time);
-    const vx = Number(kite.vx || 0), vy = Number(kite.vy || 0);
-    const basePitch = -Math.min(0.55, Math.max(-0.55, vy * 0.045));
-    const baseRoll = Math.min(0.65, Math.max(-0.65, vx * 0.04));
-
-    k3d.rotation.x = pose.pitch3D !== 0 ? pose.pitch3D : basePitch;
-    if (pose.spin3D) {
-      k3d.userData.spinAngle = (k3d.userData.spinAngle || 0) + 0.38;
-      k3d.rotation.z = k3d.userData.spinAngle;
-    } else {
-      k3d.rotation.z = -(pose.roll3D !== 0 ? pose.roll3D : (pose.angle || baseRoll));
-    }
-    k3d.rotation.y = (pose.yaw3D !== 0 ? pose.yaw3D : 0) + (wind ? wind.x * 0.14 : 0);
-
-    // Reação aerodinâmica de combate: a pipa estremece com o atrito violento das linhas
-    if (kite.isInCombat) {
-      const combatJitter = Math.sin(time * 36 + idx * 2.1) * 0.08;
-      k3d.rotation.z += combatJitter;
-      k3d.rotation.x += Math.cos(time * 28 + idx) * 0.06;
-    }
-
     const targetKiteScale = customKiteScale !== undefined ? customKiteScale : (isPortrait ? 1.55 : 1.25);
     const baseScale = isPortrait ? targetKiteScale : (targetKiteScale * 0.8);
     const finalScale = (pose.scale || 1) * baseScale;
