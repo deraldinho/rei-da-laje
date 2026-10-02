@@ -7,6 +7,7 @@ const {pathToFileURL}=require('node:url');
 const root=path.resolve(__dirname,'../frontend/src/engine');
 const directorPath=path.join(root,'physics/SkyWindDirector.js');
 const dynamicsPath=path.join(root,'physics/KiteDynamics.js');
+const legacyDirectorPath=path.join(root,'physics/LiveCombatDirector.js');
 const windPath=path.join(root,'Wind.js');
 const load=file=>import(pathToFileURL(file).href+`?t=${Date.now()}-${Math.random()}`);
 
@@ -40,6 +41,7 @@ test('CrowdEnergy só aumenta atividade dentro de limites seguros',async()=>{
 });
 test('produção não usa mais assistência orientada por pares',()=>{
   const source=fs.readFileSync(dynamicsPath,'utf8');
+  assert.equal(fs.existsSync(legacyDirectorPath),false,'LiveCombatDirector superseded não deve existir');
   assert.doesNotMatch(source,/LiveCombatDirector/);
   assert.doesNotMatch(source,/computeLiveAssist/);
   assert.doesNotMatch(source,/partnerRank|encounterActive|activePair/);
