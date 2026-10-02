@@ -1,3 +1,5 @@
+> **STATUS: HISTÓRICO / CHECKPOINT.** Este arquivo registra uma etapa real do desenvolvimento, mas não define sozinho a regra vigente. Em caso de conflito sobre vento, comentários, alvos, presentes, manobras, contato ou corte, prevalecem `00_arquitetura_vigente.md` e `superpowers/specs/2026-10-02-hybrid-live-kite-combat-design.md`.
+
 # Checkpoint 25 — TOP 5 competitivo e animações visuais de manobras
 
 Data: 24/09/2026. Implementação em `C:\Users\deral\Competição de pipa tiktok live`, sem recarregar OBS nem reiniciar intencionalmente o backend principal (porta 3000). Prévia isolada em `frontend/dist-preview`.

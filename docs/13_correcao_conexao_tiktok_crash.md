@@ -1,3 +1,5 @@
+> **STATUS: HISTÓRICO / CHECKPOINT.** Este arquivo registra uma etapa real do desenvolvimento, mas não define sozinho a regra vigente. Em caso de conflito sobre vento, comentários, alvos, presentes, manobras, contato ou corte, prevalecem `00_arquitetura_vigente.md` e `superpowers/specs/2026-10-02-hybrid-live-kite-combat-design.md`.
+
 # Checkpoint — isolamento do conector TikTok e erro HTTP/2
 
 Data: 24/09/2026. Evidência inicial: Node.js 26.3.0 terminava com `UND_ERR_SOCKET` em `ClientHttp2Stream` após falha de conexão remota; logs antigos do Euler Stream traziam assinatura HTTP 403.

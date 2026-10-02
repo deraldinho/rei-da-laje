@@ -1,3 +1,5 @@
+> **STATUS: HISTÓRICO / CHECKPOINT.** Este arquivo registra uma etapa real do desenvolvimento, mas não define sozinho a regra vigente. Em caso de conflito sobre vento, comentários, alvos, presentes, manobras, contato ou corte, prevalecem `00_arquitetura_vigente.md` e `superpowers/specs/2026-10-02-hybrid-live-kite-combat-design.md`.
+
 # Documentação 79: Correção do Travamento de Cena nos Cortes, Tolerância Vertical 9:16 e Estabilização Cinemática da Câmera
 
 ## 1. Diagnóstico do Problema

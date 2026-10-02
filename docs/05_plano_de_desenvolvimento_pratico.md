@@ -1,3 +1,5 @@
+> **STATUS: HISTÓRICO / CHECKPOINT.** Este arquivo registra uma etapa real do desenvolvimento, mas não define sozinho a regra vigente. Em caso de conflito sobre vento, comentários, alvos, presentes, manobras, contato ou corte, prevalecem `00_arquitetura_vigente.md` e `superpowers/specs/2026-10-02-hybrid-live-kite-combat-design.md`.
+
 # 🛠️ 05. Plano de Desenvolvimento Prático (Hands-on Workflow)
 
 Este documento descreve o fluxo de trabalho diário de desenvolvimento, scripts PowerShell unificados e configuração de transmissão no OBS Studio.

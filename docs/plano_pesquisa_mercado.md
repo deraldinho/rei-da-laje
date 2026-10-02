@@ -1,3 +1,5 @@
+> **STATUS: HISTÓRICO / CHECKPOINT.** Este arquivo registra uma etapa real do desenvolvimento, mas não define sozinho a regra vigente. Em caso de conflito sobre vento, comentários, alvos, presentes, manobras, contato ou corte, prevalecem `00_arquitetura_vigente.md` e `superpowers/specs/2026-10-02-hybrid-live-kite-combat-design.md`.
+
 # 🔍 Plano Estratégico: 06. Pesquisa de Mercado, Benchmarking e Monetização
 
 Este plano detalha o benchmarking com os maiores concorrentes do setor (**TikLive Games, Kyrat Games, TikFinity**), as estratégias comprovadas de monetização via presentes do TikTok, os gatilhos psicológicos de retenção da audiência e as práticas para evitar punições ou *shadowban* pelo algoritmo da plataforma.

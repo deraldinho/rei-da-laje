@@ -1,3 +1,5 @@
+> **STATUS: HISTÓRICO / CHECKPOINT.** Este arquivo registra uma etapa real do desenvolvimento, mas não define sozinho a regra vigente. Em caso de conflito sobre vento, comentários, alvos, presentes, manobras, contato ou corte, prevalecem `00_arquitetura_vigente.md` e `superpowers/specs/2026-10-02-hybrid-live-kite-combat-design.md`.
+
 # 📅 Plano de Implementação: 04. Etapas Sequenciais de Desenvolvimento
 
 Este plano detalha o cronograma executivo, os pré-requisitos técnicos de cada uma das **4 Etapas**, a matriz de arquivos entregues por fase e os critérios rigorosos de conclusão (*Definition of Done*).

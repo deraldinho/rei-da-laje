@@ -1,3 +1,5 @@
+> **STATUS: HISTÓRICO / CHECKPOINT.** Este arquivo registra uma etapa real do desenvolvimento, mas não define sozinho a regra vigente. Em caso de conflito sobre vento, comentários, alvos, presentes, manobras, contato ou corte, prevalecem `00_arquitetura_vigente.md` e `superpowers/specs/2026-10-02-hybrid-live-kite-combat-design.md`.
+
 # 🏗️ Plano de Implementação: Arquitetura Técnica do Sistema
 
 Este plano detalha a fundação arquitetural do projeto, definindo a infraestrutura monorepo, o fluxo de dados em tempo real, os contratos dos eventos WebSocket e a estratégia de simulação/fallback para o TikTok Live.

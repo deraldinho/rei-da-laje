@@ -1,3 +1,5 @@
+> **STATUS: HISTÓRICO / CHECKPOINT.** Este arquivo registra uma etapa real do desenvolvimento, mas não define sozinho a regra vigente. Em caso de conflito sobre vento, comentários, alvos, presentes, manobras, contato ou corte, prevalecem `00_arquitetura_vigente.md` e `superpowers/specs/2026-10-02-hybrid-live-kite-combat-design.md`.
+
 # Checkpoint 31 — estabilidade da conexão TikTok Live
 
 Data: 25/09/2026 ~02:46–03:00 (-03), x99. Produção na porta 3000 mantida em execução durante toda a auditoria; sem restart do backend/OBS.

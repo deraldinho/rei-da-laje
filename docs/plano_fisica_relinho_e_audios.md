@@ -1,3 +1,5 @@
+> **STATUS: HISTÓRICO / CHECKPOINT.** Este arquivo registra uma etapa real do desenvolvimento, mas não define sozinho a regra vigente. Em caso de conflito sobre vento, comentários, alvos, presentes, manobras, contato ou corte, prevalecem `00_arquitetura_vigente.md` e `superpowers/specs/2026-10-02-hybrid-live-kite-combat-design.md`.
+
 # ⚔️ Plano de Implementação: Física de Relinho e Sistema de Áudio
 
 Este plano detalha a matemática de colisão de linhas, o algoritmo de combate de relinho em 60 FPS, o sistema de partículas de faíscas e o pipeline de áudio imersivo para o OBS Studio.

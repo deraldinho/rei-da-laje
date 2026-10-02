@@ -1,4 +1,6 @@
-﻿# Physical Kite + Line System Implementation Plan
+# Physical Kite + Line System Implementation Plan
+
+> **MIGRATION NOTE — 02/10/2026:** Tasks 1–7 deste plano representam a base física preservada. O Task 8 (`LiveCombatDirector` com encounter steering) foi substituído pela arquitetura `SkyWindDirector + CommentGestureEngine + GiftManeuverAI + LineDensityField`. O Task 9 permanece pendente de nova verificação após corrigir a normalização de carga estrutural.
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 

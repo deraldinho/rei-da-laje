@@ -1,3 +1,5 @@
+> **STATUS: HISTÓRICO / CHECKPOINT.** Este arquivo registra uma etapa real do desenvolvimento, mas não define sozinho a regra vigente. Em caso de conflito sobre vento, comentários, alvos, presentes, manobras, contato ou corte, prevalecem `00_arquitetura_vigente.md` e `superpowers/specs/2026-10-02-hybrid-live-kite-combat-design.md`.
+
 # Checkpoint — novas mecânicas P1–P4 e estabilidade da Live
 
 Data: 24/09/2026. Transmissão principal ativa no OBS: NÃO reiniciar Node/porta 3000 nem atualizar fonte do navegador sem recuperação comprovada de estado.

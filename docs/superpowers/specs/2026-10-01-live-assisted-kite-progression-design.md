@@ -1,7 +1,9 @@
 # Live Assisted Kite Combat — Design
 
+> **SUPERSEDED EM PARTE EM 02/10/2026.** As seções de controle por comandos, seleção de alvo e `LiveCombatDirector` foram substituídas por [`2026-10-02-hybrid-live-kite-combat-design.md`](2026-10-02-hybrid-live-kite-combat-design.md). As seções de economia por valor, identidade, persistência, avatar, ledger e marketplace continuam como referência de design.
+
 Date: 2026-10-01
-Status: design approved in chat; written spec pending user review
+Status: partially superseded by 2026-10-02 hybrid combat architecture
 
 ## Goal
 

@@ -1,43 +1,94 @@
-# Regra atual — comentário, vento e presentes
-Atualizado em 24/09/2026 conforme orientação do usuário. Este documento substitui as instruções anteriores de combate por comandos.
+# 08. Vento automático, comentários e presentes — regra vigente
 
-## Ciclo de participação
-1. Qualquer comentário cria uma pipa se o usuário não estiver ativo. Tela cheia: fila única por usuário.
-2. Comentários repetidos não criam cópias e não concedem poder de combate.
-3. Vento variável conduz as pipas. Não existem comandos de puxar, soltar ou embicar para espectadores.
-4. Proximidade de até 120 px e cruzamento real das linhas iniciam o relinho.
-5. Ao ser cortado, o jogador precisa comentar novamente para voltar.
-6. Presente sem pipa não cria entrada: o efeito fica disponível até expirar e é aplicado se houver comentário nesse intervalo.
-7. A antiga captura por #pegar foi retirada desta dinâmica. Esse texto agora vale como comentário normal.
+**Atualizado em 02/10/2026.**
 
-## Presentes cadastrados
-| Presente | Vantagem | Duração base |
-|---|---|---|
-| Rosa / Flor | Cerol, poder 1,5x | 60 s |
-| Donut | Chile, poder 3x | 120 s |
-| Capivara | Kevlar, poder 2,5x e 2 escudos | 180 s |
-| Perfume | Redemoinho que atrai até 3 pipas em raio de 300 px; poder mínimo 4x durante efeito | 3 s |
-| Leão | Invulnerabilidade e corte ao cruzar linha adversária elegível; pipa ampliada | 30 s |
+Este documento descreve a regra operacional atual da arena. Ele substitui a versão de 24/09/2026 que dizia que comentários repetidos não movimentavam a pipa e que não existia influência por chat.
 
-Perfume e Leão são efeitos independentes, preservando a linha base. Dois jogadores invulneráveis não se cortam. O redemoinho aproxima, mas não sorteia nem concede cortes sem cruzamento. Escudos salvam da derrota normal e restauram a linha; Leão ignora escudos durante o corte especial.
-Combos somam duração; Capivara soma escudos. O consumo é informado ao backend pelo cliente único e duplicatas com a mesma contagem são ignoradas.
-Uma linha inferior não substitui uma superior; presentear com item inferior durante esse período não adiciona vantagem. Itens não cadastrados não recebem efeito inventado.
-Os IDs permanecem os já existentes no projeto e precisam ser conferidos numa live real.
+## 1. Vento cria o PvP normal
 
-## Implementação e validação
-- Voo em `frontend/src/engine/Wind.js`: correntes periódicas compartilhadas, fases individuais e rajadas; sem sorteio recorrente de destinos.
-- `Kite.js` consome o vento e mantém os temporizadores dos efeitos visuais.
-- `buffManager.js` mantém linha e efeitos especiais separados; fila também recebe os buffs válidos ao entrar.
-- `tiktokService.js` transforma todo comentário em tentativa de entrada, sem emitir ações de combate.
-- Tela e admin explicam o modelo automático e os presentes.
-- Backup anterior em `backups/pipa-before-wind-*.zip`.
-- 17 testes aprovados em `npm test`, incluindo vento gerando cruzamentos/cortes reais sem comandos e limite de 3 alvos no redemoinho.
-- Build aprovado; avisos de API CJS do Vite e tamanho do bundle permanecem.
-- Edge headless: 40 pipas, layout vertical, presentes, movimento sem comando, término do redemoinho, proteção independente, transparência e ausência de exceções.
-- Evidências: `tests/evidence/`. O teste usa porta 3107, sem alterar a sessão da porta 3000.
+O comportamento normal da arena não possui IA de perseguição. O vento global/coerente reorganiza o céu e faz as linhas entrarem em novas relações espaciais.
 
-## Ativação e limites
-Reinicie o processo antigo com `npm start` na raiz e recarregue a tela para usar frontend e backend desta versão juntos.
-A execução existente na porta 3000 foi preservada.
-Ainda falta autoridade única no servidor para múltiplas telas/reconexão, além de validação no TikTok Live real e teste prolongado no OBS. Use uma única tela de jogo e o admin separado.
-O backend ainda recebe resultados de combate do navegador e não constitui validação antitrapaça. Não publicar diretamente as rotas administrativas na internet.
+O futuro `SkyWindDirector` controla apenas:
+
+- direção predominante;
+- intensidade;
+- envelopes de rajada;
+- transições suaves;
+- pequena variação vertical/local;
+- turbulência global limitada por `CrowdEnergy`.
+
+Ele nunca escolhe adversário, nunca empurra A especificamente contra B e nunca declara relinho.
+
+## 2. Pipas respondem pela física 3D
+
+As trajetórias emergem de:
+
+`WindField + KiteAttitude + KiteAerodynamics + SpoolController + KiteDynamics + RopePhysics`
+
+Não existe animação cinemática pré-pronta para voo normal. A mesma mudança de vento pode produzir respostas diferentes porque cada pipa possui posição, profundidade, velocidade, atitude, tensão, spool e fase distintos.
+## 3. Comentários influenciam sem comandos fixos
+
+Qualquer comentário válido pode gerar um gesto físico curto na pipa daquele usuário. O espectador não precisa decorar `1`, `2`, `3`, `puxar`, `soltar` ou `embicar`.
+
+O `CommentGestureEngine` deverá considerar texto, identidade, vento, atitude, spool/tensão, novidade do comentário e densidade local de linhas para gerar apenas uma intenção limitada.
+
+Exemplos de saída física:
+
+- pequena liberação de linha;
+- puxada curta;
+- torque de desbico;
+- trim de atitude;
+- sequência curta de alívio + recuperação.
+
+O comentário não define trajetória, não move coordenadas diretamente e não aplica dano.
+
+## 4. CrowdEnergy
+
+O conjunto dos comentários aceitos alimenta `CrowdEnergy`, limitado a `[0,1]`. Esse valor pode aumentar suavemente a atividade do céu, sem alterar regras de contato ou material.
+
+Spam deve ser coalescido/rate-limited; 5.000 comentários não podem criar 5.000 jobs físicos no mesmo frame.
+
+## 5. Presentes pilotam temporariamente
+
+Depois da resolução econômica por valor em moedas, o gift pode ativar `GiftManeuverAI`.
+
+A IA do presente pode:
+
+- ler vento e estado mecânico da pipa;
+- consultar `LineDensityField`;
+- avaliar um conjunto pequeno/fixo de corredores alcançáveis;
+- programar spool, torque, trim e tensão para executar a manobra.
+
+Ela não escolhe usuário-alvo e não aplica dano direto.
+## 6. Retão e outras manobras
+
+Retão não é animação nem `damageArea()`.
+
+A sequência é física:
+
+`aliviar linha -> orientar com vento -> recuperar tensão -> puxar -> atravessar o espaço`
+
+Mergulho, laçada, aparada e futuras manobras seguem a mesma regra: o sistema planeja controles e deixa a física determinar a trajetória.
+
+## 7. Relinho verdadeiro em 3D
+
+O combate só começa quando a geometria física da linha confirma proximidade real.
+
+Um X na tela com separação grande em Z resulta em **zero contato e zero desgaste**.
+
+Quando há contato válido:
+
+`ângulo + vSlide + tensão + material + tempo de contato -> LineAbrasionModel -> desgaste localizado`
+
+Sob sobrecarga estrutural sustentada, `LineStructuralModel` pode acumular fadiga independentemente da abrasão.
+
+## 8. Performance
+
+- até 40 pipas;
+- fixed step a 60 Hz;
+- `maxTracked <= 12`;
+- `maxSolved <= 3`;
+- `LineDensityField` em cadência inferior à física e armazenamento reutilizável;
+- nenhuma busca ingênua por todos os pares/segmentos em cada frame.
+
+A especificação completa está em [`superpowers/specs/2026-10-02-hybrid-live-kite-combat-design.md`](superpowers/specs/2026-10-02-hybrid-live-kite-combat-design.md).

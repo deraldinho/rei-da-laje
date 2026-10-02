@@ -1,3 +1,5 @@
+> **STATUS: HISTÓRICO / CHECKPOINT.** Este arquivo registra uma etapa real do desenvolvimento, mas não define sozinho a regra vigente. Em caso de conflito sobre vento, comentários, alvos, presentes, manobras, contato ou corte, prevalecem `00_arquitetura_vigente.md` e `superpowers/specs/2026-10-02-hybrid-live-kite-combat-design.md`.
+
 # Checkpoint 29 — tabela final de benefícios por presentes (5, 10 e 15 segundos)
 
 Data: 24/09/2026 — x99, projeto Rei da Laje. Pedido atualizado: benefícios curtos, tipo 5s/10s/15s; a orientação de no mínimo 1 minuto foi substituída.

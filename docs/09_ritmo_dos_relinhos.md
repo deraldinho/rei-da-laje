@@ -1,3 +1,5 @@
+> **STATUS: HISTÓRICO / CHECKPOINT.** Este arquivo registra uma etapa real do desenvolvimento, mas não define sozinho a regra vigente. Em caso de conflito sobre vento, comentários, alvos, presentes, manobras, contato ou corte, prevalecem `00_arquitetura_vigente.md` e `superpowers/specs/2026-10-02-hybrid-live-kite-combat-design.md`.
+
 # Ajuste de ritmo dos relinhos — 24/09/2026
 ## Problema observado
 Com poucas pipas, a amplitude de voo separava os participantes e o raio fixo de 120 px dificultava encontros em telas grandes. O dano em contato já era rápido; o gargalo era encontrar e manter contato.

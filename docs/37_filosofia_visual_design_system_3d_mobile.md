@@ -1,3 +1,5 @@
+> **STATUS: HISTÓRICO / CHECKPOINT.** Este arquivo registra uma etapa real do desenvolvimento, mas não define sozinho a regra vigente. Em caso de conflito sobre vento, comentários, alvos, presentes, manobras, contato ou corte, prevalecem `00_arquitetura_vigente.md` e `superpowers/specs/2026-10-02-hybrid-live-kite-combat-design.md`.
+
 # 37. Síntese Visual: Filosofia, Design System Frontend, Mobile 9:16 e Experiência 3D
 
 Este documento consolida a convergência das 4 diretrizes ativadas (`/canvas-design`, `/frontend-design`, `/mobile-design`, `/3d-web-experience`) aplicadas à identidade do jogo **Disputa de Relinho (TikTok Live)**.

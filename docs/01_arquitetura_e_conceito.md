@@ -1,108 +1,136 @@
-> **Atualização de 24/09/2026:** o modelo vigente é comentário para entrar, vento automático para movimentar e provocar relinhos, e presentes para vantagens. Comandos manuais e captura por `#pegar` descritos abaixo pertencem ao planejamento anterior. Consulte [a regra atual e os efeitos implementados](08_vento_automatico_e_presentes.md). O combate atual utiliza dano contínuo por HP; a regra antiga de corte por diferença de 25% não foi implementada.
+# 01. Arquitetura e conceito do jogo
 
-# 📐 01. Arquitetura e Conceito do Jogo
+**Atualizado em 02/10/2026 para a arquitetura híbrida vigente.**
 
-## Visão Geral do Sistema
+## Visão do produto
 
-O jogo é um sistema interativo em tempo real para **TikTok Live**, onde espectadores participam enviando mensagens no chat ou presentes (Gifts).
+`Competição de Pipa TikTok Live` é uma arena vertical 3D para transmissão ao vivo. Até 40 participantes podem manter pipas simultaneamente no céu. O combate normal é automático e emerge do vento; não existe caça automática a jogadores específicos.
+
+A arquitetura combina três responsabilidades:
+
+1. **comportamento de live 2D:** céu sempre ativo, muitas pipas e cruzamentos frequentes;
+2. **mecânica de pipa 3D:** atitude, vento aparente, spool, tensão, folga, inércia e corda determinam o movimento;
+3. **física experimental de linha:** somente contato geométrico 3D verdadeiro pode gerar relinho, abrasão, fadiga e corte.
+
+Regra central:
+
+> **Vento cria o PvP. Comentário influencia. Presente pilota. Física decide.**
+
+## Arquitetura de alto nível
 
 ```mermaid
 flowchart TD
-    A[TikTok Live Server] -->|Comentários, Likes & Gifts| B[Backend Node.js / TikTok Live Connector]
-    B -->|Eventos WebSocket Socket.io| C[Motor do Jogo - PixiJS + Vite]
-    C -->|Painel Admin / DevTools| E[Navegador Admin /admin]
-    C -->|Render 60 FPS / Transparente ou Laje| D[OBS Studio / TikTok Live Studio]
+    TK[TikTok Live] --> N[Normalizer / regras backend]
+    ADM[Painel Admin] --> N
+    N --> C[Comentários]
+    N --> G[Presentes]
+    C --> CG[CommentGestureEngine]
+    G --> GM[GiftManeuverAI]
+    SD[SkyWindDirector] --> WF[WindField]
+    CG --> PI[PlayerIntentController]
+    GM --> PI
+    WF --> KD[KiteDynamics]
+    PI --> KD
+    KD --> RP[RopePhysics XPBD]
+    RP --> LC[Contato 3D de linhas]
+    LC --> AB[Abrasão / fadiga / ruptura]
+    AB --> R[Three.js / Pixi HUD / OBS]
 ```
+## Componentes principais
 
-## Componentes da Arquitetura
-1. **Backend Integrador**: Node.js com `tiktok-live-connector`, Express e `Socket.io` na porta 3000.
-2. **Painel de Simulação (DevTools)**: Rota `/admin` em `http://localhost:3000/admin` para testar comentários, gifts e likes localmente.
-3. **Frontend / Motor de Jogo**: PixiJS com Vite (60 FPS para dezenas de pipas simultâneas).
-4. **Exibição OBS**: Híbrido alternável entre **Overlay 100% Transparente** ou **Modo Cenário Completo de Favela/Laje**.
+### Backend
+- `tiktokService.js`: conexão/reconexão e recebimento de eventos TikTok.
+- `tiktokEventNormalizer.js`: identidade, comentário, gift, repeat count, foto e metadados normalizados.
+- `gameRules.js`: entrada/fila/estado canônico da arena.
+- `giftCatalog.js` e regras de gift: catálogo e resolução econômica temporária durante a migração.
 
----
+### Frontend físico
+- `WindField`: vetor de vento suave e determinístico.
+- `SkyWindDirector` **a implementar**: fases globais do vento e ritmo natural da arena; não escolhe oponentes.
+- `PlayerIntentController`: fronteira única para intenções físicas.
+- `CommentGestureEngine` **a implementar**: comentário arbitrário -> gesto curto e limitado.
+- `GiftManeuverAI` **a implementar**: gift -> sequência inteligente de controles físicos.
+- `KiteDynamics`: autoridade de `x/y/z`, velocidade e atitude.
+- `SpoolController`: puxar/soltar comprimento real da linha.
+- `RopePhysics`: corda XPBD, geometria, folga e tensão.
 
-## Contratos de Dados WebSocket (Schema de Eventos)
+### Combate de linha
+- `LineBroadPhase`: reduz candidatos de contato.
+- narrow phase/RopeCollision: confirma proximidade geométrica 3D.
+- `LineContactManager`: rastreia contatos sob orçamento fixo.
+- `LineAbrasionModel`: atrito/deslizamento/tensão/material -> desgaste.
+- `LineStructuralModel`: sobrecarga sustentada -> fadiga estrutural.
+- `LineBreakSystem`: ruptura localizada no segmento físico.
 
-Todos os eventos emitidos pelo backend para o frontend seguem uma estrutura padronizada:
+### Renderização
+Three.js e Pixi/DOM são consumidores do estado da simulação. Renderizador, câmera, partículas, labels e efeitos não podem reescrever coordenadas, HP ou geometria lógica da linha.
 
-### `player:spawn`
-Disparado quando um espectador comenta pela primeira vez ou após renascer:
-```json
-{
-  "userId": "string",
-  "uniqueId": "@usuario_tiktok",
-  "nickname": "Nome do Usuário",
-  "profilePictureUrl": "https://p16-sign.tiktokcdn.com/...",
-  "kiteType": "peixinho | raiada | carrapeta",
-  "lineType": "algodao",
-  "power": 1.0,
-  "shield": 0
-}
-```
+## Movimento normal da arena
 
-### `player:action`
-Disparado quando o jogador envia comandos rápidos de combate:
-```json
-{
-  "userId": "string",
-  "action": "puxar | descarregar | embicar",
-  "timestamp": 1727190000000
-}
-```
+Sem comentário e sem gift, a pipa continua ativa. O `SkyWindDirector` altera lentamente direção, intensidade, rajadas e turbulência global. Cada pipa responde de forma individual por profundidade, fase e estado físico.
 
-### `gift:received`
-Disparado quando um presente é enviado na Live:
-```json
-{
-  "userId": "string",
-  "uniqueId": "@usuario_tiktok",
-  "giftId": 5655,
-  "giftName": "Rosa | Donut | Capivara | Perfume | Leao",
-  "diamondCount": 1,
-  "upgrade": {
-    "lineType": "cerol | chile | kevlar",
-    "powerMultiplier": 1.5,
-    "durationSeconds": 60,
-    "specialAbility": "tornado | mestre_do_ceu | null"
-  }
-}
-```
+Não há `targetId`, `nearestEnemy`, perseguição automática ou aproximação forçada de pares como regra normal.
+## Comentários
 
-### `likes:burst`
-Disparado quando há curtidas em massa:
-```json
-{
-  "totalLikes": 50,
-  "speedBonusPercent": 25,
-  "durationSeconds": 30
-}
-```
+O modelo antigo de comandos fixos foi removido da interação pública. `1`, `2`, `3`, `puxar`, `soltar`, `embicar` e equivalentes não são comandos obrigatórios para espectadores.
 
-### `catch:attempt`
-Disparado quando alguém tenta aparar uma pipa avoadora:
-```json
-{
-  "catcherUserId": "string",
-  "catcherNick": "Nome do Resgatador",
-  "targetKiteId": "string"
-}
-```
+O fluxo novo é:
 
----
+`comentário -> validação/anti-spam -> score de engajamento -> CommentGestureEngine -> intenção física curta -> PlayerIntentController`
 
-## Ciclo de Vida do Jogador
+A intenção pode ajustar `spoolCommand`, `debicoTorque`, `trimPitch`, `tensionAssist`, intensidade e duração. Ela não pode alterar posição/velocidade diretamente nem reduzir HP.
+
+Todos os comentários aceitos também podem alimentar `CrowdEnergy`, um sinal global saturado em `[0,1]` que modula somente parâmetros seguros do céu, como amplitude de rajada e ritmo de transição do vento.
+
+## Presentes
+
+O gift resolve primeiro o valor econômico e o buff/material temporário. Depois o `GiftManeuverAI` pode assumir a pipa por uma janela limitada.
+
+A IA do presente:
+
+- lê vento, atitude, spool/tensão e limites da arena;
+- consulta um `LineDensityField` 3D de baixa resolução;
+- avalia poucos corredores alcançáveis;
+- escolhe uma trajetória que maximize oportunidade de cruzar linhas, sem escolher usuário-alvo;
+- emite apenas intenções físicas para `PlayerIntentController`.
+
+Retão, mergulho, laçada e aparada devem emergir da sequência de controles físicos, nunca de uma trajetória X/Y pré-gravada.
+
+## Contato e corte
+
+Um cruzamento visual na câmera não é suficiente. O contato só existe quando os segmentos das duas cordas entram no raio de proximidade em 3D.
+
+`Rope geometry -> BroadPhase -> NarrowPhase 3D -> ContactManager -> Abrasion/Structural -> Break`
+
+Somente esse pipeline pode produzir desgaste/corte. Comentário, presente, câmera e efeitos visuais não possuem autorização para declarar vencedor.
+## Ciclo de vida resumido
 
 ```mermaid
 stateDiagram-v2
-    [*] --> EspectadorComenta: Digita qualquer mensagem no Chat
-    EspectadorComenta --> PipaSubindo: Spawn com foto de perfil recortada em círculo e nick
-    PipaSubindo --> NoCeu: Pipa atinge altura de voo e flutua no vento
-    NoCeu --> EmRelinho: Linha cruza com adversário (Busca Auto ou Comandos no Chat)
-    EmRelinho --> Vencedor: Cortou a pipa inimiga (+1 Ponto & Som de Vitória)
-    EmRelinho --> Cortado: Linha estourou (Som "Tlec!")
-    Vencedor --> NoCeu: Continua no ar acumulando streak (Rei da Laje)
-    Cortado --> PipaAvoadora: Pipa cai flutuando pela tela (Permite #pegar)
-    PipaAvoadora --> [*]: Pode ser aparada por outro espectador
-    Cortado --> EspectadorComenta: Precisa comentar novamente no chat para renascer
+    [*] --> Entrando: primeiro comentário válido
+    Entrando --> NoCeu: spawn concluído
+    NoCeu --> NoCeu: voo governado pelo vento
+    NoCeu --> Influenciado: comentário gera gesto curto
+    Influenciado --> NoCeu: gesto termina
+    NoCeu --> ManobraGift: presente ativa IA temporária
+    ManobraGift --> NoCeu: manobra expira
+    NoCeu --> Relinho: contato 3D confirmado
+    Relinho --> NoCeu: contato separa sem ruptura
+    Relinho --> Cortado: ruptura física localizada
+    Cortado --> Voada: pipa perde sustentação e cai
 ```
+
+## Limites permanentes
+
+- até 40 pipas ativas;
+- fixed step de 60 Hz;
+- `maxTracked <= 12` e `maxSolved <= 3`;
+- nenhuma busca todos-contra-todos de todos os segmentos por frame;
+- nenhuma consulta de rede/banco dentro do loop físico;
+- nenhum renderer escrevendo `kite.z` ou estado de contato;
+- nenhum gift/comentário com dano direto;
+- materiais são classes virtuais de gameplay, sem receitas reais.
+
+## Documentação de referência
+
+A especificação detalhada vigente é [`superpowers/specs/2026-10-02-hybrid-live-kite-combat-design.md`](superpowers/specs/2026-10-02-hybrid-live-kite-combat-design.md). Documentos anteriores continuam disponíveis como histórico e devem ser interpretados conforme [`README.md`](README.md).
