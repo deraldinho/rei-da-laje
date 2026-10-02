@@ -13,12 +13,16 @@ class PlayerPlatform {
   observeProfile(profile={}){
     const userId=clean(profile.userId,128);
     if(!userId)return null;
-    this.repository.upsertProfile({...profile,userId});
-    const remoteUrl=clean(profile.profilePictureUrl,1000);
-    if(remoteUrl&&this.avatarCache?.refresh){
-      Promise.resolve(this.avatarCache.refresh({userId,remoteUrl})).catch(()=>{});
+    try {
+      this.repository.upsertProfile({...profile,userId});
+      const remoteUrl=clean(profile.profilePictureUrl,1000);
+      if(remoteUrl&&this.avatarCache?.refresh){
+        Promise.resolve(this.avatarCache.refresh({userId,remoteUrl})).catch(()=>{});
+      }
+      return this.spawnSnapshot(userId);
+    } catch (_) {
+      return null;
     }
-    return this.spawnSnapshot(userId);
   }
 
   resolveGift(gift={},resolution={},applyTemporary=null){
@@ -27,8 +31,13 @@ class PlayerPlatform {
       if(typeof applyTemporary==='function')applyTemporary();
       return {accepted:true,duplicate:false,persistent:false,ledgerId:null,grants:[]};
     }
-    if(!this.repository.getProfile(userId)){
-      this.observeProfile({userId,uniqueId:gift.uniqueId,nickname:gift.nickname,profilePictureUrl:gift.profilePictureUrl});
+    try {
+      if(!this.repository.getProfile(userId)){
+        this.observeProfile({userId,uniqueId:gift.uniqueId,nickname:gift.nickname,profilePictureUrl:gift.profilePictureUrl});
+      }
+    } catch (_) {
+      if(typeof applyTemporary==='function')applyTemporary();
+      return {accepted:true,duplicate:false,persistent:false,ledgerId:null,grants:[],persistenceError:true};
     }
     const entry={
       ...gift,userId,
@@ -59,23 +68,27 @@ class PlayerPlatform {
   }
 
   spawnSnapshot(userId){
-    const profile=this.repository.getPersistentSnapshot(userId);
-    if(!profile)return null;
-    const inventory=this.inventory.snapshot(profile.userId);
-    const cachedAvatar=this.avatarCache?.cachedUrl?.(profile.userId)||null;
-    const equippedKite=inventory.loadout.kiteKey
-      ? inventory.ownedKites.find(item=>item.kiteKey===inventory.loadout.kiteKey)||null:null;
-    const equippedSkin=inventory.loadout.skinKey
-      ? inventory.ownedSkins.find(item=>item.skinKey===inventory.loadout.skinKey)||null:null;
-    return {
-      userId:profile.userId,uniqueId:profile.uniqueId,nickname:profile.nickname,
-      profilePictureUrl:cachedAvatar||profile.profilePictureUrl||'',
-      progression:inventory.progression,
-      loadout:inventory.loadout,
-      ownedKites:inventory.ownedKites,
-      ownedSkins:inventory.ownedSkins,
-      equippedKite,equippedSkin
-    };
+    try {
+      const profile=this.repository.getPersistentSnapshot(userId);
+      if(!profile)return null;
+      const inventory=this.inventory.snapshot(profile.userId);
+      const cachedAvatar=this.avatarCache?.cachedUrl?.(profile.userId)||null;
+      const equippedKite=inventory.loadout.kiteKey
+        ? inventory.ownedKites.find(item=>item.kiteKey===inventory.loadout.kiteKey)||null:null;
+      const equippedSkin=inventory.loadout.skinKey
+        ? inventory.ownedSkins.find(item=>item.skinKey===inventory.loadout.skinKey)||null:null;
+      return {
+        userId:profile.userId,uniqueId:profile.uniqueId,nickname:profile.nickname,
+        profilePictureUrl:cachedAvatar||profile.profilePictureUrl||'',
+        progression:inventory.progression,
+        loadout:inventory.loadout,
+        ownedKites:inventory.ownedKites,
+        ownedSkins:inventory.ownedSkins,
+        equippedKite,equippedSkin
+      };
+    } catch (_) {
+      return null;
+    }
   }
 }
 

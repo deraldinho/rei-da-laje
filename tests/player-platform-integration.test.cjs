@@ -127,3 +127,19 @@ test('TikTokService mantém fallback de sessão sem promover uniqueId mutável a
   assert.equal(observed.every(profile=>!profile.userId),true);
   assert.equal(resolved[0]?.userId,'');
 });
+
+test('falha SQLite em perfil/spawn/gift é fail-soft e preserva gameplay temporário',()=>{
+  const PlayerPlatform=require('../backend/persistence/playerPlatform');
+  const fail=()=>{throw new Error('SQLITE_IOERR');};
+  const repository={upsertProfile:fail,getProfile:fail,getPersistentSnapshot:fail};
+  const platform=new PlayerPlatform({
+    db:{},repository,ledger:{claim:fail},
+    inventory:{snapshot:fail,addProgress:fail},avatarCache:null,marketplace:null
+  });
+  let tempCalls=0;
+  assert.doesNotThrow(()=>assert.equal(platform.observeProfile({userId:'u1',nickname:'U1'}),null));
+  assert.doesNotThrow(()=>assert.equal(platform.spawnSnapshot('u1'),null));
+  const result=platform.resolveGift({userId:'u1',roomId:'r',messageId:'m'},
+    {unitCoinValue:1,totalCoinValue:1},()=>{tempCalls++;});
+  assert.equal(result.persistent,false);assert.equal(result.persistenceError,true);assert.equal(tempCalls,1);
+});

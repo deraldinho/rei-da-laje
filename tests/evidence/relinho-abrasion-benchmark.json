@@ -222,21 +222,21 @@
     "dense40AvgMsMax": 4
   },
   "browser": {
-    "generatedAt": "2026-10-02T20:29:22.525Z",
+    "generatedAt": "2026-10-02T20:34:41.947Z",
     "samples": 240,
-    "p95Ms": 20.600000143051147,
-    "p99Ms": 26.5,
-    "maxMs": 29.899999856948853,
+    "p95Ms": 19.5,
+    "p99Ms": 22.799999952316284,
+    "maxMs": 25.09999990463257,
     "maxTracked": 12,
     "maxSolved": 3,
-    "maxCold": 95,
+    "maxCold": 96,
     "maxActive": 12,
     "manager": {
       "createdContacts": 12,
-      "reusedContacts": 52,
-      "droppedContacts": 3112,
-      "expiredContacts": 9,
-      "rotatedContacts": 43,
+      "reusedContacts": 46,
+      "droppedContacts": 2504,
+      "expiredContacts": 4,
+      "rotatedContacts": 42,
       "activeContacts": 12,
       "selectedContacts": 3,
       "trackedContacts": 12,
@@ -254,54 +254,54 @@
       },
       "sections": {
         "hud": {
-          "avgMs": 0.036666671435038246,
-          "maxMs": 0.20000004768371582,
+          "avgMs": 0.03958333631356557,
+          "maxMs": 0.2999999523162842,
           "p95Ms": 0.10000014305114746,
           "p99Ms": 0.20000004768371582
         },
         "render3d": {
-          "avgMs": 14.230416663487752,
-          "maxMs": 27.59999990463257,
-          "p95Ms": 18.200000047683716,
-          "p99Ms": 23.700000047683716
+          "avgMs": 13.952916665871937,
+          "maxMs": 22.700000047683716,
+          "p95Ms": 17.199999809265137,
+          "p99Ms": 20.299999952316284
         },
         "collision": {
-          "avgMs": 0.4737499992052714,
-          "maxMs": 1.4000000953674316,
-          "p95Ms": 1,
-          "p99Ms": 1.2999999523162842
+          "avgMs": 0.44625000953674315,
+          "maxMs": 1.2000000476837158,
+          "p95Ms": 0.7999999523162842,
+          "p99Ms": 1
         },
         "physics": {
-          "avgMs": 1.5383333365122478,
-          "maxMs": 3.5,
-          "p95Ms": 2.299999952316284,
-          "p99Ms": 3.299999952316284
+          "avgMs": 1.4766666680574416,
+          "maxMs": 3.0999999046325684,
+          "p95Ms": 2.200000047683716,
+          "p99Ms": 2.799999952316284
         },
         "render2d": {
-          "avgMs": 0.25208333432674407,
+          "avgMs": 0.25708332856496174,
           "maxMs": 0.40000009536743164,
-          "p95Ms": 0.39999985694885254,
+          "p95Ms": 0.3000001907348633,
           "p99Ms": 0.40000009536743164
         },
         "serialization": {
-          "avgMs": 2.1000001430511475,
-          "maxMs": 2.1000001430511475,
-          "p95Ms": 2.1000001430511475,
-          "p99Ms": 2.1000001430511475
+          "avgMs": 3.0999999046325684,
+          "maxMs": 3.0999999046325684,
+          "p95Ms": 3.0999999046325684,
+          "p99Ms": 3.0999999046325684
         }
       },
       "gauges": {
-        "drawCalls": 1413,
-        "triangles": 47948,
+        "drawCalls": 1387,
+        "triangles": 48232,
         "staticSavedDraws": 890,
         "relinhoCandidates": 96,
-        "relinhoNarrowChecks": 106,
+        "relinhoNarrowChecks": 108,
         "relinhoContacts": 12,
         "relinhoSolved": 3
       }
     },
     "count": 40,
-    "drawCalls": 1413,
+    "drawCalls": 1387,
     "uncaughtExceptions": 0
   }
 }

@@ -22,11 +22,11 @@
   "reconnect": {
     "before": {
       "count": 40,
-      "session": "498c2c2c-0121-4a57-bd17-7adfc7e5b006"
+      "session": "c0482029-ad32-4d6e-9f6b-22ea8763d296"
     },
     "after": {
       "count": 40,
-      "session": "498c2c2c-0121-4a57-bd17-7adfc7e5b006"
+      "session": "c0482029-ad32-4d6e-9f6b-22ea8763d296"
     }
   },
   "lifecycle": [
