@@ -49,7 +49,8 @@ test('SpoolController limita comandos extremos sem comprimento/tensão inválido
     rope.step(1/60,hand,kite,{x:1,y:0},{});
   }
   const state=rope.getMechanicalState(hand,kite);
-  assert.ok(Number.isFinite(state.spoolLength)&&state.spoolLength>=680,'comprimento mínimo deve ser seguro');
+  assert.ok(Number.isFinite(state.spoolLength)&&state.spoolLength>=rope.minSpoolLength,'comprimento mínimo deve ser seguro');
+  assert.ok(Math.abs(state.releasedLength+state.woundLength-state.totalLineLength)<1e-9,'carretel deve conservar o comprimento total');
   assert.ok(Number.isFinite(state.tension)&&state.tension>=.08&&state.tension<=1);
   assert.ok(rope.nodes.every(n=>[n.x,n.y,n.z,n.vx,n.vy,n.vz].every(Number.isFinite)));
 });

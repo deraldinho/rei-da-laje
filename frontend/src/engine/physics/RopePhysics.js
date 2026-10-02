@@ -24,6 +24,9 @@ export class RopePhysics {
     this.nodes = [];
     this.segmentWear = new Float32Array(this.nodeCount - 1);
     this.spoolLength = 0;
+    this.minSpoolLength = Math.max(20, Number(options.minSpoolLength) || 80);
+    this.totalLineLength = Math.max(this.minSpoolLength, Number(options.totalLineLength) || Number(options.spoolCapacity) || 1800);
+    this.spoolCapacity = this.totalLineLength; // alias legado: capacidade física total do carretel
     this.tension = 0.58;
     this.structuralLoad = 0;
     this.structuralFatigue = 0;
@@ -61,6 +64,9 @@ export class RopePhysics {
     this.material = getLineMaterial(lineType);
   }
 
+  get releasedLength() { return this.spoolLength; }
+  get woundLength() { return Math.max(0, this.totalLineLength - this.spoolLength); }
+
   /**
    * Inicializa ou teletransporta os nós para alinhar entre mão e pipa
    */
@@ -75,7 +81,8 @@ export class RopePhysics {
 
     const dist = Math.hypot(kX - hX, kY - hY, kZ - hZ);
     this._directDistance = dist;
-    this.spoolLength = Math.max(10, dist);
+    this.spoolCapacity = this.totalLineLength;
+    this.spoolLength = Math.min(this.totalLineLength, Math.max(this.minSpoolLength, dist));
     this._spoolControlled = false;
 
     for (let i = 0; i < this.nodeCount; i++) {
@@ -121,24 +128,21 @@ export class RopePhysics {
     const currentDist = Math.hypot(kX - hX, kY - hY, kZ - hZ);
     this._directDistance = currentDist;
 
-    // Gestão do comprimento físico de linha (spoolLength)
-    const slack = Number.isFinite(control.lineSlack) ? Math.max(0, control.lineSlack) : 0;
-    const targetSpool = currentDist * (1.0 + slack * 0.32);
-    if (!(this.spoolLength > 0)) this.spoolLength = Math.max(10, targetSpool);
-    if (!this._spoolControlled) {
-      this.spoolLength += (targetSpool - this.spoolLength) * Math.min(1.0, safeDt * 10);
-    }
-    const minSpool = Math.max(10, currentDist * this._minSpoolRatio);
-    const maxSpool = Math.max(minSpool + 10, currentDist * 4, 1200);
-    this.spoolLength = Math.max(minSpool, Math.min(maxSpool, Number.isFinite(this.spoolLength) ? this.spoolLength : currentDist));
+    // O comprimento liberado é autoridade física. Distância/vento podem aumentar
+    // a tensão, mas nunca criam linha; somente o carretel altera spoolLength.
+    this.spoolCapacity = this.totalLineLength;
+    if (!(this.spoolLength > 0)) this.spoolLength = Math.min(this.totalLineLength, Math.max(this.minSpoolLength, currentDist));
+    this.spoolLength = Math.max(this.minSpoolLength, Math.min(this.totalLineLength, this.spoolLength));
 
     const restSegment = Math.max(0.1, this.spoolLength / (this.nodeCount - 1));
 
     // Forças ambientais
     const damping = this.material.damping;
     const grav = 140 * this.material.linearDensity * 100; // gravidade relativa da linha
-    const wX = Number.isFinite(wind?.x) ? wind.x * 28 : 0;
-    const wY = Number.isFinite(wind?.y) ? wind.y * 14 : 0;
+    const gust = Math.max(.5, Number(wind?.gust) || 1);
+    const wX = Number.isFinite(wind?.x) ? wind.x * 28 * gust : 0;
+    const wY = Number.isFinite(wind?.y) ? wind.y * 14 * gust : 0;
+    const wZ = Number.isFinite(wind?.z) ? wind.z * 22 * gust : 0;
 
     // 1. Guarda prevX/prevY dos EXTREMOS a partir de suas posições do frame anterior
     // Antes da fixação com pinNode, n0.x e nEnd.x contêm as posições do passo anterior.
@@ -163,10 +167,11 @@ export class RopePhysics {
       const sagArc = Math.sin((i / (this.nodeCount - 1)) * Math.PI);
       const accX = wX * sagArc;
       const accY = grav * sagArc + wY * sagArc;
+      const accZ = wZ * sagArc;
 
       n.x += vx + accX * safeDt * safeDt;
       n.y += vy + accY * safeDt * safeDt;
-      n.z += vz;
+      n.z += vz + accZ * safeDt * safeDt;
     }
 
     // 3. Fixação dos extremos
@@ -196,8 +201,19 @@ export class RopePhysics {
 
     // 6. Tensão emergente física: relação entre a distância direta e o comprimento liberado
     const strain = currentDist / Math.max(1, this.spoolLength);
+    // A linha também recebe carga aerodinâmica: vento transversal faz barriga e
+    // transforma arrasto em tensão mesmo quando a distância reta ainda tem folga.
+    const invDirect=currentDist>1e-6?1/currentDist:0;
+    const lineX=(kX-hX)*invDirect, lineY=(kY-hY)*invDirect, lineZ=(kZ-hZ)*invDirect;
+    const gustLoad=Math.max(.5,Number(wind?.gust)||1);
+    const airX=(Number(wind?.x)||0)*gustLoad, airY=(Number(wind?.y)||0)*gustLoad, airZ=(Number(wind?.z)||0)*gustLoad;
+    const along=airX*lineX+airY*lineY+airZ*lineZ;
+    const crossSq=Math.max(0,airX*airX+airY*airY+airZ*airZ-along*along);
+    const exposedLength=Math.max(.3,Math.min(1.4,this.spoolLength/1400));
+    const windTension=Math.min(.42,crossSq*.10*exposedLength);
     // strain >= 0.98 indica linha reta e esticada; strain < 0.85 indica bastante folga
-    const rawTension = Math.max(0.08, Math.min(1.0, 0.12 + (strain - 0.75) * 3.5));
+    const geometricTension=Math.max(0.04,0.12+(strain-.75)*3.5);
+    const rawTension=Math.max(0.08,Math.min(1,geometricTension+windTension));
     this.tension = Math.max(0.08, Math.min(1.0, this.tension + (rawTension - this.tension) * Math.min(1.0, safeDt * 8)));
     const normalizedLoad = this.tension * 0.72 + Math.max(0, strain - 0.96) * 4.2;
     // Carga aplicada é propriedade do estado mecânico da corda, não da resistência do material.
@@ -210,11 +226,10 @@ export class RopePhysics {
 
   adjustSpoolLength(deltaPx = 0) {
     const delta = Number(deltaPx) || 0;
-    const direct = Math.max(10, Number(this._directDistance) || 10);
-    const minSpool = Math.max(10, direct * this._minSpoolRatio);
-    const maxSpool = Math.max(minSpool + 10, direct * 4, 1200);
+    const direct = Math.max(this.minSpoolLength, Number(this._directDistance) || this.minSpoolLength);
+    this.spoolCapacity = this.totalLineLength;
     const current = Number.isFinite(this.spoolLength) && this.spoolLength > 0 ? this.spoolLength : direct;
-    this.spoolLength = Math.max(minSpool, Math.min(maxSpool, current + delta));
+    this.spoolLength = Math.max(this.minSpoolLength, Math.min(this.totalLineLength, current + delta));
     this._spoolControlled = true;
     return this.spoolLength;
   }
@@ -231,7 +246,7 @@ export class RopePhysics {
     const directLength = handPos && kitePos
       ? Math.hypot((kitePos.x || 0) - (handPos.x || 0), (kitePos.y || 0) - (handPos.y || 0), (kitePos.z || 0) - (handPos.z || 0))
       : Math.max(0, Number(this._directDistance) || 0);
-    return { directLength, spoolLength:this.spoolLength, slackRatio:this.getSlackRatio(handPos,kitePos), strain:directLength/Math.max(1,this.spoolLength), tension:this.tension };
+    return { directLength, spoolLength:this.spoolLength, releasedLength:this.releasedLength, woundLength:this.woundLength, totalLineLength:this.totalLineLength, slackRatio:this.getSlackRatio(handPos,kitePos), strain:directLength/Math.max(1,this.spoolLength), tension:this.tension };
   }
 
   updateAABB() {

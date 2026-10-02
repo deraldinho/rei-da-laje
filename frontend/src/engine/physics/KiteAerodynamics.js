@@ -30,7 +30,7 @@ export function computeKiteAerodynamics(kite,wind={},ropeState={},control={}){
 
   const fx=nx*drag+forwardX*lift*.28;
   const fy=ny*drag-lift*(.72+.18*Math.cos(a.pitch))+forwardY*lift*.08-trim*lift*.08;
-  const fz=nz*drag+forwardZ*lift*.22;
+  const fz=nz*drag+Math.sin(a.roll)*lift*.16;
   const cross=nx*forwardZ-nz*forwardX;
   const headingTorque=clamp(cross*q*.012,-1.5,1.5);
   const pitchTorque=clamp((-a.pitch*.9+ny*.18+trim*.45)*q*.008,-1.2,1.2);

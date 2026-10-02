@@ -786,8 +786,7 @@ export class ThreeSkyScene {
       k3d.userData.yaw = targetYaw;
       k3d.rotation.set(targetPitch, targetYaw, targetRoll);
 
-      const dynamicScale = Math.max(0.65, Math.min(1.45, 0.95 + (k3d.position.z / 600) * 0.4)) * this.customKiteScale;
-      k3d.scale.set(dynamicScale, dynamicScale, dynamicScale);
+      k3d.scale.set(this.customKiteScale, this.customKiteScale, this.customKiteScale);
 
       // Barra de HP (calculada a partir da integridade da linha: kite.lineHP / kite.maxLineHP)
       const maxHp = Number(kite.maxLineHP) > 0 ? Number(kite.maxLineHP) : 100;

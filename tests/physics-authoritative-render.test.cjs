@@ -51,3 +51,12 @@ test('spawn layout inicializa uma única vez durante proteção',async()=>{
   assert.equal(mod.stabilizeSpawnKite(kite,1,40,1080,1920),false);
   assert.deepEqual({x:kite.x,y:kite.y},{x:first.x+17,y:first.y+9});
 });
+
+test('tamanho aparente vem da perspectiva e não de escala artificial por z',()=>{
+  const source=fs.readFileSync(scenePath,'utf8');
+  const start=source.indexOf('const depthOffset = Number.isFinite(kite.z)');
+  const end=source.indexOf('// Barra de HP',start);
+  const block=source.slice(start,end);
+  assert.doesNotMatch(block,/k3d\.position\.z\s*\/\s*600|dynamicScale\s*=.*position\.z/);
+  assert.match(block,/k3d\.scale\.set\(this\.customKiteScale, this\.customKiteScale, this\.customKiteScale\)/);
+});

@@ -64,16 +64,9 @@ function ensureDepth(kite){
   const rank=Number(kite?.rooftopPlayer?.layoutIndex);
   const phase=Number(kite?.windPhase)||0;
   const seed=Number.isFinite(rank)?((rank*.61803398875+.217)%1+1)%1:(.5+.5*Math.sin(phase*1.37));
-  if(!Number.isFinite(kite.z)||Math.abs(kite.z)<1e-6) kite.z=45+seed*175;
+  if(!Number.isFinite(kite.z)||Math.abs(kite.z)<1e-6) kite.z=(seed-.5)*320;
   kite.vz=Number.isFinite(kite.vz)?kite.vz:0;
   kite._physicsDepthInitialized=true;
-}
-
-function edgeForce(value,min,max,softWidth,strength){
-  const soft=Math.max(1,softWidth);
-  if(value<min+soft) return (min+soft-value)*strength;
-  if(value>max-soft) return -(value-(max-soft))*strength;
-  return 0;
 }
 
 function computeBodySeparation(kite,allKites,population){
@@ -100,11 +93,6 @@ function computeBodySeparation(kite,allKites,population){
   const mag=Math.hypot(fx,fy,fz);
   if(mag>14){const s=14/mag;fx*=s;fy*=s;fz*=s;}
   return {fx,fy,fz};
-}
-
-function clampAxis(kite,key,velocityKey,min,max){
-  if(kite[key]<min){kite[key]=min;if(kite[velocityKey]<0)kite[velocityKey]*=-.18;}
-  else if(kite[key]>max){kite[key]=max;if(kite[velocityKey]>0)kite[velocityKey]*=-.18;}
 }
 
 export class KiteDynamics {
@@ -179,29 +167,23 @@ export class KiteDynamics {
       tensionFz=dz/dist*magnitude;
     }
 
-    const cp=Math.cos(attitude?.pitch||0);
-    const forwardX=Math.sin(attitude?.heading||0)*cp;
-    const forwardY=Math.sin(attitude?.pitch||0);
-    const forwardZ=Math.cos(attitude?.heading||0)*cp;
+    const tetherDx=handPos.x-kite.x, tetherDy=handPos.y-kite.y, tetherDz=handPos.z-kite.z;
+    const tetherDist=Math.hypot(tetherDx,tetherDy,tetherDz)||1;
+    const tetherX=tetherDx/tetherDist, tetherY=tetherDy/tetherDist, tetherZ=tetherDz/tetherDist;
+    const strain=Number.isFinite(ropeState.strain)?ropeState.strain:tetherDist/Math.max(1,Number(rope?.spoolLength)||tetherDist);
+    const tautness=clamp((strain-.88)/.12,0,1);
+    const extension=Math.max(0,tetherDist-Math.max(1,Number(rope?.spoolLength)||tetherDist));
+    const chordMagnitude=effectiveTension*52*tautness+extension*.18;
+    const chordFx=tetherX*chordMagnitude, chordFy=tetherY*chordMagnitude, chordFz=tetherZ*chordMagnitude;
     const pull=Math.max(0,-spoolCommand)*(18+effectiveTension*16);
 
-    const width=Number.isFinite(kite.screenWidth)?kite.screenWidth:1080;
-    const height=Number.isFinite(kite.screenHeight)?kite.screenHeight:1920;
-    const minX=width*.08,maxX=width*.92,minY=height*.12,maxY=height*.44,minZ=28,maxZ=252;
-    const boundaryFx=edgeForce(kite.x,minX,maxX,width*.08,.16);
-    const boundaryFy=edgeForce(kite.y,minY,maxY,height*.06,.13);
-    const boundaryFz=edgeForce(kite.z,minZ,maxZ,38,.18);
     const bodySeparation=computeBodySeparation(kite,allKites,population);
-    // Correção de acoplamento do tether: a corda discretizada em 12 nós perde parte
-    // da reação do cabo no último segmento; o chord devolve essa componente ao corpo.
-    const chordFx=(handPos.x-kite.x)*effectiveTension*.07;
-    const chordFz=(handPos.z-kite.z)*effectiveTension*.03;
 
     const aeroScale=3.15*((kite.likeBoostRemaining||0)>0?1.08:1);
     const gravity=30*kite.mass;
-    const totalFx=aero.fx*1.05+tensionFx+chordFx+forwardX*pull-kite.vx*.62+boundaryFx+bodySeparation.fx;
-    const totalFy=gravity+aero.fy*aeroScale+tensionFy+forwardY*pull-kite.vy*.56+boundaryFy+bodySeparation.fy;
-    const totalFz=aero.fz*2.35+tensionFz+chordFz+forwardZ*pull*.72-kite.vz*.58+boundaryFz+bodySeparation.fz;
+    const totalFx=aero.fx*1.05+tensionFx+chordFx+tetherX*pull-kite.vx*.62+bodySeparation.fx;
+    const totalFy=gravity+aero.fy*aeroScale+tensionFy+chordFy+tetherY*pull-kite.vy*.56+bodySeparation.fy;
+    const totalFz=aero.fz*2.35+tensionFz+chordFz+tetherZ*pull*.72-kite.vz*.58+bodySeparation.fz;
 
     const ax=totalFx/kite.mass,ay=totalFy/kite.mass,az=totalFz/kite.mass;
     kite.vx+=ax*dt;
@@ -217,9 +199,19 @@ export class KiteDynamics {
     kite.y+=kite.vy*dt*60;
     kite.z+=kite.vz*dt*60;
 
-    clampAxis(kite,'x','vx',minX,maxX);
-    clampAxis(kite,'y','vy',minY,maxY);
-    clampAxis(kite,'z','vz',minZ,maxZ);
+    // A câmera não é parede física. A única fronteira de alcance é a linha liberada.
+    const reach=Math.max(1,Number(rope?.releasedLength)||Number(rope?.spoolLength)||tetherDist);
+    const rx=kite.x-handPos.x, ry=kite.y-handPos.y, rz=kite.z-handPos.z;
+    const rdist=Math.hypot(rx,ry,rz);
+    const maxReach=reach*1.02; // pequena elasticidade física da linha
+    if(rdist>maxReach){
+      const inv=1/rdist, nx=rx*inv, ny=ry*inv, nz=rz*inv;
+      kite.x=handPos.x+nx*maxReach;
+      kite.y=handPos.y+ny*maxReach;
+      kite.z=handPos.z+nz*maxReach;
+      const outward=kite.vx*nx+kite.vy*ny+kite.vz*nz;
+      if(outward>0){kite.vx-=outward*nx;kite.vy-=outward*ny;kite.vz-=outward*nz;}
+    }
 
     kite.rotation=clamp(Number(attitude?.roll)||0,-.65,.65);
     kite.contactSpeed=Math.hypot(kite.vx,kite.vy,kite.vz);

@@ -15,16 +15,17 @@ test('Otimização de GPU e Eliminação de Bugs de Pipa sob a Laje', () => {
   assert.match(fkSource, /if\s*\(this\.y\s*>=\s*floorLimit\)/, 'FallingKite deve ter limite de colisão na laje');
   assert.match(fkSource, /this\.life\s*=\s*0/, 'FallingKite deve encerrar ao tocar o horizonte da laje');
 
-  // 2. Kite ativo nasce no ar e possui trava de solo da laje
+  // 2. Kite ativo nasce no ar; voo normal não usa parede de câmera/tela
   assert.match(kiteSource, /this\.y\s*=\s*Math\.min\(screenHeight\s*\*\s*0\.58,\s*this\.targetY\s*\+\s*45\)/, 'Kite deve nascer no céu acima da laje');
-  assert.match(kiteSource, /this\.y\s*=\s*Math\.max\(35,\s*Math\.min\(this\.screenHeight\s*\*\s*0\.65,\s*this\.y\)\)/, 'Kite update deve travar y no céu');
+  assert.doesNotMatch(kiteSource, /this\.y\s*=\s*Math\.max\(35,\s*Math\.min\(this\.screenHeight\s*\*\s*0\.65,\s*this\.y\)\)/, 'Kite update não deve prender a física ao quadro');
 
-  // 3. Controles locais não teleportam; limites pertencem ao integrador físico
+  // 3. Controles locais não teleportam; alcance pertence à linha, não ao integrador de tela
   const keyStart=appSource.indexOf('  executeKeyboardAction(action) {');
   const keyBlock=appSource.slice(keyStart,appSource.indexOf('  setupSocketEvents()',keyStart));
   assert.doesNotMatch(keyBlock,/kite\.(?:x|y|z|vx|vy|vz)\s*(?:=|\+=|-=)/,'teclado não pode escrever coordenadas');
   const dynamics=fs.readFileSync(path.join(__dirname,'../frontend/src/engine/physics/KiteDynamics.js'),'utf8');
-  assert.match(dynamics,/clampAxis\(kite,'y','vy',minY,maxY\)/,'KiteDynamics deve impor limite físico de Y');
+  assert.doesNotMatch(dynamics,/clampAxis\(kite,'[xyz]'|edgeForce\(/,'KiteDynamics não deve usar o cone/câmera como parede física');
+  assert.match(dynamics,/const reach=Math\.max\(1,Number\(rope\?\.releasedLength\)/,'linha liberada deve ser a fronteira física de alcance');
 
   // 4. Renderização Three.js única por frame (sem render duplicado no Pixi)
   assert.doesNotMatch(appSource, /origRender\s*=\s*this\.app\.render\.bind[\s\S]*this\.threeScene\.render\(\)/, 'Não deve renderizar Three.js duas vezes por frame');

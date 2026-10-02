@@ -643,7 +643,6 @@ export class Kite extends PIXI.Container {
 
     if (!Number.isFinite(this.x)) this.x = Number.isFinite(this.targetX) ? this.targetX : (this.screenWidth * 0.5);
     if (!Number.isFinite(this.y)) this.y = Number.isFinite(this.targetY) ? this.targetY : (this.screenHeight * 0.35);
-    this.y = Math.max(35, Math.min(this.screenHeight * 0.65, this.y));
 
     this.speed = Math.hypot(this.vx, this.vy);
 
@@ -695,9 +694,6 @@ export class Kite extends PIXI.Container {
       this.regenHP(delta);
     }
 
-    // Trava de segurança física: impede que a pipa penetre a laje em qualquer circunstância
-    this.x = Math.max(30, Math.min(this.screenWidth - 30, this.x));
-    this.y = Math.max(35, Math.min(this.screenHeight * 0.65, this.y));
   }
 
   /**

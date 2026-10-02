@@ -13,6 +13,7 @@ export class SpoolController {
     const seconds=Math.max(.001,Math.min(.1,Number(dt)||1/60));
     const command=clamp(spoolCommand,-1,1);
     this.command=command;
+    if(Math.abs(command)<1e-4) return this.rope.spoolLength;
     const speed=command<0?this.pullSpeed:this.releaseSpeed;
     this.rope.adjustSpoolLength(command*speed*seconds);
     return this.rope.spoolLength;

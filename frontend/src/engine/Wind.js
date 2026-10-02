@@ -4,7 +4,7 @@ import { SkyWindDirector } from './physics/SkyWindDirector.js';
 /** Correntes compartilhadas: vento e fase de cada pipa conduzem o voo. */
 export class Wind {
   static config = {
-    intensityMultiplier: 1.0,
+    intensityMultiplier: 1.6,
     direction: 'auto',
     pace: 'normal'
   };
@@ -14,7 +14,7 @@ export class Wind {
   static setSettings(settings) {
     if (!settings) return;
     if (settings.windIntensity) {
-      const map = { calmo: 0.5, fraco: 0.7, moderado: 1.0, forte: 1.6, tempestade: 2.3 };
+      const map = { calmo: 0.55, fraco: 0.95, moderado: 1.6, forte: 1.95, tempestade: 2.35 };
       this.config.intensityMultiplier = map[String(settings.windIntensity).toLowerCase()] || 1.0;
     }
     if (settings.windDirection) {
