@@ -17,16 +17,16 @@
   "state": {
     "count": 40,
     "particles": 12,
-    "fps": 59.99999999999999
+    "fps": null
   },
   "reconnect": {
     "before": {
       "count": 40,
-      "session": "7e65a6cc-bf77-4f6d-97b2-43a5b6f15f6a"
+      "session": "40b76a9e-9b76-44d0-91b8-1830269350b0"
     },
     "after": {
       "count": 40,
-      "session": "7e65a6cc-bf77-4f6d-97b2-43a5b6f15f6a"
+      "session": "40b76a9e-9b76-44d0-91b8-1830269350b0"
     }
   },
   "lifecycle": [

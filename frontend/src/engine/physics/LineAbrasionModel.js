@@ -1,4 +1,4 @@
-import { getLineMaterial } from './LineMaterial.js';
+import { getLineMaterial, getLinePairProperties } from './LineMaterial.js';
 
 const clamp=(v,min,max)=>Math.max(min,Math.min(max,Number(v)||0));
 const materialOf=kite=>kite?.rope?.material||getLineMaterial(kite?.lineType||'algodao');
@@ -19,12 +19,17 @@ function directionFactor(slide){
 
 export function integrateLineAbrasion(contact,kiteA,kiteB,dtSeconds,config={}){
   if(!contact) return contact;
+  if(contact.hit===false){
+    contact.abrasionRateA=0;contact.abrasionRateB=0;contact.wearDeltaA=0;contact.wearDeltaB=0;
+    return contact;
+  }
   const dt=Math.max(0,Math.min(.25,Number(dtSeconds)||0));
   const vSlide=Math.max(0,Number(contact.vSlide)||0);
   const minSlide=Math.max(0,Number(config.minSlideSpeed)||0);
   const effectiveSlide=Math.max(0,vSlide-minSlide);
   const matA=materialOf(kiteA), matB=materialOf(kiteB);
-  const friction=clamp((Number(matA.friction||0)+Number(matB.friction||0))*.5,0,2);
+  const pair=getLinePairProperties(matA,matB);
+  const friction=clamp(pair.friction,0,2);
   const frictionMultiplier=Math.max(0,Number(config.frictionMultiplier)||0);
   const normalForce=Math.max(0,Number(contact.normalForce)||0);
   const minContact=Math.max(0,Number(config.minContactTime)||0);
@@ -50,8 +55,8 @@ export function integrateLineAbrasion(contact,kiteA,kiteB,dtSeconds,config={}){
   const attackA=(.72+.56*driveA)*directionFactor(ownSlideA)*(.85+.3*shareA);
   const attackB=(.72+.56*driveB)*directionFactor(ownSlideB)*(.85+.3*shareB);
 
-  const ratioOnA=Math.max(.05,Number(matB.abrasiveness)||1)/Math.max(.05,Number(matA.abrasionResistance)||1);
-  const ratioOnB=Math.max(.05,Number(matA.abrasiveness)||1)/Math.max(.05,Number(matB.abrasionResistance)||1);
+  const ratioOnA=pair.abrasivenessB;
+  const ratioOnB=pair.abrasivenessA;
   const rateA=baseRate*ratioOnA*attackB*defenseMultiplier(kiteA);
   const rateB=baseRate*ratioOnB*attackA*defenseMultiplier(kiteB);
   const deltaA=rateA*dt, deltaB=rateB*dt;

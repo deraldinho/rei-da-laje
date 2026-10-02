@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-02T00:15:24.631Z",
+  "generatedAt": "2026-10-02T23:10:00.878Z",
   "node": "v26.3.0",
   "fixedDt": 0.016666666666666666,
   "scenarios": [
@@ -8,10 +8,10 @@
       "mode": "distributed",
       "ticks": 480,
       "timing": {
-        "avgMs": 0.007182916666666668,
-        "maxMs": 0.24779999999999802,
-        "p95Ms": 0.011499999999998067,
-        "p99Ms": 0.03119999999999834
+        "avgMs": 0.007501666666666828,
+        "maxMs": 0.2986000000000075,
+        "p95Ms": 0.012600000000006162,
+        "p99Ms": 0.041499999999999204
       },
       "maxCandidates": 0,
       "maxColdNarrowChecks": 0,
@@ -25,18 +25,18 @@
       "createdContacts": 0,
       "reusedContacts": 0,
       "poolSize": 12,
-      "heapDeltaBytes": 32176,
-      "heapDeltaMB": 0.0306854248046875
+      "heapDeltaBytes": 28160,
+      "heapDeltaMB": 0.02685546875
     },
     {
       "count": 2,
       "mode": "dense",
       "ticks": 480,
       "timing": {
-        "avgMs": 0.04209166666666683,
-        "maxMs": 0.2886999999999773,
-        "p95Ms": 0.06620000000000914,
-        "p99Ms": 0.12950000000000728
+        "avgMs": 0.05165874999999982,
+        "maxMs": 0.5072000000000116,
+        "p95Ms": 0.10090000000002419,
+        "p99Ms": 0.21940000000000737
       },
       "maxCandidates": 1,
       "maxColdNarrowChecks": 0,
@@ -50,18 +50,18 @@
       "createdContacts": 1,
       "reusedContacts": 0,
       "poolSize": 12,
-      "heapDeltaBytes": 101960,
-      "heapDeltaMB": 0.09723663330078125
+      "heapDeltaBytes": 134784,
+      "heapDeltaMB": 0.1285400390625
     },
     {
       "count": 10,
       "mode": "distributed",
       "ticks": 480,
       "timing": {
-        "avgMs": 0.015878124999999167,
-        "maxMs": 0.15289999999998827,
-        "p95Ms": 0.032399999999995543,
-        "p99Ms": 0.05150000000000432
+        "avgMs": 0.012140625000000385,
+        "maxMs": 0.3386000000000138,
+        "p95Ms": 0.022999999999996135,
+        "p99Ms": 0.05449999999999022
       },
       "maxCandidates": 0,
       "maxColdNarrowChecks": 0,
@@ -75,18 +75,18 @@
       "createdContacts": 0,
       "reusedContacts": 0,
       "poolSize": 12,
-      "heapDeltaBytes": 92872,
-      "heapDeltaMB": 0.08856964111328125
+      "heapDeltaBytes": 31336,
+      "heapDeltaMB": 0.02988433837890625
     },
     {
       "count": 10,
       "mode": "dense",
       "ticks": 480,
       "timing": {
-        "avgMs": 0.18852895833333386,
-        "maxMs": 3.1704999999999757,
-        "p95Ms": 0.3380999999999972,
-        "p99Ms": 0.7248000000000161
+        "avgMs": 0.18896375000000099,
+        "maxMs": 1.725500000000011,
+        "p95Ms": 0.36590000000001055,
+        "p99Ms": 0.6083999999999605
       },
       "maxCandidates": 45,
       "maxColdNarrowChecks": 34,
@@ -94,24 +94,24 @@
       "maxTrackedContacts": 12,
       "maxActiveContacts": 12,
       "maxSolvedContacts": 3,
-      "abrasionUpdates": 1440,
+      "abrasionUpdates": 5760,
       "cuts": 0,
       "duplicateCuts": 0,
       "createdContacts": 12,
-      "reusedContacts": 99,
+      "reusedContacts": 95,
       "poolSize": 12,
-      "heapDeltaBytes": 44728,
-      "heapDeltaMB": 0.04265594482421875
+      "heapDeltaBytes": 100880,
+      "heapDeltaMB": 0.0962066650390625
     },
     {
       "count": 20,
       "mode": "distributed",
       "ticks": 480,
       "timing": {
-        "avgMs": 0.011994999999999579,
-        "maxMs": 0.3402999999999565,
-        "p95Ms": 0.03829999999999245,
-        "p99Ms": 0.06860000000000355
+        "avgMs": 0.015002916666665556,
+        "maxMs": 0.5529000000000224,
+        "p95Ms": 0.026800000000037016,
+        "p99Ms": 0.08039999999999736
       },
       "maxCandidates": 0,
       "maxColdNarrowChecks": 0,
@@ -125,18 +125,18 @@
       "createdContacts": 0,
       "reusedContacts": 0,
       "poolSize": 12,
-      "heapDeltaBytes": 40480,
-      "heapDeltaMB": 0.038604736328125
+      "heapDeltaBytes": 48000,
+      "heapDeltaMB": 0.0457763671875
     },
     {
       "count": 20,
       "mode": "dense",
       "ticks": 480,
       "timing": {
-        "avgMs": 0.3320333333333336,
-        "maxMs": 0.9020000000000437,
-        "p95Ms": 0.743099999999913,
-        "p99Ms": 0.8291000000000395
+        "avgMs": 0.353727500000002,
+        "maxMs": 1.2090999999999212,
+        "p95Ms": 0.7869999999999777,
+        "p99Ms": 0.9108999999999696
       },
       "maxCandidates": 96,
       "maxColdNarrowChecks": 93,
@@ -144,24 +144,24 @@
       "maxTrackedContacts": 12,
       "maxActiveContacts": 12,
       "maxSolvedContacts": 3,
-      "abrasionUpdates": 1440,
+      "abrasionUpdates": 5760,
       "cuts": 0,
       "duplicateCuts": 0,
       "createdContacts": 12,
-      "reusedContacts": 99,
+      "reusedContacts": 95,
       "poolSize": 12,
-      "heapDeltaBytes": 24816,
-      "heapDeltaMB": 0.0236663818359375
+      "heapDeltaBytes": 27200,
+      "heapDeltaMB": 0.02593994140625
     },
     {
       "count": 40,
       "mode": "distributed",
       "ticks": 480,
       "timing": {
-        "avgMs": 0.03423895833333575,
-        "maxMs": 0.3461000000000922,
-        "p95Ms": 0.10320000000001528,
-        "p99Ms": 0.14059999999994943
+        "avgMs": 0.02829041666666517,
+        "maxMs": 0.28520000000003165,
+        "p95Ms": 0.05239999999992051,
+        "p99Ms": 0.10900000000003729
       },
       "maxCandidates": 0,
       "maxColdNarrowChecks": 0,
@@ -175,18 +175,18 @@
       "createdContacts": 0,
       "reusedContacts": 0,
       "poolSize": 12,
-      "heapDeltaBytes": -173920,
-      "heapDeltaMB": -0.165863037109375
+      "heapDeltaBytes": -197000,
+      "heapDeltaMB": -0.18787384033203125
     },
     {
       "count": 40,
       "mode": "dense",
       "ticks": 480,
       "timing": {
-        "avgMs": 0.463912916666667,
-        "maxMs": 1.427000000000021,
-        "p95Ms": 1.1254999999999882,
-        "p99Ms": 1.2666000000000395
+        "avgMs": 0.4723341666666689,
+        "maxMs": 1.552500000000009,
+        "p95Ms": 1.1213000000000193,
+        "p99Ms": 1.3472000000000435
       },
       "maxCandidates": 96,
       "maxColdNarrowChecks": 96,
@@ -194,19 +194,19 @@
       "maxTrackedContacts": 12,
       "maxActiveContacts": 12,
       "maxSolvedContacts": 3,
-      "abrasionUpdates": 1440,
+      "abrasionUpdates": 5760,
       "cuts": 0,
       "duplicateCuts": 0,
       "createdContacts": 12,
-      "reusedContacts": 99,
+      "reusedContacts": 95,
       "poolSize": 12,
-      "heapDeltaBytes": 46648,
-      "heapDeltaMB": 0.04448699951171875
+      "heapDeltaBytes": 71904,
+      "heapDeltaMB": 0.068572998046875
     }
   ],
   "cutProbe": {
-    "firstCutTick": 89,
-    "firstCutSec": 1.4833333333333334,
+    "firstCutTick": 90,
+    "firstCutSec": 1.5,
     "totalCuts": 1,
     "duplicates": 0,
     "maxTracked": 1,
@@ -220,5 +220,88 @@
     "distributed40AvgMsMax": 2,
     "distributed40MaxMsMax": 8,
     "dense40AvgMsMax": 4
+  },
+  "browser": {
+    "generatedAt": "2026-10-02T23:47:26.222Z",
+    "samples": 240,
+    "p95Ms": 20.59999990463257,
+    "p99Ms": 23.5,
+    "maxMs": 25.199999809265137,
+    "maxTracked": 12,
+    "maxSolved": 3,
+    "maxCold": 96,
+    "maxActive": 12,
+    "manager": {
+      "createdContacts": 12,
+      "reusedContacts": 47,
+      "droppedContacts": 3041,
+      "expiredContacts": 5,
+      "rotatedContacts": 42,
+      "activeContacts": 12,
+      "selectedContacts": 3,
+      "trackedContacts": 12,
+      "poolSize": 12
+    },
+    "profiler": {
+      "samples": 240,
+      "fps": 61.31051216836364,
+      "quality": "high",
+      "frame": {
+        "avgMs": 16.310416674613954,
+        "maxMs": 24.799999952316284,
+        "p95Ms": 20.200000047683716,
+        "p99Ms": 23.09999990463257
+      },
+      "sections": {
+        "hud": {
+          "avgMs": 0.03666667342185974,
+          "maxMs": 0.20000004768371582,
+          "p95Ms": 0.10000014305114746,
+          "p99Ms": 0.20000004768371582
+        },
+        "render3d": {
+          "avgMs": 14.344583325584729,
+          "maxMs": 23,
+          "p95Ms": 17.799999952316284,
+          "p99Ms": 20.5
+        },
+        "collision": {
+          "avgMs": 0.4608333339293798,
+          "maxMs": 1.7000000476837158,
+          "p95Ms": 0.8999998569488525,
+          "p99Ms": 1.2999999523162842
+        },
+        "physics": {
+          "avgMs": 1.5391666601101557,
+          "maxMs": 3.200000047683716,
+          "p95Ms": 2.3999998569488525,
+          "p99Ms": 3
+        },
+        "render2d": {
+          "avgMs": 0.3033333311478297,
+          "maxMs": 0.6000001430511475,
+          "p95Ms": 0.40000009536743164,
+          "p99Ms": 0.5999999046325684
+        },
+        "serialization": {
+          "avgMs": 2.1000001430511475,
+          "maxMs": 2.1000001430511475,
+          "p95Ms": 2.1000001430511475,
+          "p99Ms": 2.1000001430511475
+        }
+      },
+      "gauges": {
+        "drawCalls": 1251,
+        "triangles": 45100,
+        "staticSavedDraws": 890,
+        "relinhoCandidates": 96,
+        "relinhoNarrowChecks": 104,
+        "relinhoContacts": 12,
+        "relinhoSolved": 3
+      }
+    },
+    "count": 40,
+    "drawCalls": 1251,
+    "uncaughtExceptions": 0
   }
 }

@@ -1,6 +1,12 @@
 import * as PIXI from 'pixi.js';
 import { rooftopPlayerLayout, rooftopHandAnchor } from './RooftopLayout.js';
 
+const isSafeAvatarUrl = value => {
+  const url=String(value||'').trim();
+  return /^https:\/\/[^\s]+$/i.test(url)
+    || /^\/player-assets\/avatars\/[a-f0-9]{64}\.(?:jpg|png|webp)$/i.test(url);
+};
+
 /** Boneco na laje, preso à âncora da linha da pipa. */
 export class RooftopPlayer extends PIXI.Container {
   constructor(kite) {
@@ -27,7 +33,7 @@ export class RooftopPlayer extends PIXI.Container {
     this.addChild(initial);
     this.initial = initial;
     const profileUrl=String(kite.profilePictureUrl||'');
-    if (/^https:\/\/[^\s]+$/i.test(profileUrl)) {
+    if (isSafeAvatarUrl(profileUrl)) {
       // A rede fica fora do loader Pixi: erro da CDN é apenas fallback, nunca rejeição no ticker.
       const image=new Image();
       image.crossOrigin='anonymous';

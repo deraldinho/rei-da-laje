@@ -10,7 +10,8 @@ export function computeRenderBudget({ quality = 'high', population = 0 } = {}) {
       shadows: false,
       environmentStride: crowded ? 4 : 3,
       idleLineOpacityScale: crowded ? 0.22 : 0.35,
-      ambientLod: crowded ? 3 : 2
+      ambientLod: crowded ? 3 : 2,
+      kiteDetailLod: crowded ? 2 : 1
     };
   }
 
@@ -20,7 +21,8 @@ export function computeRenderBudget({ quality = 'high', population = 0 } = {}) {
       shadows: false,
       environmentStride: crowded ? 3 : 2,
       idleLineOpacityScale: crowded ? 0.3 : 0.45,
-      ambientLod: 2
+      ambientLod: 2,
+      kiteDetailLod: crowded ? 1 : 0
     };
   }
 
@@ -30,7 +32,8 @@ export function computeRenderBudget({ quality = 'high', population = 0 } = {}) {
       shadows: false,
       environmentStride: 2,
       idleLineOpacityScale: 0.55,
-      ambientLod: 1
+      ambientLod: 1,
+      kiteDetailLod: 0
     };
   }
 
@@ -39,6 +42,7 @@ export function computeRenderBudget({ quality = 'high', population = 0 } = {}) {
     shadows: true,
     environmentStride: 1,
     idleLineOpacityScale: 1,
-    ambientLod: 0
+    ambientLod: 0,
+    kiteDetailLod: 0
   };
 }

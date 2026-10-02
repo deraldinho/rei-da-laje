@@ -34,9 +34,10 @@ class TikTokService {
     this.internalRetry = null;
     this.recentGiftMessages = new Map();
     this.chatCommandState = new Map();
-    this.chatActionsEnabled = true;
+    this.chatActionsEnabled = false;
     this.activityMonitor = new LiveActivityMonitor();
     this.replayStore = null;
+    this.playerPlatform = null;
   }
 
   /**
@@ -244,14 +245,17 @@ class TikTokService {
 
   handleFollow(data = {}) {
     const follower = normalizeUser(data);
+    const stableUserId=String(follower.userId || '').trim().slice(0,128);
     const payload = {
-      userId: String(follower.userId || follower.uniqueId || ''),
+      userId: stableUserId,
       uniqueId: String(follower.uniqueId || ''),
       nickname: String(follower.nickname || follower.uniqueId || 'Novo seguidor').slice(0,60),
       profilePictureUrl: firstHttps(follower.profilePictureUrl) || null,
       followedAt: Date.now()
     };
     if (!payload.userId && !payload.uniqueId) return null;
+    const persistent=this.playerPlatform?.observeProfile?.({...payload,seenAt:payload.followedAt});
+    if(persistent?.profilePictureUrl) payload.profilePictureUrl=persistent.profilePictureUrl;
     this.io.emit('follow:new', payload);
     return payload;
   }
@@ -401,12 +405,15 @@ class TikTokService {
    */
   handleChatMessage(data) {
     if (!data || typeof data.comment !== 'string') return;
-    const userId = String(data.userId || data.uniqueId || '').trim().slice(0,128);
+    const stableUserId=String(data.userId || '').trim().slice(0,128);
+    const userId = stableUserId || String(data.uniqueId || '').trim().slice(0,128);
     if (!userId) return;
     data = { ...data, userId,
       uniqueId:String(data.uniqueId||'').slice(0,60),
       nickname: String(data.nickname || data.uniqueId || 'Espectador').slice(0, 60),
       profilePictureUrl:firstHttps(data.profilePictureUrl) };
+    const persistent=this.playerPlatform?.observeProfile?.({...data,userId:stableUserId,seenAt:Date.now()}) || null;
+    if(persistent?.profilePictureUrl) data.profilePictureUrl=persistent.profilePictureUrl;
     const command = this.gameRules.parseChatCommand?.(data.comment) || null;
     // Todo comentário continua servindo para entrar/reentrar; comandos exatos também controlam a própria pipa.
     // Comentário normal -> Tentativa de Spawn / Entrada no jogo
@@ -414,7 +421,8 @@ class TikTokService {
       userId: data.userId,
       uniqueId: data.uniqueId,
       nickname: data.nickname,
-      profilePictureUrl: data.profilePictureUrl
+      profilePictureUrl: data.profilePictureUrl,
+      kiteType: ['peixinho','raiada','carrapeta'].includes(persistent?.loadout?.kiteKey) ? persistent.loadout.kiteKey : undefined
     });
 
     if (result?.status === 'spawn' || result?.status === 'queued' || result?.status === 'already_active') this.onArenaMutation?.();
@@ -427,7 +435,16 @@ class TikTokService {
       });
     }
     if (result && result.status === 'spawn') {
-      this.io.emit('player:spawn', playerSpawnPayload(result.player,this.buffManager));
+      const spawnPersistent=this.playerPlatform ? this.playerPlatform.spawnSnapshot(stableUserId) : persistent;
+      this.io.emit('player:spawn', playerSpawnPayload(result.player,this.buffManager,undefined,spawnPersistent));
+    }
+    if (result && ['spawn','already_active','queued'].includes(result.status)) {
+      this.io.emit('competition:comment', {
+        userId:data.userId,
+        nickname:result.player?.nickname || data.nickname,
+        text:String(data.comment || '').slice(0,180),
+        status:result.status
+      });
     }
     if (this.chatActionsEnabled && command && result && (result.status === 'spawn' || result.status === 'already_active')) {
       this.emitChatActionThrottled(data.userId,result.player?.nickname || data.nickname,command);
@@ -439,50 +456,61 @@ class TikTokService {
    */
   handleGift(data) {
     if (!data) return;
-    data = { ...data, userId: String(data.userId || data.uniqueId || '').trim().slice(0,128),
+    const stableUserId=String(data.userId || '').trim().slice(0,128);
+    data = { ...data, userId: stableUserId || String(data.uniqueId || '').trim().slice(0,128),
       iconUrl:firstHttps(data.iconUrl) };
     if (!data.userId) return;
     const { getGiftUpgrade, getGiftUpgradeByValue } = require('./rules/giftConfig');
     const configuredUpgrade = getGiftUpgrade(data.giftId) || getGiftUpgrade(data.giftName);
 
-    // Todo presente recebido produz animação e entra no catálogo, mesmo sem buff configurado.
-    // Presentes desconhecidos não ganham poder de combate sem regra aprovada.
+    // Valor canônico: o nome do presente é apresentação; o tier é resolvido pelo total da sequência.
     const count=Math.min(1000,Math.max(1,Math.floor(Number(data.repeatCount)||1)));
-    const amount=Number.isFinite(Number(data.diamondCount)) && Number(data.diamondCount)>0
-      ? Math.min(1000000,Number(data.diamondCount)) : configuredUpgrade?.cost || 0;
-    const upgrade = configuredUpgrade || getGiftUpgradeByValue(data.giftName, amount);
-    const giftName=String(data.giftName || upgrade?.name || ('Presente #'+String(data.giftId||'?'))).slice(0,90);
-    this.giftCatalog?.observe({giftId:data.giftId,giftName,diamondCount:amount,
+    const unitCoinValue=Number.isFinite(Number(data.diamondCount)) && Number(data.diamondCount)>0
+      ? Math.min(1000000,Number(data.diamondCount)) : Math.max(0,Number(configuredUpgrade?.cost)||0);
+    const totalCoinValue=Math.min(1000000000,unitCoinValue*count);
+    const tierName=data.giftName || configuredUpgrade?.name;
+    const unitUpgrade=getGiftUpgradeByValue(tierName,unitCoinValue);
+    const upgrade=getGiftUpgradeByValue(tierName,totalCoinValue);
+    const sameTier=Boolean(unitUpgrade && upgrade && unitUpgrade.lineType===upgrade.lineType
+      && unitUpgrade.specialAbility===upgrade.specialAbility);
+    const applicationCount=sameTier?count:1;
+    const giftName=String(data.giftName || configuredUpgrade?.name || ('Presente #'+String(data.giftId||'?'))).slice(0,90);
+    this.playerPlatform?.observeProfile?.({
+      userId:stableUserId,uniqueId:data.uniqueId,nickname:data.nickname,
+      profilePictureUrl:firstHttps(data.profilePictureUrl),seenAt:Date.now()
+    });
+    this.giftCatalog?.observe({giftId:data.giftId,giftName,diamondCount:unitCoinValue,
       repeatCount:count,iconUrl:data.iconUrl});
     this.io.emit('gift:celebration',{
       userId:data.userId,nickname:String(data.nickname||data.uniqueId||'Espectador').slice(0,60),
-      giftId:String(data.giftId||''),giftName,diamondCount:amount,repeatCount:count,
-      known: Boolean(upgrade), iconUrl:String(data.iconUrl||'').slice(0,1000)
+      giftId:String(data.giftId||''),giftName,diamondCount:unitCoinValue,repeatCount:count,
+      unitCoinValue,totalCoinValue,known:Boolean(upgrade),iconUrl:String(data.iconUrl||'').slice(0,1000)
     });
-    if (this.gameRules.recordGift?.(data.userId, count, amount)) this.onArenaMutation?.();
-    if (!upgrade) return;
-    {
-      const buff = this.buffManager.applyGiftUpgrade(data.userId, upgrade, data.repeatCount);
-      // Evento de manobra: alcance e duração são limitados no cliente; não altera a pontuação diretamente.
-      this.io.emit('competition:maneuver', {
-        userId: data.userId, giftName: upgrade.maneuverGiftName || upgrade.name, giftCost: upgrade.cost,
-        repeatCount: Math.min(20, count)
+    const applyTemporary=()=>{
+      if (this.gameRules.recordGift?.(data.userId,count,unitCoinValue)) this.onArenaMutation?.();
+      if (!upgrade) return null;
+      const buff=this.buffManager.applyGiftUpgrade(data.userId,upgrade,applicationCount);
+      this.io.emit('competition:maneuver',{
+        userId:data.userId,giftName:upgrade.maneuverGiftName||upgrade.name,giftCost:totalCoinValue,
+        repeatCount:Math.min(20,applicationCount),unitCoinValue,totalCoinValue
       });
       this.io.emit('gift:received', {
-        userId: data.userId,
-        uniqueId: data.uniqueId,
-        giftId: upgrade.id,
-        giftName: upgrade.name,
-        nickname: data.nickname || data.uniqueId || 'Espectador',
-        diamondCount: data.diamondCount || upgrade.cost,
-        upgrade: {
-          lineType: buff.lineType,
-          powerMultiplier: buff.powerMultiplier,
-          durationSeconds: upgrade.durationSeconds,
-          specialAbility: upgrade.specialAbility
-        }
+        userId:data.userId,uniqueId:data.uniqueId,giftId:String(data.giftId||upgrade.id||''),giftName,
+        nickname:data.nickname||data.uniqueId||'Espectador',diamondCount:unitCoinValue,unitCoinValue,totalCoinValue,
+        upgrade:{lineType:buff.lineType,powerMultiplier:buff.powerMultiplier,
+          durationSeconds:upgrade.durationSeconds,specialAbility:upgrade.specialAbility}
       });
+      return buff;
+    };
+    if(this.playerPlatform){
+      return this.playerPlatform.resolveGift({...data,userId:stableUserId},{
+        unitCoinValue,totalCoinValue,tierKey:upgrade?.lineType||'',
+        maneuverName:upgrade?.maneuverGiftName||upgrade?.name||'',
+        effect:upgrade?{lineType:upgrade.lineType,specialAbility:upgrade.specialAbility}:{}
+      },applyTemporary);
     }
+    applyTemporary();
+    return {accepted:true,duplicate:false,persistent:false,ledgerId:null};
   }
 }
 

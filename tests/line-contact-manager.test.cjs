@@ -88,17 +88,17 @@ test('contatos sem slide não monopolizam os três solvers contra contato desliz
   assert.ok(selected.some(c=>c.pairKey==='moving'),`deslizamento sofreu starvation: ${selected.map(c=>c.pairKey)}`);
 });
 
-test('pool cheio rotaciona contatos persistentes para novas pipas entrarem em combate',async()=>{
+test('pool cheio preserva rampa física antes de rotacionar para novas pipas',async()=>{
   const {LineContactManager}=await import(`${moduleUrl}?t=${Date.now()}-tracking-fairness`);
   const m=new LineContactManager({maxTrackedContacts:3,maxSolvedContacts:1,maxContactsPerRope:3});
   const pairs=[['p0','a0','b0'],['p1','a1','b1'],['p2','a2','b2']];
-  for(let step=1;step<=8;step++){
+  for(let step=1;step<=36;step++){
     m.beginStep(step*(1000/60),1/60);
     for(const [key,a,b] of pairs) m.touch(key,kite(a),kite(b),hit(2),physics(2,.7));
-    if(step===8) m.touch('new',kite('newA'),kite('newB'),hit(2),physics(2,.7));
+    if(step===36) m.touch('new',kite('newA'),kite('newB'),hit(2),physics(2,.7));
     m.endStep();
     m.selectForSolve();
   }
   assert.equal(m.contacts.size,3);
-  assert.ok(m.contacts.has('new'),`nova pipa ficou bloqueada pelo pool: ${[...m.contacts.keys()]}`);
+  assert.ok(m.contacts.has('new'),`nova pipa ficou bloqueada após maturação: ${[...m.contacts.keys()]}`);
 });

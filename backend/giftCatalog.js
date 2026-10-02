@@ -56,7 +56,7 @@ class GiftCatalog {
   }
   list(){
     const enrich = gift => {
-      const upgrade=getGiftUpgrade(gift.id) || getGiftUpgrade(gift.name) || getGiftUpgradeByValue(gift.name,gift.diamonds);
+      const upgrade=(Number(gift.diamonds)>0 ? getGiftUpgradeByValue(gift.name,gift.diamonds) : null) || getGiftUpgrade(gift.id) || getGiftUpgrade(gift.name);
       return { ...gift, known:Boolean(upgrade), animation:'individual',
         durationSeconds:upgrade?.durationSeconds || 0,
         maxDurationSeconds:upgrade?.maxDurationSeconds || 0,

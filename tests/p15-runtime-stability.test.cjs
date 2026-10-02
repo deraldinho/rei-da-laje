@@ -38,7 +38,8 @@ test('P15.3: runtime não contém ruptura espontânea por tensão', () => {
 
 test('P15.3: GameApp integra profiler em física, colisão e render', () => {
   assert.match(appCode, /RuntimeProfiler/);
-  assert.match(appCode, /runtimeProfiler\.frame/);
+  assert.match(appCode, /runtimeProfiler\.beginFrame\(\)/);
+  assert.match(appCode, /runtimeProfiler\.endFrame\(\)/);
   assert.match(appCode, /runtimeProfiler\.begin\('physics'\)/);
   assert.match(appCode, /runtimeProfiler\.begin\('collision'\)/);
   assert.match(appCode, /runtimeProfiler\.begin\('render3d'\)/);

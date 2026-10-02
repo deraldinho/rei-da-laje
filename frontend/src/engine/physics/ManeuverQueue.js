@@ -49,8 +49,10 @@ export class ManeuverQueue {
     this.activeManeuver = maneuver;
     this.kite.setManeuver?.(maneuver.data);
     if (intentController) {
-      intentController.triggerAction(maneuver.name, maneuver.duration, {
-        intensity: Math.min(2.0, (maneuver.speed || 1.3) * 1.1)
+      const plan=maneuver.data?.plan;
+      intentController.triggerAction(maneuver.name, Math.min(2.4, plan?.duration || maneuver.duration), {
+        intensity: plan?.intensity || Math.min(2.0, (maneuver.speed || 1.3) * 1.1),
+        steerDir: Number.isFinite(plan?.steerDir) ? plan.steerDir : undefined
       });
     }
   }

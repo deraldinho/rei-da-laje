@@ -1,4 +1,4 @@
-function playerSpawnPayload(player, buffManagerOrBuff, maybeSpecials) {
+function playerSpawnPayload(player, buffManagerOrBuff, maybeSpecials, persistentSnapshot = null) {
   if (!player) return null;
   const isBuffManager = buffManagerOrBuff && typeof buffManagerOrBuff.getPlayerBuff === 'function';
   const buff = isBuffManager
@@ -8,12 +8,17 @@ function playerSpawnPayload(player, buffManagerOrBuff, maybeSpecials) {
     ? (buffManagerOrBuff.getPlayerSpecials?.(player.userId) || [])
     : (Array.isArray(maybeSpecials) ? maybeSpecials : (buffManagerOrBuff?.specials || []));
 
+  const persistent = persistentSnapshot && typeof persistentSnapshot === 'object' ? persistentSnapshot : {};
+  const persistentLoadout = persistent.loadout || { kiteKey: null, skinKey: null };
+  const classicKites = new Set(['peixinho','raiada','carrapeta']);
+  const persistentKiteType = classicKites.has(persistentLoadout.kiteKey) ? persistentLoadout.kiteKey : null;
+
   return {
     userId: player.userId,
     uniqueId: player.uniqueId,
     nickname: player.nickname,
-    profilePictureUrl: player.profilePictureUrl || '',
-    kiteType: player.kiteType,
+    profilePictureUrl: persistent.profilePictureUrl || player.profilePictureUrl || '',
+    kiteType: persistentKiteType || player.kiteType,
     score: Number(player.score) || 0,
     streak: Number(player.streak) || 0,
     isKing: Boolean(player.isKing),
@@ -23,7 +28,13 @@ function playerSpawnPayload(player, buffManagerOrBuff, maybeSpecials) {
     shield: Number(buff.shieldCount) || 0,
     color: buff.color || '#ffffff',
     lineWidth: Number(buff.lineWidth) || 1.2,
-    specials: Array.isArray(specials) ? specials : []
+    specials: Array.isArray(specials) ? specials : [],
+    persistentLoadout: {
+      kiteKey: persistentLoadout.kiteKey || null,
+      skinKey: persistentLoadout.skinKey || null
+    },
+    equippedKite: persistent.equippedKite || null,
+    progression: persistent.progression || null
   };
 }
 module.exports = playerSpawnPayload;

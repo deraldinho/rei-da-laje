@@ -30,9 +30,26 @@ function makeBreakResult(contact,winner,loser,loserIsA){
   };
 }
 
+
+function makeStructuralBreakResult(failure,winner,loser){
+  const point=failure?.point||{};
+  if(loser){loser.lineHP=0;loser._hpBarDirty=true;}
+  return {winner,loser,tied:false,cause:'tension',cutX:Number(point.x)||0,cutY:Number(point.y)||0,
+    cutZ:Number(point.z)||0,segmentIndex:failure.segmentIndex,segmentT:failure.segmentT,
+    breakSegmentIndex:failure.segmentIndex,breakSegmentT:failure.segmentT};
+}
+
 export function applyLineWearAndEvaluateBreak(contact,kiteA,kiteB,config={}){
   if(!contact||!kiteA||!kiteB) return null;
   const matA=materialOf(kiteA), matB=materialOf(kiteB);
+  const structuralA=kiteA.rope?.structuralFailure?.broke?kiteA.rope.structuralFailure:null;
+  const structuralB=kiteB.rope?.structuralFailure?.broke?kiteB.rope.structuralFailure:null;
+  if(structuralA||structuralB){
+    if(structuralA&&!structuralB)return makeStructuralBreakResult(structuralA,kiteB,kiteA);
+    if(structuralB&&!structuralA)return makeStructuralBreakResult(structuralB,kiteA,kiteB);
+    return String(kiteA.userId||'').localeCompare(String(kiteB.userId||''))<=0
+      ?makeStructuralBreakResult(structuralB,kiteA,kiteB):makeStructuralBreakResult(structuralA,kiteB,kiteA);
+  }
   const cap=Math.max(0,Number(config.maxWearPerTick)||0.012);
   const apply=(kite,segment,energy,mat)=>{
     if(!kite.rope?.applyAbrasionEnergy) return {broke:false,delta:0,integrity:1};

@@ -67,8 +67,9 @@ test('Flor e Universo reutilizam a duração e o teto dos presentes corresponden
 });
 
 test('cada manobra dura 30 ou 45 segundos, com teto de 45',async()=>{
- const code=fs.readFileSync(path.join(__dirname,'../frontend/src/engine/Maneuvers.js'),'utf8');
- const {maneuverStats,selectGiftManeuver}=await import('data:text/javascript;base64,'+Buffer.from(code).toString('base64'));
+ const {pathToFileURL}=require('node:url');
+ const maneuverPath=path.join(__dirname,'../frontend/src/engine/Maneuvers.js');
+ const {maneuverStats,selectGiftManeuver}=await import(pathToFileURL(maneuverPath).href+'?t='+Date.now());
  const examples={Rosa:[30,45],Flor:[30,45],Donut:[30,45],Capivara:[45,45],
    Perfume:[45,45],Leão:[45,45],Universo:[45,45]};
  for(const [gift,[seconds,maximum]] of Object.entries(examples)){

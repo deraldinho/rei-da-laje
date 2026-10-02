@@ -19,6 +19,13 @@ const { CatchClaimRegistry } = require('./catchClaimRegistry');
 const { registerCanonicalCatchHandler } = require('./socketCatchHandler');
 const GameReplayStore = require('./gameReplayStore');
 const SettingsManager = require('./settingsManager');
+const { openPipaDatabase } = require('./persistence/database');
+const PlayerRepository = require('./persistence/playerRepository');
+const GiftLedger = require('./persistence/giftLedger');
+const PlayerInventory = require('./persistence/playerInventory');
+const AvatarCache = require('./persistence/avatarCache');
+const MarketplaceService = require('./persistence/marketplaceService');
+const PlayerPlatform = require('./persistence/playerPlatform');
 const settingsManager = new SettingsManager();
 
 const app = express();
@@ -45,12 +52,39 @@ const HOST = process.env.HOST || '127.0.0.1';
 // Middlewares
 app.use(cors({ origin: corsOriginValidator }));
 app.use(express.json());
+const AVATAR_CACHE_ROOT = process.env.PIPA_AVATAR_CACHE_DIR || path.join(__dirname, 'data', 'avatars');
+app.use('/player-assets/avatars', express.static(AVATAR_CACHE_ROOT, {
+  fallthrough: false, index: false, dotfiles: 'deny', maxAge: '1h'
+}));
 
 // Instâncias dos Gerenciadores
 const initialSettings = settingsManager.getSettings();
 const gameRules = new GameRules(initialSettings.maxKites, 1000, 3000, initialSettings.winStreakKing);
 const buffManager = new BuffManager(io);
+let persistentDb = null;
+let playerPlatform = null;
+let marketplaceService = null;
+try {
+  persistentDb = openPipaDatabase(process.env.PIPA_DB_FILE || undefined);
+  const repository = new PlayerRepository(persistentDb);
+  const giftLedger = new GiftLedger(persistentDb);
+  const inventory = new PlayerInventory(persistentDb);
+  const avatarCache = new AvatarCache({ db:persistentDb, rootDir:AVATAR_CACHE_ROOT });
+  const configuredCustomKiteCoins = Number(process.env.PIPA_CUSTOM_KITE_MIN_COINS);
+  marketplaceService = new MarketplaceService({ db:persistentDb, inventory,
+    customKiteMinCoins:Number.isFinite(configuredCustomKiteCoins) && configuredCustomKiteCoins > 0 ? configuredCustomKiteCoins : null });
+  playerPlatform = new PlayerPlatform({ db:persistentDb, repository, ledger:giftLedger, inventory, avatarCache, marketplace:marketplaceService });
+} catch (error) {
+  console.warn('[Persistence] Plataforma persistente indisponível; a arena seguirá em memória:', error?.message || error);
+  try { persistentDb?.close(); } catch (_) {}
+  persistentDb = null; playerPlatform = null; marketplaceService = null;
+}
 const tiktokService = new TikTokService(io, gameRules, buffManager);
+tiktokService.playerPlatform = playerPlatform;
+function buildSpawnPayload(player) {
+  const persistent = playerPlatform && player ? playerPlatform.spawnSnapshot(player.userId) : null;
+  return playerSpawnPayload(player, buffManager, undefined, persistent);
+}
 tiktokService.chatActionsEnabled = process.env.PIPA_ENABLE_CHAT_ACTIONS === '1';
 const giftCatalog = new GiftCatalog(process.env.PIPA_GIFT_CATALOG_FILE || undefined);
 tiktokService.giftCatalog = giftCatalog;
@@ -136,18 +170,7 @@ app.get('/api/tiktok/status', (req, res) => {
 
 app.get('/api/competition/arena', (req, res) => {
   // Envie somente jogadores validados pelo backend; nunca ressuscite pipas da tela antiga.
-  const players = [...gameRules.activePlayers.values()].map(player => {
-    const buff = buffManager.getPlayerBuff(player.userId);
-    return {
-      userId: player.userId, uniqueId: player.uniqueId, nickname: player.nickname,
-      profilePictureUrl: player.profilePictureUrl, kiteType: player.kiteType,
-      score: player.score, streak: player.streak, isKing: player.isKing,
-      lineType: buff.lineType, power: buff.powerMultiplier,
-      color: buff.color, lineWidth: buff.lineWidth, shield: buff.shieldCount,
-      buffExpiresAt: buff.expiresAt || null,
-      specials: buffManager.getPlayerSpecials(player.userId)
-    };
-  });
+  const players = [...gameRules.activePlayers.values()].map(buildSpawnPayload);
   res.set('Cache-Control', 'no-store');
   res.json({ sessionId: arenaSessionId, players, leaderId: gameRules.leaderId, kingId: gameRules.kingId,
     queue: gameRules.queue.length, at: Date.now(),
@@ -210,6 +233,22 @@ app.get('/api/gifts/catalog', (req,res) => {
   res.set('Cache-Control','no-store');
   res.json({ scope:'configured-and-observed', note:'O catálogo global do TikTok varia por Live, região e data; itens adicionais são descobertos ao serem recebidos.',
     gifts:giftCatalog.list() });
+});
+
+app.get('/api/marketplace/custom-kite-orders', requireLocalControl, (req,res) => {
+  if (!marketplaceService) return res.status(503).json({success:false,error:'Persistência indisponível'});
+  try {
+    const orders=marketplaceService.listCustomKiteOrders(req.query?.userId || null);
+    res.set('Cache-Control','no-store');
+    res.json({success:true,orders});
+  } catch (error) { res.status(400).json({success:false,error:String(error.message||error)}); }
+});
+app.post('/api/marketplace/custom-kite-orders/:id/approve', requireLocalControl, (req,res) => {
+  if (!marketplaceService) return res.status(503).json({success:false,error:'Persistência indisponível'});
+  try {
+    const ownedKite=marketplaceService.approveCustomKiteOrder(req.params.id,req.body||{});
+    res.json({success:true,ownedKite});
+  } catch (error) { res.status(400).json({success:false,error:String(error.message||error)}); }
 });
 
 app.get('/api/competition/stats', (req, res) => {
@@ -374,7 +413,7 @@ app.post('/api/competition/admin-action', requireLocalControl, (req, res) => {
     });
     if (cut && cut.spawnedFromQueue) {
       const sp = cut.spawnedFromQueue;
-      const spPayload = playerSpawnPayload(sp, buffManager);
+      const spPayload = buildSpawnPayload(sp);
       io.emit('player:spawn', spPayload);
     }
     return res.json({ success: true, action: 'cut', userId });
@@ -444,7 +483,7 @@ app.post('/api/competition/admin-action', requireLocalControl, (req, res) => {
       spawned = gameRules.queue.shift();
       gameRules.activePlayers.set(spawned.userId, spawned);
       buffManager.initPlayer(spawned.userId);
-      const spPayload = playerSpawnPayload(spawned, buffManager);
+      const spPayload = buildSpawnPayload(spawned);
       io.emit('player:spawn', spPayload);
     }
     persistArenaNow();
@@ -609,7 +648,7 @@ io.on('connection', (socket) => {
     // Se havia alguém na fila de espera, sobe a pipa
     if (cutResult && cutResult.spawnedFromQueue) {
       const q = cutResult.spawnedFromQueue;
-      io.emit('player:spawn', playerSpawnPayload(q,buffManager));
+      io.emit('player:spawn', buildSpawnPayload(q));
     }
   });
 
@@ -680,6 +719,7 @@ async function gracefulShutdown() {
   flushArena();
   giftCatalog.flush?.();
   try { await tiktokService.disconnect(); } catch (_) { /* saída continua */ }
+  try { persistentDb?.close(); } catch (_) { /* saída continua */ }
   server.close(()=>process.exit(0));
   setTimeout(()=>process.exit(0),1500).unref();
 }

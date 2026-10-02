@@ -112,8 +112,13 @@ export class ThreeLines {
   syncLine(uidStr, kite, handWorldPos, kiteWorldPos, wind, delta, time) {
     const l3d = this.getOrCreateLine(uidStr);
     const desiredColor = LINE_COLORS[kite.lineType] || 0xf8f9fa;
+    const relinhoVisual = kite.relinhoVisual;
+    const relinhoRoleActive = Boolean(relinhoVisual && Number(relinhoVisual.until) > Date.now());
+    const relinhoGlowColor = relinhoVisual?.role === 'attacker' ? 0x72ff9a
+      : relinhoVisual?.role === 'victim' ? 0xff4d4d
+        : relinhoVisual?.role === 'mutual' ? 0xffc857 : null;
 
-    const isLineActive = Boolean(
+    const isLineActive = Boolean(relinhoRoleActive ||
       kite.maneuver ||
       (kite.streak && kite.streak >= 2) ||
       kite.isKing ||
@@ -137,8 +142,15 @@ export class ThreeLines {
       }
     }
 
+    if (l3d.userData.glowLine) {
+      l3d.userData.glowLine.visible = isLineActive || this.idleLineOpacityScale > 0.25;
+    }
+
     if (l3d.userData.glowMat) {
-      if (kite.isKing) {
+      if (relinhoRoleActive && relinhoGlowColor !== null) {
+        l3d.userData.glowMat.color.setHex(relinhoGlowColor);
+        l3d.userData.glowMat.opacity = 0.96;
+      } else if (kite.isKing) {
         l3d.userData.glowMat.color.setHex(0xffea00);
         l3d.userData.glowMat.opacity = 0.88;
       } else if (isLineActive) {
@@ -190,6 +202,7 @@ export class ThreeLines {
 
         const ropeX = nA.x + (nB.x - nA.x) * frac;
         const ropeY = nA.y + (nB.y - nA.y) * frac;
+        const ropeZ = (Number(nA.z)||0) + ((Number(nB.z)||0) - (Number(nA.z)||0)) * frac;
 
         // Desvio relativo à reta em 2D escalado para o espaço de mundo Three.js.
         // Multiplicado obrigatoriamente por arc = sin(t * PI) para garantir que
@@ -198,11 +211,15 @@ export class ThreeLines {
         const baseHandY = (kite.line?.visualBaseY || kite.baseY || 0);
         const straight2DX = baseHandX + ((kite.x || 0) - baseHandX) * t;
         const straight2DY = baseHandY + ((kite.y || 0) - baseHandY) * t;
+        const baseHandZ = Number(kite.baseZ)||0;
+        const straight2DZ = baseHandZ + ((Number(kite.z)||0) - baseHandZ) * t;
         const physSagX = (ropeX - straight2DX) * 0.35 * arc;
         const physSagY = -(ropeY - straight2DY) * 0.35 * arc; // Inversão de Y (2D tela top-down vs 3D Three.js)
+        const physSagZ = (ropeZ - straight2DZ) * 0.35 * arc;
 
         sagX = Number.isFinite(physSagX) ? physSagX : 0;
         sagY = Number.isFinite(physSagY) ? physSagY : 0;
+        sagZ = Number.isFinite(physSagZ) ? physSagZ : 0;
       }
 
       // A corda XPBD já contém a resposta física do contato. Não adicionamos
@@ -210,7 +227,7 @@ export class ThreeLines {
       // tremer juntas quando 3+ relinhos estavam ativos.
       const finalX = lx + sagX;
       const finalY = ly + sagY;
-      const finalZ = lz; // Z é a interpolação pura contínua da mão 3D (hZ) até a pipa 3D (kZ)
+      const finalZ = lz + sagZ; // profundidade vem dos nós XPBD, não de uma reta visual artificial
 
       posArr[p * 3] = Number.isFinite(finalX) ? finalX : lx;
       posArr[p * 3 + 1] = Number.isFinite(finalY) ? finalY : ly;

@@ -1,0 +1,11 @@
+> **ARQUIVADO / HISTÓRICO.** Este documento registra uma etapa anterior e não define a regra vigente. Consulte [`docs/README.md`](../../README.md) e [`00_arquitetura_vigente.md`](../../00_arquitetura_vigente.md).
+
+# Checkpoint 26 — Deploy do TOP Ranking e animações de manobras
+
+Data local do x99: 24/09/2026 ~22:06 (-03). Usuário autorizou publicar e informou que ele mesmo reiniciará o projeto.
+
+- Versão validada do checkpoint 25: 48/48 testes automatizados e smoke test navegador (40 pipas, ranking oficial após corte, cinco poses PixiJS, presentes, recuperação e modo portrait) aprovados antes da publicação. Build Vite `frontend/dist-preview` gerou JS `index-D2kMQKjI.js` e CSS `index-DEEp1MOT.css`.
+- Backup pré-deploy: `backups/pre-ranking-maneuvers-deploy-20260924-220621/frontend-dist` (versão frontend anterior) e `backups/pre-ranking-maneuvers-deploy-20260924-220621/arena-state.json` (cópia de segurança do checkpoint da arena). O arquivo de estado original `backend/data/arena-state.json` permaneceu no lugar para restauração normal ao reiniciar.
+- Publicação: assets novos copiados antes do `frontend/dist/index.html`, conservando assets antigos para fontes já abertas. Hash de `index.html` publicado idêntico ao da prévia. GET `/` referenciou novo JS e CSS, ambos HTTP 200 na porta 3000. PID da porta 3000 `55604` foi preservado durante o deploy: **nenhum reinício do processo ou refresh OBS foi executado pelo assistente**.
+- Backend no disco contém os campos novos de ranking (`sessionHighlights`, `recordGift`, `kingCuts`, `crowns`) e `/api/competition/stats` completo. Como a instância do Node já está em execução desde antes dessas alterações, só passará a servir os campos adicionais após o reinício planejado pelo usuário. O frontend já aberto na fonte OBS continua com o JS antigo até reload/reabertura feita pelo usuário.
+- Observação operacional: antes do deploy havia 2 pipas persistidas, nenhum erro de checkpoint; o navegador antigo não havia adquirido a nova autoridade de combate (`authorityActive=false`). Após reiniciar com `npm start` na raiz do projeto, abrir/atualizar a fonte OBS na janela planejada e verificar `/api/competition/health` (authorityActive=true), `/api/competition/stats` (top/highlights) e status TikTok com eventos reais. Reinício pode provocar intervalo na conexão TikTok e corte momentâneo da fonte.

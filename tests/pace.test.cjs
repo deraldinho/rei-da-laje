@@ -15,7 +15,7 @@ function makeKite(RopePhysics,id,index,count,w,h){
   return k;
 }
 
-test('ritmo físico de encontros e cortes em arenas verticais e horizontais',async()=>{
+test('base física permanece estável sem depender de trilhos de encontro',async()=>{
   const [{Wind},{KiteDynamics},{RopePhysics},{LineContactSystem}]=await Promise.all([
     load('Wind.js'),load('physics/KiteDynamics.js'),load('physics/RopePhysics.js'),load('physics/LineContactSystem.js')]);
   const results=[];
@@ -39,7 +39,33 @@ test('ritmo físico de encontros e cortes em arenas verticais e horizontais',asy
     }
     results.push({w,h,count,contact,cut,maxTracked,maxSolved});
   }
-  assert.ok(results.every(r=>r.contact!==null&&r.contact<14),'contatos físicos devem surgir em menos de 14s');
-  assert.ok(results.filter(r=>r.count===2).every(r=>r.cut!==null&&r.cut<40),'duelos devem cortar em menos de 40s');
   assert.ok(results.every(r=>r.maxTracked<=12&&r.maxSolved<=3),'limites de contato não podem regredir');
+});
+
+test('vento global mantém 15/20/40 pipas abertas e cria contato físico em até 15s sem alvo',async()=>{
+  const [{Wind},{KiteDynamics},{RopePhysics},{LineContactSystem}]=await Promise.all([
+    load('Wind.js'),load('physics/KiteDynamics.js'),load('physics/RopePhysics.js'),load('physics/LineContactSystem.js')]);
+  const w=1080,h=1920;
+  for(const count of [15,20,40]){
+    KiteDynamics._globalTime=0;KiteDynamics._lastFrame=-1;KiteDynamics._stepFrame=0;
+    const kites=Array.from({length:count},(_,i)=>{
+      const k=makeKite(RopePhysics,`live${i}`,i,count,w,h);
+      k.y=h*(.20+(((i*7)%count)/Math.max(1,count-1))*.14);k.z=60+(i%5)*24;
+      k.rope.resetPositions({x:k.baseX,y:k.baseY,z:0},{x:k.x,y:k.y,z:k.z});return k;
+    });
+    const system=new LineContactSystem();let firstContact=null;
+    for(let frame=0;frame<900;frame++){
+      KiteDynamics._stepFrame=frame;const wind=Wind.sample(frame/60);
+      for(const k of kites){KiteDynamics.step(k,1/60,wind,count,kites);k.rope.step(1/60,{x:k.baseX,y:k.baseY,z:0},{x:k.x,y:k.y,z:k.z},k._localPhysicsWind||wind,{});}
+      const r=system.step(kites,1/60,frame*1000/60,{allowWear:false});
+      if(firstContact===null&&r.metrics.activeContacts>0)firstContact=frame/60;
+    }
+    const xs=kites.map(k=>k.x),ys=kites.map(k=>k.y),zs=kites.map(k=>k.z);let close3d=0;
+    for(let i=0;i<count;i++)for(let j=i+1;j<count;j++)if(Math.hypot(kites[i].x-kites[j].x,kites[i].y-kites[j].y,kites[i].z-kites[j].z)<55)close3d++;
+    assert.ok(Math.max(...xs)-Math.min(...xs)>w*.65,`${count}: span X`);
+    assert.ok(Math.max(...ys)-Math.min(...ys)>h*.025,`${count}: variação Y`);
+    assert.ok(Math.max(...zs)-Math.min(...zs)>35,`${count}: profundidade Z`);
+    assert.ok(close3d<=count,`${count}: ${close3d} pares fisicamente próximos`);
+    assert.ok(firstContact!==null&&firstContact<15,`${count}: sem contato em 15s (${firstContact})`);
+  }
 });

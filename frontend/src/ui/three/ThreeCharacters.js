@@ -110,6 +110,24 @@ export function createCarretilha3D(stringColorHex = 0xffffff) {
   return group;
 }
 
+export function syncCarretilhaFromRope(carretilha, kite) {
+  if (!carretilha) return { deltaLength: 0, releasedLength: 0 };
+  const released = Math.max(0, Number(kite?.rope?.releasedLength ?? kite?.rope?.spoolLength) || 0);
+  const total = Math.max(1, Number(kite?.rope?.totalLineLength) || released || 1);
+  const prev = Number(carretilha.userData?.lastReleasedLength);
+  const deltaLength = Number.isFinite(prev) ? released - prev : 0;
+  carretilha.userData.lastReleasedLength = released;
+  carretilha.rotation.x += -deltaLength / 52;
+  const woundRatio = Math.max(0, Math.min(1, (total - released) / total));
+  const core = carretilha.userData?.core;
+  if (core) {
+    const radial = 0.78 + woundRatio * 0.32;
+    core.scale.x = radial;
+    core.scale.z = radial;
+  }
+  return { deltaLength, releasedLength: released, woundRatio };
+}
+
 export function createPlayerBoneco3D(skinColor = 0xc68652, shirtColor = 0x1976d2, shortsColor = 0x37474f, capColor = 0xd32f2f) {
   const group = new THREE.Group();
 
@@ -398,15 +416,13 @@ export class ThreeCharacters {
       p3d.userData.glassesGroup.visible = Boolean(kite.isKing || kite.isLeader || (kite.streak && kite.streak >= 2));
     }
 
-    // Carretilha giratória
-    if (p3d.userData.carretilha) {
-      p3d.userData.carretilha.rotation.x += (0.06 + Math.abs(vx) * 0.02 + (kite.lineSlack || 0) * 0.15) * (delta || 1);
-    }
+    // A carretilha gira somente quando comprimento físico entra ou sai.
+    const reelState = syncCarretilhaFromRope(p3d.userData.carretilha, kite);
 
-    // Braço direito puxando linha
-    const isRetao = Boolean(kite.maneuver && kite.maneuver.name === 'retao');
-    const isTenteio = Boolean(kite.maneuver && kite.maneuver.name === 'tenteio');
-    const armPull = isRetao ? -0.52 : isTenteio ? Math.sin(time * 24) * 0.28 : Math.sin(time * 3.5 + idx) * 0.15;
+    // O braço reage ao movimento real da carretilha, não a animação por tempo/manobra.
+    const reelMotion = Math.max(-1, Math.min(1, -reelState.deltaLength / 18));
+    const armPull = reelMotion > 0 ? -0.18 - reelMotion * 0.46
+      : reelMotion < 0 ? 0.10 * Math.abs(reelMotion) : 0;
     if (p3d.userData.rightArmGroup) {
       p3d.userData.rightArmGroup.rotation.x = armPull;
     }

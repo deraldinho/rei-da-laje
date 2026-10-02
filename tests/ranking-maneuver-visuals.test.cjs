@@ -51,17 +51,14 @@ test('cinco manobras produzem poses temporárias diferentes e revertem ao normal
  assert.equal(idle.angle,0);assert.equal(idle.scale,1);assert.equal(idle.trail,0);
 });
 
-test('aparadas movimentam a pipa em curta distância sem teleporte nem HP extra', async()=>{
- const code=fs.readFileSync(path.join(__dirname,'../frontend/src/engine/Maneuvers.js'),'utf8');
- const {applyManeuverMovement,maneuverStats}=await import('data:text/javascript;base64,'+Buffer.from(code).toString('base64'));
+test('aparadas geram intenção defensiva curta sem teleporte nem HP extra',async()=>{
+ const {applyManeuverMovement,maneuverStats}=await import(require('node:url').pathToFileURL(path.join(__dirname,'../frontend/src/engine/Maneuvers.js')).href);
+ const {PlayerIntentController}=await import('../frontend/src/engine/physics/PlayerIntentController.js');
  for(const name of ['aparar_retao','aparar_despicada']){
-  const maneuver=maneuverStats(name,1,1);maneuver.remaining=maneuver.duration-0.5;
-  const kite={x:400,y:500,screenWidth:1080,screenHeight:1920,isAscending:false,spawnProtection:0,maneuver};
-  const before={x:kite.x,y:kite.y};
-  assert.equal(applyManeuverMovement(kite,[kite],1),true);
-  assert.ok(Math.hypot(kite.x-before.x,kite.y-before.y)>0);
-  assert.ok(Math.hypot(kite.x-before.x,kite.y-before.y)<2);
-  assert.ok(kite.y>=40 && kite.y<=1920*0.65);
+  const maneuver=maneuverStats(name,1,1);maneuver.remaining=maneuver.duration-.5;
+  const kite={x:400,y:500,screenWidth:1080,screenHeight:1920,isAscending:false,spawnProtection:0,maneuver};kite.intentController=new PlayerIntentController(kite);
+  const before={x:kite.x,y:kite.y};assert.equal(applyManeuverMovement(kite,[kite],1),true);
+  const intent=kite.intentController.update(1/60,{x:.2,y:0},[kite]);assert.ok(intent.tensionAssist<0);assert.deepEqual({x:kite.x,y:kite.y},before);
  }
 });
 
@@ -88,23 +85,15 @@ test('novas manobras autênticas brasileiras possuem poses 3D ricas e física ba
  const largada=maneuverPose({name:'largada',duration:3,remaining:2},1.0);
  assert.ok(largada.pitch3D > 0, 'largada deve empinar suavemente para trás');
 
- // Física de movimento das 4 novas manobras
- const code=fs.readFileSync(path.join(__dirname,'../frontend/src/engine/Maneuvers.js'),'utf8');
- const {applyManeuverMovement,maneuverStats}=await import('data:text/javascript;base64,'+Buffer.from(code).toString('base64'));
-
+ // Física das novas manobras é expressa por intenção, não coordenadas roteirizadas.
+ const {applyManeuverMovement,maneuverStats}=await import(require('node:url').pathToFileURL(path.join(__dirname,'../frontend/src/engine/Maneuvers.js')).href);
+ const {PlayerIntentController}=await import('../frontend/src/engine/physics/PlayerIntentController.js');
  for(const name of newTypes){
-   const maneuver=maneuverStats(name,1,1);
-   assert.ok(maneuver, `maneuverStats deve retornar estatísticas para ${name}`);
-   assert.ok(maneuver.duration>=30 && maneuver.duration<=45);
-   maneuver.remaining=maneuver.duration-0.5;
-   const targetKite={x:450,y:480,screenWidth:1080,screenHeight:1920,isAscending:false,spawnProtection:0};
-   const kite={x:400,y:500,screenWidth:1080,screenHeight:1920,isAscending:false,spawnProtection:0,maneuver};
-   const before={x:kite.x,y:kite.y};
-   const moved=applyManeuverMovement(kite,[kite,targetKite],1,{x:0.2,y:0});
-   assert.equal(moved, true, `${name} deve aplicar movimento físico`);
-   assert.ok(Math.hypot(kite.x-before.x,kite.y-before.y)>0, `${name} deve alterar coordenadas`);
-   assert.ok(kite.x>=30 && kite.x<=1080-30, `${name} deve respeitar margens X`);
-   assert.ok(kite.y>=40 && kite.y<=1920*0.65, `${name} deve respeitar teto/chão Y`);
+   const maneuver=maneuverStats(name,1,1);assert.ok(maneuver);maneuver.remaining=maneuver.duration-.5;
+   const targetKite={x:450,y:480,isAscending:false,spawnProtection:0};
+   const kite={x:400,y:500,screenWidth:1080,screenHeight:1920,isAscending:false,spawnProtection:0,maneuver};kite.intentController=new PlayerIntentController(kite);
+   const before={x:kite.x,y:kite.y};assert.equal(applyManeuverMovement(kite,[kite,targetKite],1,{x:.2,y:0}),true);
+   const intent=kite.intentController.update(1/60,{x:.2,y:0},[kite,targetKite]);assert.ok(intent.spoolCommand!==0||intent.debicoTorque!==0||intent.trimPitch!==0);
+   assert.deepEqual({x:kite.x,y:kite.y},before,`${name} não pode teleportar`);
  }
 });
-

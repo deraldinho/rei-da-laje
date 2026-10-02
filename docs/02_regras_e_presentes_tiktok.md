@@ -1,39 +1,95 @@
-> **Atualização de 24/09/2026:** o modelo vigente é comentário para entrar, vento automático para movimentar e provocar relinhos, e presentes para vantagens. Comandos manuais e captura por `#pegar` descritos abaixo pertencem ao planejamento anterior. Consulte [a regra atual e os efeitos implementados](08_vento_automatico_e_presentes.md). O combate atual utiliza dano contínuo por HP; a regra antiga de corte por diferença de 25% não foi implementada.
+# 02. Regras atuais — TikTok, comentários e presentes
 
-# 🎁 02. Regras do Jogo e Integração com Presentes (TikTok Gifts)
+**Atualizado em 02/10/2026.** Este documento substitui as tabelas antigas baseadas principalmente no nome do gift e qualquer regra de dano/corte automático.
 
-## Tabela Formal de Presentes e Recompensas
+## Princípios
 
-A monetização e o engajamento da Live são integrados diretamente ao desempenho das pipas no ar:
+1. Qualquer comentário válido pode colocar o usuário na arena conforme capacidade/fila.
+2. O combate normal acontece pelo vento e pela física, sem seleção automática de adversário.
+3. Comentários influenciam a própria pipa através de gestos físicos curtos; não exigem `1/2/3` ou palavras mágicas.
+4. Presentes concedem efeitos temporários resolvidos principalmente pelo **valor total em moedas** e podem ativar uma manobra física inteligente.
+5. Comentário e gift nunca aplicam dano diretamente.
+6. Desgaste/corte só acontece após contato real entre linhas confirmado em 3D.
 
-| Presente | Custo (Moedas) | ID TikTok Típico | Multiplicador de Poder | Duração (s) | Efeito Extra | Visual da Linha / Pipa |
-|---|---|---|---|---|---|---|
-| **Comentário** | 0 | - | `1.0x` | Até morrer | Entrada básica | Linha branca simples (1px) |
-| **Rajada de Likes** | 0 | - | `1.0x` | `30s` | `+25%` agilidade de esquiva | Rabiola com rastro brilhante |
-| **Rosa** | 1 | `5655` | `1.5x` | `60s` | Quebra linha de algodão com facilidade | Linha vermelha com faíscas (2px) |
-| **Donut / Sorvete** | 30 | `5827` | `3.0x` | `120s` | Quebra instantânea de linha de algodão | Linha azul fluorescente neon (2px) |
-| **Capivara / TikTok** | 100 | `6064` | `2.5x` | `180s` | Escudo: sobrevive a 2 derrotas de relinho | Linha dourada + aura protetora (3px) |
-| **Perfume** | 500 | `5984` | `4.0x` | Instantâneo | Puxada violenta: atrai até 3 pipas próximas | Vórtice de vento cinza ao redor da pipa |
-| **Leão / Universo** | 29999+ | `6267` | `99.0x` | `30s` | Invulnerabilidade total e corte em todas as pipas que tocar | Pipa gigante com raios e vinheta na tela |
+## Valor de gift
 
----
+O valor canônico do pacote é:
 
-## Política de Buffs (Stacking e Sobrescrita)
-1. **Sobrescrita de Nível**: Um presente superior (ex: Donut/Chile) sempre substitui um presente inferior (ex: Rosa/Cerol), reiniciando o cronômetro para a duração do novo presente.
-2. **Soma de Tempo**: Receber o mesmo presente antes de expirar soma o tempo de duração adicional.
-3. **Poderes Instantâneos**: Presentes como Perfume ou Leão ativam sua ação de impacto imediato sem cancelar a linha ativa do jogador.
+`totalCoinValue = unitCoinValue * repeatCount`
 
----
+Exemplos:
 
-## Regras de Engajamento e Ciclo de Vida da Live
+- 1 Rosa de 1 moeda -> valor 1;
+- 10 Rosas de 1 moeda -> valor 10;
+- 30 Rosas de 1 moeda -> valor 30;
+- 1 gift de 30 moedas -> mesmo direito de gameplay que um pacote total de 30 moedas, salvo regras promocionais explicitamente configuradas.
 
-### 1. Eliminação e Re-entrada Obrigatória
-- Ao ter a linha estourada ("Tlec!"), o jogador é eliminado da partida.
-- Para subir uma nova pipa, o espectador **deve enviar um novo comentário no chat**.
+O nome/ícone do presente continua sendo usado para celebração e UI, mas não deve ser a unidade principal da economia.
+## Promoção de tier e duração
 
-### 2. Pipa Avoadora / Resgate (`#pegar` ou `#aparar`)
-- Pipa cortada desce rodopiando por 8 segundos.
-- Qualquer espectador que digitar `#pegar` ou `#aparar` resgata a pipa e herda sua pontuação.
+A sequência é resolvida uma única vez. O sistema não pode conceder simultaneamente todos os buffs inferiores e mais um buff promovido pelo mesmo valor.
 
-### 3. Badge "Rei da Laje" (Streak de Cortes)
-- O jogador que alcançar **5 cortes seguidos** sem ser cortado recebe a coroa dourada do Rei da Laje e destaque no topo do placar.
+Exemplo:
+
+- valor 1: tier base configurado;
+- valor acumulado abaixo do próximo threshold: estende tempo conforme política do tier;
+- valor que alcança um threshold superior: promove para o tier correspondente;
+- o tempo do novo tier é calculado pela regra configurada, sem dupla contagem do valor já consumido.
+
+Os thresholds e durações serão configuráveis. O código de física não deve conhecer preços de TikTok.
+
+## Materiais virtuais
+
+Os tiers de linha são classes de gameplay. Podem incluir:
+
+- algodão;
+- cerol;
+- cerol de lâmpada;
+- cerol de acrílico;
+- cerol de pedra;
+- cerol de cristal;
+- chilena;
+- outras classes virtuais aprovadas.
+
+Cada classe só armazena coeficientes de simulação, como atrito, abrasividade, resistência à abrasão, rigidez, massa linear e resistência estrutural. O projeto não documenta receitas ou fabricação real.
+
+## Gift + manobra
+
+Um pacote de gift resolvido pode ativar `GiftManeuverAI`. O efeito de gift tem duas responsabilidades separadas:
+
+1. aplicar o buff/material temporário correspondente ao valor;
+2. solicitar uma manobra física, como retão, mergulho, laçada ou aparada.
+A IA da manobra não escolhe uma vítima. Ela consulta vento, estado mecânico e `LineDensityField` para encontrar um corredor espacial fisicamente alcançável com alta oportunidade de cruzar linhas.
+
+No retão, por exemplo:
+
+`amostrar vento -> aliviar linha -> ganhar orientação -> recuperar tensão -> puxar -> deixar a física executar a passagem`
+
+Se a trajetória cruzar cinco linhas na câmera, mas somente duas entrarem no raio real de contato 3D, apenas essas duas entram no pipeline de relinho.
+
+## Comentários
+
+Comentários comuns não são comandos rígidos. O texto, identidade, estado atual da pipa, vento e anti-spam alimentam o futuro `CommentGestureEngine`, que emite uma intervenção curta e limitada.
+
+Um comentário pode produzir pequenas combinações de:
+
+- spool/puxada/alívio;
+- torque de desbico;
+- trim de atitude;
+- assistência limitada de tensão.
+
+O comentário nunca define coordenadas nem escolhe adversário.
+
+## CrowdEnergy
+
+Comentários aceitos também podem aumentar um sinal global de engajamento limitado a `[0,1]`. Ele pode deixar o céu mais ativo alterando de forma segura rajadas e transições do vento, mas nunca aumenta dano/material nem força contato.
+
+## Idempotência
+
+Sequências de gifts do TikTok podem chegar com `repeatCount` acumulado. O backend deve finalizar e contabilizar cada sequência uma única vez, usando IDs/eventos canônicos quando disponíveis. Reconexão ou replay não pode duplicar buff, tempo, moeda virtual ou manobra.
+
+## Autoridade do resultado
+
+`Gift/Comment -> Intent -> KiteDynamics -> RopePhysics -> contato 3D -> abrasão/fadiga -> ruptura`
+
+Nenhum estágio anterior ao contato físico pode declarar corte ou subtrair HP de outro jogador.

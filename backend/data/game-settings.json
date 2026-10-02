@@ -21,6 +21,7 @@
   "relinhoPhysics": {
     "abrasionK": 0.04,
     "frictionMultiplier": 1,
+    "contactDamageFloor": 0.004,
     "minSlideSpeed": 0.75,
     "tensionMultiplier": 1,
     "angleExponent": 1,

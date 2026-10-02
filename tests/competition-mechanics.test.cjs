@@ -6,22 +6,23 @@ const GameRules = require('../backend/rules/gameRules');
 const { pathToFileURL } = require('node:url');
 const esm = async file => import(pathToFileURL(path.join(__dirname, '../frontend/src/engine/', file)).href);
 
-test('presentes geram manobras com alcance e duração limitados', async () => {
-  const { selectGiftManeuver, maneuverStats, maneuverTarget, applyManeuverMovement } = await esm('Maneuvers.js');
-  assert.equal(selectGiftManeuver('Flor'), 'retao');
-  assert.equal(selectGiftManeuver('Donut'), 'despicar');
-  assert.equal(selectGiftManeuver('Capivara'), 'aparar_retao');
-  assert.equal(selectGiftManeuver('Perfume'), 'perseguir');
-  assert.equal(selectGiftManeuver('Leão'), 'aparar_despicada');
-  assert.equal(selectGiftManeuver('desconhecido'), null);
-  const rose = maneuverStats('retao',1,1), expensive = maneuverStats('retao',1000,1000);
-  assert.ok(expensive.reach > rose.reach && expensive.reach <= 390 && expensive.duration === 45);
-  const owner={x:100,y:100,screenWidth:1080,screenHeight:1920,isAscending:false,spawnProtection:0,maneuver:{...rose,remaining:rose.duration}};
-  const target={x:200,y:130,isAscending:false,spawnProtection:0};
-  assert.equal(maneuverTarget(owner,[owner,target],rose.reach),target);
-  assert.equal(applyManeuverMovement(owner,[owner,target],1),true);
-  assert.ok(owner.x>100 && owner.x<200);
-  assert.equal(maneuverTarget(owner,[owner,{...target,x:999}],10),null);
+test('presentes geram manobras com alcance e duração limitados sem selecionar oponente', async () => {
+  const { selectGiftManeuver, maneuverStats, applyManeuverMovement } = await esm('Maneuvers.js');
+  const {planGiftManeuver}=await esm('physics/GiftManeuverAI.js');
+  const {PlayerIntentController}=await esm('physics/PlayerIntentController.js');
+  assert.equal(selectGiftManeuver('Flor'),'retao'); assert.equal(selectGiftManeuver('Donut'),'despicar');
+  assert.equal(selectGiftManeuver('Capivara'),'aparar_retao'); assert.equal(selectGiftManeuver('Perfume'),'perseguir');
+  assert.equal(selectGiftManeuver('Leão'),'aparar_despicada'); assert.equal(selectGiftManeuver('desconhecido'),null);
+  const rose=maneuverStats('retao',1,1), expensive=maneuverStats('retao',1000,1000);
+  assert.ok(expensive.reach>rose.reach&&expensive.reach<=390&&expensive.duration===45);
+  const owner={x:100,y:100,z:60,screenWidth:1080,screenHeight:1920,isAscending:false,spawnProtection:0,
+    attitude:{heading:0,pitch:0,roll:0},lineTension:.6,lineSlack:.1,maneuver:{...rose,remaining:rose.duration}};
+  owner.intentController=new PlayerIntentController(owner);
+  const density={scoreCorridor:(o,d)=>d.x>0?8:2};owner.maneuver.plan=planGiftManeuver(owner,owner.maneuver,{x:.2,y:0,z:.1},density);
+  assert.equal(applyManeuverMovement(owner,[],1,{x:.2,y:0,z:.1},density),true);
+  const intent=owner.intentController.update(1/60,{x:.2,y:0,z:.1},[]);
+  assert.ok(intent.spoolCommand!==0||intent.debicoTorque!==0); assert.equal(owner.x,100); assert.equal(owner.y,100);
+  assert.equal('target' in owner.maneuver.plan,false);
 });
 
 test('manobra defensiva reduz abrasão e bônus ofensivo não vira dano fixo', async () => {

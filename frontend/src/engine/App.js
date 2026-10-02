@@ -29,6 +29,10 @@ import { LifecycleBag } from './LifecycleBag.js';
 import { SocketSubscriptionBag } from './SocketSubscriptionBag.js';
 import { AparoController } from './AparoController.js';
 import { stabilizeSpawnKite } from './SpawnLayout.js';
+import { CrowdEnergy } from './physics/CrowdEnergy.js';
+import { LineDensityField } from './physics/LineDensityField.js';
+import { planGiftManeuver } from './physics/GiftManeuverAI.js';
+import { stampRelinhoVisualState } from './physics/RelinhoVisualState.js';
 
 export class GameApp {
   constructor(socket) {
@@ -40,6 +44,8 @@ export class GameApp {
     this.kites = new Map(); // userId -> Kite
     this.fallingKites = [];
     this.windTime = 0;
+    this.crowdEnergy = new CrowdEnergy();
+    this.lineDensityField = new LineDensityField();
     this.cutCooldowns = new Map();
     this.relinhoPhysicsConfig = sanitizeRelinhoPhysicsConfig();
     this.relinhoContactSystem = new LineContactSystem(this.relinhoPhysicsConfig);
@@ -440,59 +446,27 @@ export class GameApp {
       this.hud.showNotice('Nenhuma pipa no céu para controlar.', 1200);
       return;
     }
-
     let kite = this.selectedKiteUserId ? this.kites.get(this.selectedKiteUserId) : null;
-    if (!kite) {
-      kite = [...this.kites.values()].find(k => k.isKing) ||
-        [...this.kites.values()].find(k => k.isLeader) ||
-        this.kites.values().next().value;
-    }
+    if (!kite) kite = [...this.kites.values()].find(k => k.isKing) || [...this.kites.values()].find(k => k.isLeader) || this.kites.values().next().value;
     if (!kite) return;
-
     this.audio.ensureContext();
-    const wx = (typeof this.skyScene?.wind?.x === 'number') ? this.skyScene.wind.x : 0.2;
-    const windDir = Math.abs(wx) > 0.05 ? Math.sign(wx) : 1;
-
-    const maxKiteY = this.app.screen.height * 0.65;
-    const minKiteY = 40;
-
-    if (action === 'puxar') {
-      // Tecla 1: Puxar pipa (subida veloz de ataque, linha com tensão máxima)
-      kite.y = Math.max(minKiteY, kite.y - 30);
-      kite.lineTension = 1.0;
-      kite.lineSlack = 0;
-      kite.contactSpeed = Math.max(kite.contactSpeed || 0, 18);
-      kite.rotation = -0.15;
+    const emit3D=(count,color)=>{
+      if(!this.threeScene||this.threeScene.disabled)return;
+      const p3d=this.threeScene.screenToWorld(kite.x,kite.y,Number.isFinite(kite.z)?kite.z:140);
+      this.threeScene.emitSpark3D(p3d.x,p3d.y,p3d.z,count,color);
+    };
+    if(action==='puxar'){
+      startChatAction(kite,'puxar');
       this.audio.playLaunchSound();
-      this.sparks.emit(kite.x, kite.y, 6);
-      if (this.threeScene && !this.threeScene.disabled) {
-        const k3d = this.threeScene.kites3D?.get(String(kite.userId));
-        const p3d = this.threeScene.screenToWorld(kite.x, kite.y, k3d ? k3d.position.z : 140);
-        this.threeScene.emitSpark3D(p3d.x, p3d.y, p3d.z, 6, kite.line?.color || 0xffffff);
-      }
-      this.hud.showNotice(`🕹️ [1] PUXAR PIPA • ${kite.nickname}`, 1000);
-    } else if (action === 'soltar') {
-      // Tecla 2: Soltar linha (descarrega na carretilha, alivia tensão, deriva no vento)
-      kite.lineSlack = Math.min(1.0, (kite.lineSlack || 0) + 0.45);
-      kite.lineTension = 0.20;
-      kite.x += windDir * 24;
-      kite.y = Math.min(maxKiteY, kite.y + 8);
-      kite.x = Math.min(this.app.screen.width - 30, Math.max(30, kite.x));
-      this.hud.showNotice(`🕹️ [2] SOLTAR LINHA • ${kite.nickname}`, 1000);
-    } else if (action === 'despicada') {
-      // Tecla 3: Desbicada no sentido do vento (tranco seco e arrancada na direção que o vento sopra)
-      kite.x += windDir * 42;
-      kite.y = Math.min(maxKiteY, kite.y + 14);
-      kite.rotation = windDir * 0.42;
-      kite.lineTension = 0.95;
-      kite.contactSpeed = Math.max(kite.contactSpeed || 0, 20);
-      this.sparks.emit(kite.x, kite.y, 10);
-      if (this.threeScene && !this.threeScene.disabled) {
-        const k3d = this.threeScene.kites3D?.get(String(kite.userId));
-        const p3d = this.threeScene.screenToWorld(kite.x, kite.y, k3d ? k3d.position.z : 140);
-        this.threeScene.emitSpark3D(p3d.x, p3d.y, p3d.z, 10, kite.line?.color || 0xff9900);
-      }
-      this.hud.showNotice(`🕹️ [3] DESBICADA NO VENTO • ${kite.nickname}`, 1000);
+      this.sparks.emit(kite.x,kite.y,6); emit3D(6,kite.line?.color||0xffffff);
+      this.hud.showNotice('🕹️ [1] PUXAR PIPA • '+kite.nickname,1000);
+    }else if(action==='soltar'){
+      startChatAction(kite,'descarregar');
+      this.hud.showNotice('🕹️ [2] SOLTAR LINHA • '+kite.nickname,1000);
+    }else if(action==='despicada'){
+      startChatAction(kite,'embicar');
+      this.sparks.emit(kite.x,kite.y,10); emit3D(10,kite.line?.color||0xff9900);
+      this.hud.showNotice('🕹️ [3] DESBICAR • '+kite.nickname,1000);
     }
   }
 
@@ -561,16 +535,23 @@ export class GameApp {
       const maneuverName = selectGiftManeuver(data?.giftName) || String(data?.giftName || 'retao');
       const stats = maneuverStats(maneuverName, data?.giftCost, data?.repeatCount);
       if (!stats) return;
+      stats.plan = planGiftManeuver(kite, stats, Wind.sample(this.windTime), this.lineDensityField);
       kite.setManeuver(stats);
       this.hud.showManeuver(kite.nickname, stats.name);
+    });
+    this._socketSubscriptions.on('competition:comment', (data) => {
+      const text = String(data?.text || '').trim();
+      if (!text) return;
+      const energy = this.crowdEnergy.accept({ userId:data?.userId, text });
+      const kite = this.kites.get(String(data?.userId || ''));
+      if (kite) kite.inputBuffer?.addComment(text, data?.userId, {
+        wind: Wind.sample(this.windTime), lineDensity:this.lineDensityField, engagement:energy
+      });
     });
     this._socketSubscriptions.on('competition:chat_action', (data) => {
       if (!data?.userId || !data?.action) return;
       const kite = this.kites.get(data.userId);
-      if (kite) {
-        kite.inputBuffer?.addComment(data.action, data.nickname);
-        startChatAction(kite, data.action);
-      }
+      if (kite) startChatAction(kite, data.action);
     });
     this._socketSubscriptions.on('competition:queue', data => this.hud.updateQueue(data?.length || 0));
     this._socketSubscriptions.on('competition:champion_cut', data => this.hud.showChampionCut(data?.winnerNick, data?.loserNick));
@@ -1030,8 +1011,9 @@ export class GameApp {
 
   gameLoop(delta) {
     delta = Math.max(0, Math.min(delta, 3));
-    this.runtimeProfiler.frame(delta * (1000 / 60));
+    this.runtimeProfiler.beginFrame();
     this.windTime += delta / 60;
+    Wind.setCrowdEnergy(this.crowdEnergy.step(delta / 60));
     const currentWind = Wind.sample(this.windTime);
     this.runtimeProfiler.begin('hud');
     this.hud.updateWind(currentWind);
@@ -1075,20 +1057,17 @@ export class GameApp {
       // 1º: Intenções físicas, mãos e manobras (sem render Pixi aqui)
       for (const kite of physicsKites) {
         this.syncLineToPlayerHand(kite);
-        applyManeuverMovement(kite, physicsKites, fixedDelta, currentWind);
+        applyManeuverMovement(kite, physicsKites, fixedDelta, currentWind, this.lineDensityField);
         applyChatAction(kite, fixedDelta, currentWind);
       }
 
       // 2º: KiteDynamics e RopePhysics XPBD
       KiteDynamics._stepFrame++; // Avança o frame global ANTES do loop de pipas
       for (const kite of physicsKites) {
-        kite.update(fixedDt * 60, currentWind, physicsKites.length);
+        const kiteWind = Wind.withLocalVortices(currentWind, kite, physicsKites);
+        kite.update(fixedDt * 60, kiteWind, physicsKites.length, physicsKites);
       }
-
-      // 3º: Vórtices e atratores de vento
-      for (const kite of physicsKites) {
-        if (kite.specials.tornado > 0) Wind.attract(kite, physicsKites, fixedDelta);
-      }
+      this.lineDensityField.update(physicsKites, this.windTime * 1000);
 
       // 4º: Colisão e resolução de atrito de relinho determinísticos
       this.runtimeProfiler.begin('collision');
@@ -1156,10 +1135,7 @@ export class GameApp {
     const activeList = Array.isArray(physicsKites) ? physicsKites : Array.from(this.kites.values());
     const simNow = Number.isFinite(this._physicsTimeMs) ? this._physicsTimeMs : 0;
 
-    for (const kite of activeList) {
-      const k3d = this.threeScene?.kites3D?.get(String(kite?.userId ?? ''));
-      if (k3d && Number.isFinite(k3d.position?.z)) kite.z = k3d.position.z;
-    }
+
 
     const result = this.relinhoContactSystem.step(activeList, fixedDt, simNow, {
       allowWear: Boolean(this.isCombatAuthority),
@@ -1172,6 +1148,12 @@ export class GameApp {
     this.runtimeProfiler.gauge('relinhoSolved', result.metrics.solvedContacts || 0);
 
     const wallNow = Date.now();
+    // Estado visual barato acompanha todos os contatos físicos que acumulam abrasão.
+    // O budget pesado continua restrito a result.fxContacts / couplingJobs.
+    for (const contact of result.contacts.values()) {
+      if (!contact?.active || contact.phase === 'RELEASE') continue;
+      stampRelinhoVisualState(contact, wallNow);
+    }
     for (const contact of result.fxContacts) {
       const kA = contact.kiteA, kB = contact.kiteB;
       if (!kA || !kB) continue;
@@ -1191,8 +1173,11 @@ export class GameApp {
       if (visibleSparks > 0) {
         this.sparks.emit(contact.x, contact.y, visibleSparks);
         if (this.threeScene && !this.threeScene.disabled) {
-          const avgZ = ((Number(kA.z) || 0) + (Number(kB.z) || 0)) * 0.5 || 120;
-          const p3d = this.threeScene.screenToWorld(contact.x, contact.y, avgZ);
+          const a3d = this.threeScene.kites3D?.get?.(String(kA.userId));
+          const b3d = this.threeScene.kites3D?.get?.(String(kB.userId));
+          const contactDepth = a3d && b3d ? (a3d.position.z + b3d.position.z) * 0.5
+            : ((Number(a3d?.position?.z) || Number(b3d?.position?.z) || 120));
+          const p3d = this.threeScene.screenToWorld(contact.x, contact.y, contactDepth);
           this.threeScene.emitSpark3D(p3d.x, p3d.y, p3d.z, visibleSparks, kA.line?.color || 0xffea00);
         }
       }
@@ -1232,6 +1217,7 @@ export class GameApp {
     }
 
     this.hud.setCombatCompact((result.metrics.activeContacts || 0) > 0);
+    this.runtimeProfiler.endFrame();
   }
   checkAparos(delta, currentWind) {
     return this.aparoController.check({
