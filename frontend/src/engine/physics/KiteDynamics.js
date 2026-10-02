@@ -50,12 +50,13 @@ function localWindForKite(kite,wind,time){
   const t=Number(time)||0;
   const a=Math.sin(t*.13+phase+rank*.17);
   const b=Math.cos(t*.09+phase*1.37-rank*.11);
+  const c=Math.sin(t*.047+phase*.63+rank*.31);
   const depth=clamp(((Number(kite?.z)||28)-28)/224,0,1)-.5;
   return {...base,
-    x:(Number(base.x)||0)*(.94+.12*(.5+.5*b))+a*.055,
-    y:(Number(base.y)||0)+a*.26+depth*.05,
-    z:(Number(base.z)||0)+b*.12,
-    gust:Math.max(.5,(Number(base.gust)||1)*(1+a*.035))};
+    x:(Number(base.x)||0)*(.86+.28*(.5+.5*b))+a*.14+c*.06,
+    y:(Number(base.y)||0)+a*.38+c*.12+depth*.05,
+    z:(Number(base.z)||0)+b*.30+c*.14,
+    gust:Math.max(.5,(Number(base.gust)||1)*(1+a*.07+c*.03))};
 }
 
 function ensureDepth(kite){
@@ -77,23 +78,27 @@ function edgeForce(value,min,max,softWidth,strength){
 
 function computeBodySeparation(kite,allKites,population){
   if(!Array.isArray(allKites)||allKites.length<2)return {fx:0,fy:0,fz:0};
-  const spacing=population>=30?84:population>=15?88:92;
+  const spacing=population>=30?58:population>=15?60:64;
   let fx=0,fy=0,fz=0;
   for(const other of allKites){
     if(!other||other===kite)continue;
-    const dx=(Number(kite.x)||0)-(Number(other.x)||0);
-    const dy=(Number(kite.y)||0)-(Number(other.y)||0);
+    let dx=(Number(kite.x)||0)-(Number(other.x)||0);
+    let dy=(Number(kite.y)||0)-(Number(other.y)||0);
     const dz=(Number(kite.z)||0)-(Number(other.z)||0);
-    const planar=Math.hypot(dx,dy)||.001;
+    let planar=Math.hypot(dx,dy);
     if(planar>=spacing)continue;
-    const strength=(spacing-planar)/spacing*(population>=30?20:16);
-    const verticalDir=Math.abs(dy)>5?dy/planar:(String(kite.userId||'').localeCompare(String(other.userId||''))<=0?-1:1)*.72;
-    fx+=dx/planar*strength*.78;
-    fy+=verticalDir*strength*1.18;
-    if(planar<42&&Math.abs(dz)<34)fz+=(dz>=0?1:-1)*(34-Math.abs(dz))/34*2.4;
+    if(planar<.001){
+      const sign=String(kite.userId||'').localeCompare(String(other.userId||''))<=0?-1:1;
+      const angle=(Math.sin((Number(kite?.rooftopPlayer?.layoutIndex)||0)*2.31)*.5+.5)*Math.PI*.9+.2;
+      dx=Math.cos(angle)*sign;dy=Math.sin(angle)*sign;planar=1;
+    }
+    const strength=(spacing-planar)/spacing*(population>=30?16:12.5);
+    fx+=dx/planar*strength;
+    fy+=dy/planar*strength;
+    if(planar<40&&Math.abs(dz)<38)fz+=(dz===0?1:Math.sign(dz))*(1-Math.abs(dz)/38)*strength*.60;
   }
   const mag=Math.hypot(fx,fy,fz);
-  if(mag>24){const s=24/mag;fx*=s;fy*=s;fz*=s;}
+  if(mag>14){const s=14/mag;fx*=s;fy*=s;fz*=s;}
   return {fx,fy,fz};
 }
 
@@ -150,6 +155,7 @@ export class KiteDynamics {
     const effectiveTension=clamp((Number(ropeState.tension)||.58)+tensionAssist*.12,.08,1);
 
     const localWind=localWindForKite(kite,wind,KiteDynamics._globalTime);
+    kite._localPhysicsWind=localWind;
     const attitude=stepKiteAttitude(kite,dt,{
       wind:localWind,tension:effectiveTension,
       debicoTorque:debicoTorque+(Number(kite._aeroHeadingTorque)||0)*.18,

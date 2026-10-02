@@ -667,7 +667,7 @@ export class Kite extends PIXI.Container {
       const kiteZ = Number.isFinite(this.z) ? this.z : 0;
       const handPos = { x: startX, y: startY, z: startZ };
       const kitePos = { x: this.x, y: this.y, z: kiteZ };
-      this.rope.step(safeDt / 60, handPos, kitePos, windObj, {
+      this.rope.step(safeDt / 60, handPos, kitePos, this._localPhysicsWind || windObj, {
         lineSlack: this.lineSlack,
         lineTension: this.lineTension
       });

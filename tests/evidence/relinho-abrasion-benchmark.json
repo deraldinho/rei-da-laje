@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-02T21:04:54.441Z",
+  "generatedAt": "2026-10-02T21:30:38.580Z",
   "node": "v26.3.0",
   "fixedDt": 0.016666666666666666,
   "scenarios": [
@@ -8,10 +8,10 @@
       "mode": "distributed",
       "ticks": 480,
       "timing": {
-        "avgMs": 0.0072464583333330165,
-        "maxMs": 0.2881,
-        "p95Ms": 0.012399999999999523,
-        "p99Ms": 0.037500000000008527
+        "avgMs": 0.007240416666666653,
+        "maxMs": 0.2207000000000079,
+        "p95Ms": 0.011499999999998067,
+        "p99Ms": 0.04010000000000957
       },
       "maxCandidates": 0,
       "maxColdNarrowChecks": 0,
@@ -25,18 +25,18 @@
       "createdContacts": 0,
       "reusedContacts": 0,
       "poolSize": 12,
-      "heapDeltaBytes": 25432,
-      "heapDeltaMB": 0.02425384521484375
+      "heapDeltaBytes": 28040,
+      "heapDeltaMB": 0.02674102783203125
     },
     {
       "count": 2,
       "mode": "dense",
       "ticks": 480,
       "timing": {
-        "avgMs": 0.04025187499999946,
-        "maxMs": 0.39390000000000214,
-        "p95Ms": 0.059599999999988995,
-        "p99Ms": 0.1279999999999859
+        "avgMs": 0.04040708333333279,
+        "maxMs": 0.5356999999999914,
+        "p95Ms": 0.05920000000000414,
+        "p99Ms": 0.1109000000000151
       },
       "maxCandidates": 1,
       "maxColdNarrowChecks": 0,
@@ -50,18 +50,18 @@
       "createdContacts": 1,
       "reusedContacts": 0,
       "poolSize": 12,
-      "heapDeltaBytes": 135056,
-      "heapDeltaMB": 0.1287994384765625
+      "heapDeltaBytes": 106944,
+      "heapDeltaMB": 0.10198974609375
     },
     {
       "count": 10,
       "mode": "distributed",
       "ticks": 480,
       "timing": {
-        "avgMs": 0.011963958333333479,
-        "maxMs": 0.33789999999999054,
-        "p95Ms": 0.02369999999999095,
-        "p99Ms": 0.047100000000000364
+        "avgMs": 0.012151041666666333,
+        "maxMs": 0.2686999999999955,
+        "p95Ms": 0.022199999999998,
+        "p99Ms": 0.04970000000000141
       },
       "maxCandidates": 0,
       "maxColdNarrowChecks": 0,
@@ -75,18 +75,18 @@
       "createdContacts": 0,
       "reusedContacts": 0,
       "poolSize": 12,
-      "heapDeltaBytes": 39736,
-      "heapDeltaMB": 0.03789520263671875
+      "heapDeltaBytes": 63184,
+      "heapDeltaMB": 0.0602569580078125
     },
     {
       "count": 10,
       "mode": "dense",
       "ticks": 480,
       "timing": {
-        "avgMs": 0.18512479166666615,
-        "maxMs": 2.6668999999999983,
-        "p95Ms": 0.3415000000000532,
-        "p99Ms": 0.5065999999999917
+        "avgMs": 0.17478729166666718,
+        "maxMs": 1.7985999999999933,
+        "p95Ms": 0.3248000000000104,
+        "p99Ms": 0.5217999999999847
       },
       "maxCandidates": 45,
       "maxColdNarrowChecks": 34,
@@ -100,18 +100,18 @@
       "createdContacts": 12,
       "reusedContacts": 95,
       "poolSize": 12,
-      "heapDeltaBytes": 106944,
-      "heapDeltaMB": 0.10198974609375
+      "heapDeltaBytes": 107016,
+      "heapDeltaMB": 0.10205841064453125
     },
     {
       "count": 20,
       "mode": "distributed",
       "ticks": 480,
       "timing": {
-        "avgMs": 0.013887499999999046,
-        "maxMs": 0.4819999999999709,
-        "p95Ms": 0.024400000000014188,
-        "p99Ms": 0.07729999999997972
+        "avgMs": 0.01440625000000028,
+        "maxMs": 0.5190000000000055,
+        "p95Ms": 0.026299999999991996,
+        "p99Ms": 0.043099999999981264
       },
       "maxCandidates": 0,
       "maxColdNarrowChecks": 0,
@@ -125,18 +125,18 @@
       "createdContacts": 0,
       "reusedContacts": 0,
       "poolSize": 12,
-      "heapDeltaBytes": 47416,
-      "heapDeltaMB": 0.04521942138671875
+      "heapDeltaBytes": 47704,
+      "heapDeltaMB": 0.04549407958984375
     },
     {
       "count": 20,
       "mode": "dense",
       "ticks": 480,
       "timing": {
-        "avgMs": 0.3434962499999997,
-        "maxMs": 0.918200000000013,
-        "p95Ms": 0.7486000000000104,
-        "p99Ms": 0.8618999999999915
+        "avgMs": 0.3254112499999992,
+        "maxMs": 1.2428000000000452,
+        "p95Ms": 0.7182000000000244,
+        "p99Ms": 0.8344000000000165
       },
       "maxCandidates": 96,
       "maxColdNarrowChecks": 93,
@@ -150,18 +150,18 @@
       "createdContacts": 12,
       "reusedContacts": 95,
       "poolSize": 12,
-      "heapDeltaBytes": 26928,
-      "heapDeltaMB": 0.0256805419921875
+      "heapDeltaBytes": 28368,
+      "heapDeltaMB": 0.0270538330078125
     },
     {
       "count": 40,
       "mode": "distributed",
       "ticks": 480,
       "timing": {
-        "avgMs": 0.02634833333333025,
-        "maxMs": 0.2518000000000029,
-        "p95Ms": 0.04760000000010223,
-        "p99Ms": 0.09730000000001837
+        "avgMs": 0.025414791666667942,
+        "maxMs": 0.23019999999996799,
+        "p95Ms": 0.048199999999951615,
+        "p99Ms": 0.07360000000005584
       },
       "maxCandidates": 0,
       "maxColdNarrowChecks": 0,
@@ -175,18 +175,18 @@
       "createdContacts": 0,
       "reusedContacts": 0,
       "poolSize": 12,
-      "heapDeltaBytes": -197264,
-      "heapDeltaMB": -0.1881256103515625
+      "heapDeltaBytes": -197144,
+      "heapDeltaMB": -0.18801116943359375
     },
     {
       "count": 40,
       "mode": "dense",
       "ticks": 480,
       "timing": {
-        "avgMs": 0.4395064583333318,
-        "maxMs": 1.4319000000000415,
-        "p95Ms": 1.0246999999999389,
-        "p99Ms": 1.2217999999999165
+        "avgMs": 0.44214395833333386,
+        "maxMs": 1.4404000000000678,
+        "p95Ms": 1.110300000000052,
+        "p99Ms": 1.2758000000000038
       },
       "maxCandidates": 96,
       "maxColdNarrowChecks": 96,
@@ -200,13 +200,13 @@
       "createdContacts": 12,
       "reusedContacts": 95,
       "poolSize": 12,
-      "heapDeltaBytes": 62960,
-      "heapDeltaMB": 0.0600433349609375
+      "heapDeltaBytes": 72064,
+      "heapDeltaMB": 0.0687255859375
     }
   ],
   "cutProbe": {
-    "firstCutTick": 89,
-    "firstCutSec": 1.4833333333333334,
+    "firstCutTick": 88,
+    "firstCutSec": 1.4666666666666666,
     "totalCuts": 1,
     "duplicates": 0,
     "maxTracked": 1,
@@ -220,88 +220,5 @@
     "distributed40AvgMsMax": 2,
     "distributed40MaxMsMax": 8,
     "dense40AvgMsMax": 4
-  },
-  "browser": {
-    "generatedAt": "2026-10-02T21:07:25.859Z",
-    "samples": 240,
-    "p95Ms": 17.90000009536743,
-    "p99Ms": 20.09999990463257,
-    "maxMs": 28.200000047683716,
-    "maxTracked": 12,
-    "maxSolved": 3,
-    "maxCold": 96,
-    "maxActive": 12,
-    "manager": {
-      "createdContacts": 12,
-      "reusedContacts": 52,
-      "droppedContacts": 3081,
-      "expiredContacts": 10,
-      "rotatedContacts": 42,
-      "activeContacts": 12,
-      "selectedContacts": 3,
-      "trackedContacts": 12,
-      "poolSize": 12
-    },
-    "profiler": {
-      "samples": 240,
-      "fps": 60.00000000000021,
-      "quality": "high",
-      "frame": {
-        "avgMs": 16.666666666666607,
-        "maxMs": 16.666666666666668,
-        "p95Ms": 16.666666666666668,
-        "p99Ms": 16.666666666666668
-      },
-      "sections": {
-        "hud": {
-          "avgMs": 0.03708333671092987,
-          "maxMs": 0.20000004768371582,
-          "p95Ms": 0.10000014305114746,
-          "p99Ms": 0.19999980926513672
-        },
-        "render3d": {
-          "avgMs": 13.873333338896433,
-          "maxMs": 26.200000047683716,
-          "p95Ms": 15.100000143051147,
-          "p99Ms": 17.200000047683716
-        },
-        "collision": {
-          "avgMs": 0.4750000109275182,
-          "maxMs": 2.200000047683716,
-          "p95Ms": 0.9000000953674316,
-          "p99Ms": 1.3999998569488525
-        },
-        "physics": {
-          "avgMs": 1.5054166664679844,
-          "maxMs": 3.200000047683716,
-          "p95Ms": 2.299999952316284,
-          "p99Ms": 3.0999999046325684
-        },
-        "render2d": {
-          "avgMs": 0.29708332816759747,
-          "maxMs": 0.7000000476837158,
-          "p95Ms": 0.40000009536743164,
-          "p99Ms": 0.5
-        },
-        "serialization": {
-          "avgMs": 2,
-          "maxMs": 2,
-          "p95Ms": 2,
-          "p99Ms": 2
-        }
-      },
-      "gauges": {
-        "drawCalls": 1452,
-        "triangles": 48362,
-        "staticSavedDraws": 890,
-        "relinhoCandidates": 96,
-        "relinhoNarrowChecks": 105,
-        "relinhoContacts": 12,
-        "relinhoSolved": 3
-      }
-    },
-    "count": 40,
-    "drawCalls": 1452,
-    "uncaughtExceptions": 0
   }
 }

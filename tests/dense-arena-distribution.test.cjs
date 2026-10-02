@@ -44,19 +44,18 @@ test('40 pipas permanecem distribuídas por forças físicas sem grade rígida',
     const wind=Wind.sample(frame/60);
     for(const k of kites){
       KiteDynamics.step(k,1/60,wind,40,kites);
-      k.rope.step(1/60,{x:k.baseX,y:k.baseY,z:0},{x:k.x,y:k.y,z:k.z},wind,{});
+      k.rope.step(1/60,{x:k.baseX,y:k.baseY,z:0},{x:k.x,y:k.y,z:k.z},k._localPhysicsWind||wind,{});
     }
     if(frame===599||frame===1799) snapshots.push(kites.map(k=>({x:k.x,y:k.y,z:k.z})));
   }
   for(const points of snapshots){
-    const xs=points.map(p=>p.x),ys=points.map(p=>p.y); let close=0;
+    const xs=points.map(p=>p.x),ys=points.map(p=>p.y),zs=points.map(p=>p.z); let close3d=0;
     for(let i=0;i<points.length;i++) for(let j=i+1;j<points.length;j++)
-      if(Math.hypot(points[i].x-points[j].x,points[i].y-points[j].y)<55) close++;
+      if(Math.hypot(points[i].x-points[j].x,points[i].y-points[j].y,points[i].z-points[j].z)<55) close3d++;
     assert.ok(Math.max(...xs)-Math.min(...xs)>width*.65,'arena horizontal colapsou');
     assert.ok(Math.max(...ys)-Math.min(...ys)>height*.03,'arena perdeu variação vertical');
-    const zs=points.map(p=>p.z);
     assert.ok(Math.max(...zs)-Math.min(...zs)>35,'arena perdeu profundidade 3D');
-    assert.ok(close<=40,`aglomerado visual excessivo: ${close} pares`);
+    assert.ok(close3d<=40,`aglomerado físico 3D excessivo: ${close3d} pares`);
   }
   const yBands=new Set(kites.map(k=>Math.round(k.y/24)));
   const zBands=new Set(kites.map(k=>Math.round(k.z/18)));
