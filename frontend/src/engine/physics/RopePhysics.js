@@ -24,6 +24,9 @@ export class RopePhysics {
     this.segmentWear = new Float32Array(this.nodeCount - 1);
     this.spoolLength = 0;
     this.tension = 0.58;
+    this._directDistance = 0;
+    this._spoolControlled = false;
+    this._minSpoolRatio = 0.85;
     this.aabb = { minX: 0, maxX: 0, minY: 0, maxY: 0, minZ: 0, maxZ: 0 };
     this.isInitialized = false;
 
@@ -66,7 +69,9 @@ export class RopePhysics {
     const kZ = Number.isFinite(kitePos?.z) ? kitePos.z : 0;
 
     const dist = Math.hypot(kX - hX, kY - hY, kZ - hZ);
+    this._directDistance = dist;
     this.spoolLength = Math.max(10, dist);
+    this._spoolControlled = false;
 
     for (let i = 0; i < this.nodeCount; i++) {
       const t = i / (this.nodeCount - 1);
@@ -109,14 +114,18 @@ export class RopePhysics {
     }
 
     const currentDist = Math.hypot(kX - hX, kY - hY, kZ - hZ);
+    this._directDistance = currentDist;
 
     // Gestão do comprimento físico de linha (spoolLength)
     const slack = Number.isFinite(control.lineSlack) ? Math.max(0, control.lineSlack) : 0;
-    // O spool mínimo é a distância direta, ampliada pela folga liberada (descarregar)
     const targetSpool = currentDist * (1.0 + slack * 0.32);
-    if (this.spoolLength <= 0) this.spoolLength = targetSpool;
-    // Ajusta o carretel gradualmente
-    this.spoolLength += (targetSpool - this.spoolLength) * Math.min(1.0, safeDt * 10);
+    if (!(this.spoolLength > 0)) this.spoolLength = Math.max(10, targetSpool);
+    if (!this._spoolControlled) {
+      this.spoolLength += (targetSpool - this.spoolLength) * Math.min(1.0, safeDt * 10);
+    }
+    const minSpool = Math.max(10, currentDist * this._minSpoolRatio);
+    const maxSpool = Math.max(minSpool + 10, currentDist * 4, 1200);
+    this.spoolLength = Math.max(minSpool, Math.min(maxSpool, Number.isFinite(this.spoolLength) ? this.spoolLength : currentDist));
 
     const restSegment = Math.max(0.1, this.spoolLength / (this.nodeCount - 1));
 
@@ -187,6 +196,32 @@ export class RopePhysics {
     this.tension = Math.max(0.08, Math.min(1.0, this.tension + (rawTension - this.tension) * Math.min(1.0, safeDt * 8)));
 
     this.updateAABB();
+  }
+
+  adjustSpoolLength(deltaPx = 0) {
+    const delta = Number(deltaPx) || 0;
+    const direct = Math.max(10, Number(this._directDistance) || 10);
+    const minSpool = Math.max(10, direct * this._minSpoolRatio);
+    const maxSpool = Math.max(minSpool + 10, direct * 4, 1200);
+    const current = Number.isFinite(this.spoolLength) && this.spoolLength > 0 ? this.spoolLength : direct;
+    this.spoolLength = Math.max(minSpool, Math.min(maxSpool, current + delta));
+    this._spoolControlled = true;
+    return this.spoolLength;
+  }
+
+  getSlackRatio(handPos = null, kitePos = null) {
+    const direct = handPos && kitePos
+      ? Math.hypot((kitePos.x || 0) - (handPos.x || 0), (kitePos.y || 0) - (handPos.y || 0), (kitePos.z || 0) - (handPos.z || 0))
+      : Math.max(0, Number(this._directDistance) || 0);
+    if (!(direct > 1e-6)) return 0;
+    return Math.max(0, (this.spoolLength - direct) / direct);
+  }
+
+  getMechanicalState(handPos = null, kitePos = null) {
+    const directLength = handPos && kitePos
+      ? Math.hypot((kitePos.x || 0) - (handPos.x || 0), (kitePos.y || 0) - (handPos.y || 0), (kitePos.z || 0) - (handPos.z || 0))
+      : Math.max(0, Number(this._directDistance) || 0);
+    return { directLength, spoolLength:this.spoolLength, slackRatio:this.getSlackRatio(handPos,kitePos), strain:directLength/Math.max(1,this.spoolLength), tension:this.tension };
   }
 
   updateAABB() {
