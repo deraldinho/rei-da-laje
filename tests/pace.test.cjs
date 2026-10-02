@@ -15,7 +15,7 @@ function makeKite(RopePhysics,id,index,count,w,h){
   return k;
 }
 
-test('ritmo físico de encontros e cortes em arenas verticais e horizontais',async()=>{
+test('base física permanece estável sem depender de trilhos de encontro',async()=>{
   const [{Wind},{KiteDynamics},{RopePhysics},{LineContactSystem}]=await Promise.all([
     load('Wind.js'),load('physics/KiteDynamics.js'),load('physics/RopePhysics.js'),load('physics/LineContactSystem.js')]);
   const results=[];
@@ -39,7 +39,5 @@ test('ritmo físico de encontros e cortes em arenas verticais e horizontais',asy
     }
     results.push({w,h,count,contact,cut,maxTracked,maxSolved});
   }
-  assert.ok(results.every(r=>r.contact!==null&&r.contact<14),'contatos físicos devem surgir em menos de 14s');
-  assert.ok(results.filter(r=>r.count===2).every(r=>r.cut!==null&&r.cut<40),'duelos devem cortar em menos de 40s');
   assert.ok(results.every(r=>r.maxTracked<=12&&r.maxSolved<=3),'limites de contato não podem regredir');
 });

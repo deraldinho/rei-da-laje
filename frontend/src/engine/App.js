@@ -1156,10 +1156,7 @@ export class GameApp {
     const activeList = Array.isArray(physicsKites) ? physicsKites : Array.from(this.kites.values());
     const simNow = Number.isFinite(this._physicsTimeMs) ? this._physicsTimeMs : 0;
 
-    for (const kite of activeList) {
-      const k3d = this.threeScene?.kites3D?.get(String(kite?.userId ?? ''));
-      if (k3d && Number.isFinite(k3d.position?.z)) kite.z = k3d.position.z;
-    }
+
 
     const result = this.relinhoContactSystem.step(activeList, fixedDt, simNow, {
       allowWear: Boolean(this.isCombatAuthority),

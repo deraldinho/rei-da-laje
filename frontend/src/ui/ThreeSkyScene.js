@@ -764,15 +764,8 @@ export class ThreeSkyScene {
         k3d.userData.nameTag.position.y = 20.5 + (nScale - 1) * 3;
       }
 
-      // Profundidade 3D
-      const depthSeed = Math.abs(hashStringToInt(uidStr + '_depth'));
-      const depthTier = depthSeed % 3;
-      let depthOffset = depthTier === 0 ? 210 + (depthSeed % 35) : depthTier === 1 ? 130 + (depthSeed % 35) : 50 + (depthSeed % 35);
-
-      // A profundidade individual permanece estável durante combate.
-      // O contato é resolvido pela corda física; alinhar Z dos corpos ao oponente
-      // fazia 3+ pipas convergirem e oscilarem como um único grupo.
-
+      // Profundidade 3D é estado físico; o renderer apenas projeta esse valor.
+      const depthOffset = Number.isFinite(kite.z) ? kite.z : 140;
       const worldTarget = this.screenToWorld(kite.x, kite.y, depthOffset);
       k3d.userData.targetWorldPos.set(worldTarget.x, worldTarget.y, worldTarget.z);
 
@@ -794,14 +787,15 @@ export class ThreeSkyScene {
       }
       k3d.position.copy(k3d.userData.currentWorldPos);
 
-      // Sincroniza profundidade 3D real com a entidade lógica da pipa
-      kite.z = k3d.position.z;
 
-      // Rotação física e manobras
+      // Atitude física é autoritativa; velocidade é fallback para checkpoints antigos.
       const physRot = Number.isFinite(kite.rotation) ? kite.rotation : 0;
-      let targetRoll = -Math.max(-0.75, Math.min(0.75, (vx * 0.065) - physRot * 0.85));
-      let targetPitch = Math.max(-0.55, Math.min(0.65, vy * 0.052)) - 0.22;
-      let targetYaw = Math.max(-0.5, Math.min(0.5, (vx * 0.045) - physRot * 0.5));
+      let targetRoll = Number.isFinite(kite.roll) ? kite.roll
+        : -Math.max(-0.75, Math.min(0.75, (vx * 0.065) - physRot * 0.85));
+      let targetPitch = Number.isFinite(kite.pitch) ? kite.pitch
+        : Math.max(-0.55, Math.min(0.65, vy * 0.052)) - 0.22;
+      let targetYaw = Number.isFinite(kite.heading) ? kite.heading
+        : Math.max(-0.5, Math.min(0.5, (vx * 0.045) - physRot * 0.5));
 
       if (kite.maneuver && kite.maneuver.name) {
         const m = String(kite.maneuver.name).toLowerCase();
