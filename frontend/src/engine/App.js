@@ -1063,14 +1063,10 @@ export class GameApp {
       // 2º: KiteDynamics e RopePhysics XPBD
       KiteDynamics._stepFrame++; // Avança o frame global ANTES do loop de pipas
       for (const kite of physicsKites) {
-        kite.update(fixedDt * 60, currentWind, physicsKites.length, physicsKites);
+        const kiteWind = Wind.withLocalVortices(currentWind, kite, physicsKites);
+        kite.update(fixedDt * 60, kiteWind, physicsKites.length, physicsKites);
       }
       this.lineDensityField.update(physicsKites, this.windTime * 1000);
-
-      // 3º: Vórtices e atratores de vento
-      for (const kite of physicsKites) {
-        if (kite.specials.tornado > 0) Wind.attract(kite, physicsKites, fixedDelta);
-      }
 
       // 4º: Colisão e resolução de atrito de relinho determinísticos
       this.runtimeProfiler.begin('collision');
