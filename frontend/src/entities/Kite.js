@@ -593,7 +593,7 @@ export class Kite extends PIXI.Container {
     return base*tension*combo;
   }
 
-  update(delta, windTime = 0, population = 2) {
+  update(delta, windTime = 0, population = 2, physicsKites = null) {
     if (!Number.isFinite(this.x)) this.x = Number.isFinite(this.targetX) ? this.targetX : (this.screenWidth * 0.5);
     if (!Number.isFinite(this.y)) this.y = Number.isFinite(this.targetY) ? this.targetY : (this.screenHeight * 0.35);
     const windX = (typeof windTime === 'object' && windTime !== null && 'x' in windTime) ? (Number.isFinite(windTime.x) ? windTime.x : 0) : (Wind.sample(windTime).x || 0);
@@ -642,7 +642,7 @@ export class Kite extends PIXI.Container {
       this.vy = (this.y - prevPhysY) / safeDt;
     } else {
       const curWind = (typeof windTime === 'object' && windTime !== null) ? windTime : { x: windX, y: 0 };
-      KiteDynamics.step(this, safeDtSec, curWind, population);
+      KiteDynamics.step(this, safeDtSec, curWind, population, physicsKites);
       this.contactSpeed = Math.hypot(this.vx, this.vy);
     }
 

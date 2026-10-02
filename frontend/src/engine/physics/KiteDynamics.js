@@ -1,6 +1,7 @@
 import { SpoolController } from './SpoolController.js';
 import { stepKiteAttitude } from './KiteAttitude.js';
 import { computeKiteAerodynamics } from './KiteAerodynamics.js';
+import { computeLiveAssist } from './LiveCombatDirector.js';
 
 const SPARSE_CROSSING_SPEED = 0.72;
 const DENSE_CROSSING_SPEED = 0.34;
@@ -70,7 +71,7 @@ export class KiteDynamics {
   static _stepFrame=0;
   static _lastFrame=-1;
 
-  static step(kite,fixedDt=1/60,wind=null,population=2){
+  static step(kite,fixedDt=1/60,wind=null,population=2,allKites=null){
     if(!kite||!Number.isFinite(kite.x)||!Number.isFinite(kite.y))return;
     const dt=Math.max(.001,Math.min(.05,Number(fixedDt)||1/60));
     const currentFrame=KiteDynamics._stepFrame;
@@ -147,6 +148,8 @@ export class KiteDynamics {
     const boundaryFx=edgeForce(kite.x,minX,maxX,width*.08,.16);
     const boundaryFy=edgeForce(kite.y,minY,maxY,height*.06,.13);
     const boundaryFz=edgeForce(kite.z,minZ,maxZ,38,.18);
+    kite.liveAssistTime=KiteDynamics._globalTime;
+    const liveAssist=Array.isArray(allKites)?computeLiveAssist(kite,allKites,wind,dt):{fx:0,fy:0,fz:0};
     // Correção de acoplamento do tether: a corda discretizada em 12 nós perde parte
     // da reação do cabo no último segmento; o chord devolve essa componente ao corpo.
     const chordFx=(handPos.x-kite.x)*effectiveTension*.07;
@@ -154,9 +157,9 @@ export class KiteDynamics {
 
     const aeroScale=3.15*((kite.likeBoostRemaining||0)>0?1.08:1);
     const gravity=30*kite.mass;
-    const totalFx=aero.fx*1.05+tensionFx+chordFx+forwardX*pull-kite.vx*.62+boundaryFx;
-    const totalFy=gravity+aero.fy*aeroScale+tensionFy+forwardY*pull-kite.vy*.56+boundaryFy;
-    const totalFz=aero.fz*2.35+tensionFz+chordFz+forwardZ*pull*.72-kite.vz*.58+boundaryFz;
+    const totalFx=aero.fx*1.05+tensionFx+chordFx+forwardX*pull-kite.vx*.62+boundaryFx+liveAssist.fx;
+    const totalFy=gravity+aero.fy*aeroScale+tensionFy+forwardY*pull-kite.vy*.56+boundaryFy+liveAssist.fy;
+    const totalFz=aero.fz*2.35+tensionFz+chordFz+forwardZ*pull*.72-kite.vz*.58+boundaryFz+liveAssist.fz;
 
     const ax=totalFx/kite.mass,ay=totalFy/kite.mass,az=totalFz/kite.mass;
     kite.vx+=ax*dt;

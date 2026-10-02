@@ -41,3 +41,30 @@ test('base física permanece estável sem depender de trilhos de encontro',async
   }
   assert.ok(results.every(r=>r.maxTracked<=12&&r.maxSolved<=3),'limites de contato não podem regredir');
 });
+
+test('diretor mantém 15/20/40 pipas abertas e cria oportunidade física em até 15s',async()=>{
+  const [{Wind},{KiteDynamics},{RopePhysics},{LineContactSystem}]=await Promise.all([
+    load('Wind.js'),load('physics/KiteDynamics.js'),load('physics/RopePhysics.js'),load('physics/LineContactSystem.js')]);
+  const w=1080,h=1920;
+  for(const count of [15,20,40]){
+    KiteDynamics._globalTime=0;KiteDynamics._lastFrame=-1;KiteDynamics._stepFrame=0;
+    const kites=Array.from({length:count},(_,i)=>{
+      const k=makeKite(RopePhysics,`live${i}`,i,count,w,h);
+      k.y=h*(.20+(((i*7)%count)/Math.max(1,count-1))*.14);k.z=60+(i%5)*24;
+      k.rope.resetPositions({x:k.baseX,y:k.baseY,z:0},{x:k.x,y:k.y,z:k.z});return k;
+    });
+    const system=new LineContactSystem();let firstContact=null;
+    for(let frame=0;frame<900;frame++){
+      KiteDynamics._stepFrame=frame;const wind=Wind.sample(frame/60);
+      for(const k of kites){KiteDynamics.step(k,1/60,wind,count,kites);k.rope.step(1/60,{x:k.baseX,y:k.baseY,z:0},{x:k.x,y:k.y,z:k.z},wind,{});}
+      const r=system.step(kites,1/60,frame*1000/60,{allowWear:false});
+      if(firstContact===null&&r.metrics.activeContacts>0)firstContact=frame/60;
+    }
+    const xs=kites.map(k=>k.x),ys=kites.map(k=>k.y);let close=0;
+    for(let i=0;i<count;i++)for(let j=i+1;j<count;j++)if(Math.hypot(kites[i].x-kites[j].x,kites[i].y-kites[j].y)<55)close++;
+    assert.ok(Math.max(...xs)-Math.min(...xs)>w*.65,`${count}: span X`);
+    assert.ok(Math.max(...ys)-Math.min(...ys)>h*.10,`${count}: span Y`);
+    assert.ok(close<=12,`${count}: ${close} pares próximos`);
+    assert.ok(firstContact!==null&&firstContact<15,`${count}: sem contato em 15s (${firstContact})`);
+  }
+});

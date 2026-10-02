@@ -1050,7 +1050,7 @@ export class GameApp {
       // 2º: KiteDynamics e RopePhysics XPBD
       KiteDynamics._stepFrame++; // Avança o frame global ANTES do loop de pipas
       for (const kite of physicsKites) {
-        kite.update(fixedDt * 60, currentWind, physicsKites.length);
+        kite.update(fixedDt * 60, currentWind, physicsKites.length, physicsKites);
       }
 
       // 3º: Vórtices e atratores de vento
