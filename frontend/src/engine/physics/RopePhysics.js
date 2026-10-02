@@ -210,12 +210,17 @@ export class RopePhysics {
     const along=airX*lineX+airY*lineY+airZ*lineZ;
     const crossSq=Math.max(0,airX*airX+airY*airY+airZ*airZ-along*along);
     const exposedLength=Math.max(.3,Math.min(1.4,this.spoolLength/1400));
-    const windTension=Math.min(.42,crossSq*.10*exposedLength);
+    const lineDragTension=Math.min(.42,crossSq*.10*exposedLength);
+    // Quando o vento sopra no sentido mão -> pipa, a pipa funciona como corpo terminal
+    // e transmite carga axial ao tirante mesmo com a linha quase alinhada ao fluxo.
+    const outwardFlow=Math.max(0,along);
+    const terminalPullTension=Math.min(.34,outwardFlow*outwardFlow*.075*(.75+.25*exposedLength));
+    const windTension=Math.min(.42,lineDragTension+terminalPullTension);
     // strain >= 0.98 indica linha reta e esticada; strain < 0.85 indica bastante folga
     const geometricTension=Math.max(0.04,0.12+(strain-.75)*3.5);
     const rawTension=Math.max(0.08,Math.min(1,geometricTension+windTension));
     this.tension = Math.max(0.08, Math.min(1.0, this.tension + (rawTension - this.tension) * Math.min(1.0, safeDt * 8)));
-    const normalizedLoad = this.tension * 0.72 + Math.max(0, strain - 0.96) * 4.2;
+    const normalizedLoad = this.tension * 0.62 + Math.max(0, strain - 0.96) * 4.2;
     // Carga aplicada é propriedade do estado mecânico da corda, não da resistência do material.
     // `maxTension` entra somente em LineStructuralModel ao converter carga -> loadRatio.
     this.structuralLoad = Math.max(0, 50 * normalizedLoad);

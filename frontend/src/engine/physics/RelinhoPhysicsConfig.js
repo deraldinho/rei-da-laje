@@ -1,5 +1,5 @@
 export const DEFAULT_RELINHO_PHYSICS_CONFIG = Object.freeze({
-  abrasionK: 0.07,
+  abrasionK: 0.025,
   frictionMultiplier: 1.0,
   contactDamageFloor: 0.004,
   minSlideSpeed: 0.75,

@@ -130,3 +130,25 @@ test('limites de tela não alteram posição física da pipa',async()=>{
   assert.ok(k.x>1000,`x foi preso à câmera: ${k.x}`);
   assert.ok(k.z>300,`z foi preso à câmera: ${k.z}`);
 });
+
+test('vento forte tensiona a linha mesmo quando o tirante está alinhado ao vento',async()=>{
+  const {RopePhysics}=await load('physics/RopePhysics.js');
+  const rope=new RopePhysics({nodeCount:12,lineType:'algodao',totalLineLength:1800});
+  const hand={x:0,y:900,z:0},kite={x:780,y:900,z:0};
+  rope.resetPositions(hand,kite);
+  rope.adjustSpoolLength(300);
+  for(let i=0;i<240;i++){
+    rope.step(1/60,hand,kite,{x:1.95,y:0,z:0,gust:1.05},{});
+  }
+  const st=rope.getMechanicalState(hand,kite);
+  assert.ok(st.strain<.8,`pré-condição: a linha deve manter barriga, strain=${st.strain.toFixed(3)}`);
+  assert.ok(st.tension>.25,`vento forte alinhado não transmitiu carga ao tirante: tension=${st.tension.toFixed(3)}`);
+});
+
+test('windInfluence altera a resposta física inicial ao mesmo campo de vento',async()=>{
+  const [{KiteDynamics},{RopePhysics}]=await Promise.all([load('physics/KiteDynamics.js'),load('physics/RopePhysics.js')]);
+  const run=influence=>{KiteDynamics._globalTime=0;KiteDynamics._lastFrame=-1;KiteDynamics._stepFrame=0;const rope=new RopePhysics({nodeCount:12,lineType:'algodao',totalLineLength:5000});const k={userId:`w${influence}`,x:540,y:520,z:100,baseX:540,baseY:1760,baseZ:0,vx:0,vy:0,vz:0,mass:.85,aeroArea:1,screenWidth:1080,screenHeight:1920,windPhase:.5,windInfluence:influence,lineSlack:1,lineTension:.2,rooftopPlayer:{layoutIndex:2},rope};rope.resetPositions({x:k.baseX,y:k.baseY,z:0},{x:k.x,y:k.y,z:k.z});rope.adjustSpoolLength(2200);for(let frame=0;frame<6;frame++){KiteDynamics._stepFrame=frame;const wind={x:1.35,y:-.12,z:.18,gust:1};KiteDynamics.step(k,1/60,wind,1,[k]);rope.step(1/60,{x:k.baseX,y:k.baseY,z:0},{x:k.x,y:k.y,z:k.z},k._localPhysicsWind||wind,{})}return {wind:Math.hypot(k._localPhysicsWind.x,k._localPhysicsWind.y,k._localPhysicsWind.z),speed:Math.hypot(k.vx,k.vy,k.vz)}};
+  const low=run(.8),high=run(1.4);
+  assert.ok(high.wind>low.wind*1.15,`vento local não respeita sensibilidade: low=${low.wind.toFixed(2)} high=${high.wind.toFixed(2)}`);
+  assert.ok(high.speed>low.speed,`resposta inicial não aumentou: low=${low.speed.toFixed(2)} high=${high.speed.toFixed(2)}`);
+});

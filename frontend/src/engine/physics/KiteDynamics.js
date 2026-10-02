@@ -52,10 +52,13 @@ function localWindForKite(kite,wind,time){
   const b=Math.cos(t*.09+phase*1.37-rank*.11);
   const c=Math.sin(t*.047+phase*.63+rank*.31);
   const depth=clamp(((Number(kite?.z)||28)-28)/224,0,1)-.5;
+  // windInfluence representa sensibilidade aerodinâmica de força. Como lift/drag
+  // crescem aproximadamente com v², aplicamos sqrt(influence) na velocidade.
+  const sensitivity=Math.sqrt(clamp(Number(kite?.windInfluence)||1,.65,1.6));
   return {...base,
-    x:(Number(base.x)||0)*(.86+.28*(.5+.5*b))+a*.14+c*.06,
-    y:(Number(base.y)||0)+a*.38+c*.12+depth*.05,
-    z:(Number(base.z)||0)+b*.30+c*.14,
+    x:((Number(base.x)||0)*(.86+.28*(.5+.5*b))+a*.14+c*.06)*sensitivity,
+    y:((Number(base.y)||0)+a*.38+c*.12+depth*.05)*sensitivity,
+    z:((Number(base.z)||0)+b*.30+c*.14)*sensitivity,
     gust:Math.max(.5,(Number(base.gust)||1)*(1+a*.07+c*.03))};
 }
 

@@ -65,3 +65,15 @@ test('RopePhysics calcula carga independente do limite de ruptura do material',a
   assert.ok(weakRatio>strongRatio*1.5,`weak=${weakRatio} strong=${strongRatio}`);
   assert.ok(strong.structuralLoad<weak.structuralLoad*1.4,'carga não pode escalar com maxTension');
 });
+
+
+test('sobre-extensão física próxima de 102% ainda sobrecarrega linha de algodão',async()=>{
+  const {RopePhysics}=await load('RopePhysics.js');
+  const rope=new RopePhysics({nodeCount:12,lineType:'algodao',totalLineLength:1800});
+  const hand={x:0,y:0,z:0},kite={x:1020,y:0,z:0};
+  rope.resetPositions(hand,{x:1000,y:0,z:0});
+  rope.spoolLength=1000;
+  for(let i=0;i<30;i++) rope.step(1/60,hand,kite,{x:0,y:0,z:0,gust:1},{});
+  const ratio=rope.structuralLoad/rope.material.maxTension;
+  assert.ok(ratio>1,`sobre-extensão deixou de sobrecarregar algodão: loadRatio=${ratio.toFixed(3)}`);
+});

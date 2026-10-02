@@ -8,7 +8,7 @@ const configUrl = pathToFileURL(path.resolve(__dirname, '../frontend/src/engine/
 const materialUrl = pathToFileURL(path.resolve(__dirname, '../frontend/src/engine/physics/LineMaterial.js')).href;
 
 const expectedDefaults = {
-  abrasionK: 0.07,
+  abrasionK: 0.025,
   frictionMultiplier: 1.0,
   contactDamageFloor: 0.004,
   minSlideSpeed: 0.75,
