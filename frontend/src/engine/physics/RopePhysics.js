@@ -199,8 +199,10 @@ export class RopePhysics {
     // strain >= 0.98 indica linha reta e esticada; strain < 0.85 indica bastante folga
     const rawTension = Math.max(0.08, Math.min(1.0, 0.12 + (strain - 0.75) * 3.5));
     this.tension = Math.max(0.08, Math.min(1.0, this.tension + (rawTension - this.tension) * Math.min(1.0, safeDt * 8)));
-    const loadRatio = this.tension * 0.72 + Math.max(0, strain - 0.96) * 4.2;
-    this.structuralLoad = Math.max(0, this.material.maxTension * loadRatio);
+    const normalizedLoad = this.tension * 0.72 + Math.max(0, strain - 0.96) * 4.2;
+    // Carga aplicada é propriedade do estado mecânico da corda, não da resistência do material.
+    // `maxTension` entra somente em LineStructuralModel ao converter carga -> loadRatio.
+    this.structuralLoad = Math.max(0, 50 * normalizedLoad);
     evaluateStructuralLoad(this, this.material, safeDt);
 
     this.updateAABB();

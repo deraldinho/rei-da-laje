@@ -48,3 +48,20 @@ test('após a graça fadiga segue a fórmula e rompe no segmento mais fraco',asy
   assert.equal(last.broke,true);assert.equal(last.segmentIndex,1);assert.equal(last.segmentT,.5);
   assert.equal(rope.structuralFailure.cause,'tension');
 });
+
+test('mesma carga física produz menor loadRatio em material mais resistente',async()=>{
+  const {evaluateStructuralLoad}=await load('LineStructuralModel.js');
+  const ropeA={structuralLoad:40,structuralFatigue:0,_structuralOverloadTime:0,segmentWear:new Float32Array(2)};
+  const ropeB={structuralLoad:40,structuralFatigue:0,_structuralOverloadTime:0,segmentWear:new Float32Array(2)};
+  const weak=evaluateStructuralLoad(ropeA,{maxTension:35},1/60);
+  const strong=evaluateStructuralLoad(ropeB,{maxTension:70},1/60);
+  assert.ok(weak.loadRatio>strong.loadRatio);assert.ok(weak.loadRatio>1);assert.ok(strong.loadRatio<1);
+});
+test('RopePhysics calcula carga independente do limite de ruptura do material',async()=>{
+  const {RopePhysics}=await load('RopePhysics.js');
+  const weak=new RopePhysics({nodeCount:12,lineType:'algodao'}),strong=new RopePhysics({nodeCount:12,lineType:'kevlar'});
+  for(const rope of [weak,strong]){rope.resetPositions({x:0,y:700,z:0},{x:0,y:100,z:0});rope.adjustSpoolLength(-65);rope.step(1/60,{x:0,y:700,z:0},{x:0,y:100,z:0},{x:0,y:0},{});}
+  const weakRatio=weak.structuralLoad/weak.material.maxTension,strongRatio=strong.structuralLoad/strong.material.maxTension;
+  assert.ok(weakRatio>strongRatio*1.5,`weak=${weakRatio} strong=${strongRatio}`);
+  assert.ok(strong.structuralLoad<weak.structuralLoad*1.4,'carga não pode escalar com maxTension');
+});
