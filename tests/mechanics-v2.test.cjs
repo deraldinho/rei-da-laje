@@ -2,25 +2,24 @@ const test=require('node:test');
 const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const path=require('node:path');
+const {pathToFileURL}=require('node:url');
 const GameRules=require('../backend/rules/gameRules');
 const TikTokService=require('../backend/tiktokService');
 const {validateCutClaim}=require('../backend/cutClaimValidator');
 const {GIFTS}=require('../backend/rules/giftConfig');
 
-async function esm(rel){
- const source=fs.readFileSync(path.join(__dirname,'..',rel),'utf8');
- return import('data:text/javascript;base64,'+Buffer.from(source).toString('base64'));
-}
+async function esm(rel){ return import(pathToFileURL(path.join(__dirname,'..',rel)).href+`?t=${Date.now()}-${Math.random()}`); }
 const kite=()=>({x:300,y:300,baseX:100,baseY:700,screenWidth:1080,screenHeight:1920,
  isAscending:false,spawnProtection:0,lineSlack:0,rotation:0,lineTension:.58,targetLineTension:.58,
  likeSpool:0,likeSpoolRemaining:0,defenseWindowRemaining:0,contactSpeed:0});
 
-test('tensão física responde aos comandos e retorna ao repouso',async()=>{
- const {startChatAction}=await esm('frontend/src/engine/ChatControls.js');
- const {updateLineControl}=await esm('frontend/src/engine/RelinhoMechanics.js');
- const k=kite();startChatAction(k,'puxar');assert.equal(k.targetLineTension,.94);
- for(let i=0;i<20;i++)updateLineControl(k,1);assert.ok(k.lineTension>.58);
- k.chatAction=null;k.likeSpoolRemaining=0;for(let i=0;i<80;i++)updateLineControl(k,1);
+test('tensão física responde aos comandos canônicos e retorna ao repouso',async()=>{
+ const [{startChatAction},{PlayerIntentController},{updateLineControl}]=await Promise.all([
+  esm('frontend/src/engine/ChatControls.js'),esm('frontend/src/engine/physics/PlayerIntentController.js'),esm('frontend/src/engine/RelinhoMechanics.js')]);
+ const k=kite();k.intentController=new PlayerIntentController(k);startChatAction(k,'puxar');
+ let intent=k.intentController.update(1/60,{x:.4,y:0,z:0},[]);assert.ok(intent.spoolCommand<0);assert.ok(intent.tensionAssist>0);
+ k.targetLineTension=1;for(let i=0;i<20;i++)updateLineControl(k,1);assert.ok(k.lineTension>.58);
+ k.chatAction=null;k.targetLineTension=.58;k.likeSpoolRemaining=0;for(let i=0;i<80;i++)updateLineControl(k,1);
  assert.ok(Math.abs(k.lineTension-.58)<.03);
 });
 

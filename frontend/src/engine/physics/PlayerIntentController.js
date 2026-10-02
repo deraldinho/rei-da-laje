@@ -1,181 +1,201 @@
-/**
- * PlayerIntentController - Controlador de Intenções Físicas (P11)
- * 
- * Converte comandos clássicos de Pipa Combate e ações de live em INTENÇÃO FÍSICA:
- * - reelVelocity: velocidade do carretel (negativo = puxar, positivo = descarregar)
- * - liftIntent: arfagem / sustentação aerodinâmica (+1 = subir, -1 = mergulhar)
- * - steerIntent: guinada / rolagem lateral (-1 = esquerda, +1 = direita)
- * - tensionAssist: tração extra de linha aplicada por puxão
- * 
- * Elimina teletransporte ou alteração direta de coordenadas: a intenção alimenta
- * o KiteDynamics e o RopePhysics a 60 Hz.
- */
-export class PlayerIntentController {
-  constructor(kite) {
-    this.kite = kite;
-    this.reelVelocity = 0;      // px/s de carretel
-    this.liftIntent = 0;        // [-1.5, 1.5]
-    this.steerIntent = 0;       // [-1.0, 1.0]
-    this.tensionAssist = 0;     // [0, 0.4]
-    this.currentAction = null;  // Ação atual ativa
-    this.actionTimer = 0;       // Tempo restante da ação
-    this.actionDuration = 0;
-    this.targetKite = null;     // Alvo para manobra de perseguição/ataque
-    this.tenteioPulseTimer = 0; // Temporizador de ondas do tenteio
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,Number(v)||0));
+
+export function normalizePhysicalAction(name){
+  const n=String(name||'').trim().toLowerCase();
+  if(['soltar','solta','descarregar','descarrego','dar linha'].includes(n))return 'descarregar';
+  if(['embicar','desbicar','despicar','desbicada','despicada'].includes(n))return 'despicar';
+  if(['puxar','puxa','puxao','puxão'].includes(n))return 'puxar';
+  if(['pegar','aparar','aparar_retao','aparar_despicada'].includes(n))return n==='pegar'?'aparar':n;
+  return n;
+}
+
+export class PlayerIntentController{
+  constructor(kite){
+    this.kite=kite;
+    this.spoolCommand=0;
+    this.debicoTorque=0;
+    this.trimPitch=0;
+    this.tensionAssist=0;
+    this.reelVelocity=0;
+    this.liftIntent=0;
+    this.steerIntent=0;
+    this.currentAction=null;
+    this.actionTimer=0;
+    this.actionDuration=0;
+    this.targetKite=null;
+    this.customSteer=null;
+    this.intensity=1;
+    this.tenteioPulseTimer=0;
   }
 
-  /**
-   * Dispara uma ação clássica ou de chat baseada em intenção física
-   * @param {string} actionName Nome da ação ('puxar', 'descarregar', 'despicar', 'tenteio', 'retao', etc.)
-   * @param {number} duration Duração em segundos
-   * @param {object} options Parâmetros extras { target, intensity, steerDir }
-   */
-  triggerAction(actionName, duration = 1.2, options = {}) {
-    this.currentAction = String(actionName || '').toLowerCase();
-    this.actionDuration = Math.max(0.2, Number(duration) || 1.2);
-    this.actionTimer = this.actionDuration;
-    this.targetKite = options.target || null;
-    this.customSteer = Number.isFinite(options.steerDir) ? options.steerDir : null;
-    this.intensity = Math.max(0.5, Math.min(2.5, Number(options.intensity) || 1.0));
+  triggerAction(actionName,duration=1.2,options={}){
+    this.currentAction=normalizePhysicalAction(actionName);
+    this.actionDuration=Math.max(.2,Number(duration)||1.2);
+    this.actionTimer=this.actionDuration;
+    this.targetKite=options.target||null;
+    this.customSteer=Number.isFinite(options.steerDir)?clamp(options.steerDir,-1,1):null;
+    this.intensity=clamp(options.intensity||1,.5,2.5);
+    return this.currentAction;
   }
 
-  /**
-   * Atualiza as intenções físicas a cada passo do PhysicsClock (60 Hz)
-   * @param {number} dt Delta de tempo fixo (segundos)
-   * @param {object} wind Vetor de vento {x, y, gust}
-   * @param {Array} allKites Lista de todas as pipas na arena (para perseguição e aparo)
-   * @returns {object} Intenção consolidada { reelVelocity, liftIntent, steerIntent, tensionAssist }
-   */
-  update(dt = 1 / 60, wind = null, allKites = []) {
-    const wX = Number.isFinite(wind?.x) ? wind.x : 0;
+  actionDirection(wind){
+    if(this.customSteer!==null)return this.customSteer||1;
+    if(this.targetKite&&Number.isFinite(this.targetKite.x)&&Number.isFinite(this.kite?.x))
+      return this.targetKite.x>=this.kite.x?1:-1;
+    const wx=Number(wind?.x)||0;
+    if(Math.abs(wx)>.05)return Math.sign(wx);
+    const rate=Number(this.kite?.attitude?.headingRate)||0;
+    return Math.abs(rate)>.02?Math.sign(rate):1;
+  }
 
-    // Decaimento natural das intenções
-    this.reelVelocity *= Math.pow(0.85, dt * 60);
-    this.liftIntent *= Math.pow(0.82, dt * 60);
-    this.steerIntent *= Math.pow(0.80, dt * 60);
-    this.tensionAssist *= Math.pow(0.78, dt * 60);
+  update(dt=1/60,wind=null,allKites=[]){
+    const seconds=Math.max(.001,Math.min(.05,Number(dt)||1/60));
+    this.spoolCommand*=Math.pow(.25,seconds*60);
+    this.debicoTorque*=Math.pow(.35,seconds*60);
+    this.trimPitch*=Math.pow(.55,seconds*60);
+    this.tensionAssist*=Math.pow(.45,seconds*60);
 
-    if (this.actionTimer > 0 && this.currentAction) {
-      this.actionTimer -= dt;
-      const progress = 1.0 - (this.actionTimer / this.actionDuration);
-
-      switch (this.currentAction) {
+    if(this.actionTimer>0&&this.currentAction){
+      this.actionTimer=Math.max(0,this.actionTimer-seconds);
+      const progress=clamp(1-this.actionTimer/Math.max(.001,this.actionDuration),0,1);
+      const dir=this.actionDirection(wind);
+      const gain=this.intensity;
+      switch(this.currentAction){
         case 'puxar':
-        case 'puxao':
-          // Puxar: carretilha recolhe velozmente, encurta linha, eleva tensão e arranca na direção do bico
-          this.reelVelocity = -4.5 * this.intensity;
-          this.liftIntent = 0.55 * this.intensity;
-          this.tensionAssist = 0.22 * this.intensity;
-          this.steerIntent = this.customSteer !== null ? this.customSteer : (Math.sin(progress * Math.PI) * 0.2);
+          this.spoolCommand=-1;
+          this.trimPitch=-.24*gain;
+          this.tensionAssist=.24*gain;
           break;
-
         case 'descarregar':
-        case 'descarrego':
-          // Descarregar: solta linha rapidamente, zera a tensão, linha cria barriga (sag), menos atrito no relinho
-          this.reelVelocity = 5.2 * this.intensity;
-          this.liftIntent = -0.25;
-          this.tensionAssist = -0.15;
-          this.steerIntent = wX * 0.35; // Acompanha o vento suavemente
+          this.spoolCommand=1;
+          this.trimPitch=.03;
+          this.tensionAssist=-.16;
           break;
-
         case 'despicar':
-        case 'desbicada':
-          // Despicar: solta carretel, nariz aponta para baixo, mergulho veloz na direção do oponente
-          this.reelVelocity = 1.8 * this.intensity;
-          this.liftIntent = -1.1 * this.intensity;
-          this.steerIntent = this.customSteer !== null ? this.customSteer : (this.kite.x < 540 ? 0.75 : -0.75);
+          this.spoolCommand=.58;
+          this.debicoTorque=dir*.95*gain;
+          this.trimPitch=.08;
+          this.tensionAssist=-.08;
           break;
-
-        case 'tenteio':
-          // Tenteio: pulsos rápidos de puxa-e-solta (ondas de tensão)
-          this.tenteioPulseTimer += dt * 14;
-          const pulse = Math.sin(this.tenteioPulseTimer);
-          this.reelVelocity = pulse > 0 ? -3.5 : 2.5;
-          this.liftIntent = pulse * 0.4;
-          this.steerIntent = Math.cos(this.tenteioPulseTimer * 0.7) * 0.35;
-          this.tensionAssist = pulse > 0 ? 0.18 : 0;
+        case 'tenteio':{
+          this.tenteioPulseTimer+=seconds*15;
+          const pulse=Math.sin(this.tenteioPulseTimer);
+          this.spoolCommand=pulse>=0?-.72:.52;
+          this.debicoTorque=Math.cos(this.tenteioPulseTimer*.7)*.18;
+          this.trimPitch=-pulse*.08;
+          this.tensionAssist=pulse>0?.14:0;
           break;
-
-        case 'retao':
-          // Retão (Presente Rosa / Especial): Tração agressiva contínua alinhada à linha inimiga
-          this.reelVelocity = -6.2 * this.intensity;
-          this.liftIntent = 0.85 * this.intensity;
-          this.tensionAssist = 0.35 * this.intensity;
-          const target = this.targetKite || this.findClosestTarget(allKites, 280);
-          if (target) {
-            const dirX = target.x >= this.kite.x ? 1 : -1;
-            this.steerIntent = dirX * 0.85;
-          } else {
-            this.steerIntent = this.kite.x < 540 ? 0.7 : -0.7;
+        }
+        case 'retao':{
+          if(progress<.28){
+            this.spoolCommand=.9;
+            this.debicoTorque=dir*.18;
+            this.tensionAssist=-.12;
+          }else if(progress<.52){
+            this.spoolCommand=.48;
+            this.debicoTorque=dir*1.08*gain;
+            this.trimPitch=.10;
+            this.tensionAssist=-.08;
+          }else{
+            this.spoolCommand=-1;
+            this.debicoTorque=dir*.06;
+            this.trimPitch=-.28*gain;
+            this.tensionAssist=.32*gain;
           }
           break;
-
-        case 'perseguir':
-          // Perseguir: calcula vetor em direção ao oponente mais próximo e manobra para cruzar
-          const pTarget = this.targetKite || this.findClosestTarget(allKites, 320);
-          if (pTarget) {
-            const dx = pTarget.x - this.kite.x;
-            const dy = pTarget.y - this.kite.y;
-            this.steerIntent = Math.max(-1.0, Math.min(1.0, dx / 120));
-            this.liftIntent = dy < 0 ? 0.7 : -0.5;
-            this.reelVelocity = -3.2 * this.intensity;
+        }
+        case 'mergulho':
+          if(progress<.58){
+            this.spoolCommand=.62;
+            this.debicoTorque=dir*.28*gain;
+            this.trimPitch=.88;
+            this.tensionAssist=-.10;
+          }else{
+            this.spoolCommand=-.82;
+            this.debicoTorque=dir*.08;
+            this.trimPitch=-.48;
+            this.tensionAssist=.22;
           }
           break;
-
+        case 'relo_lateral':
+          this.spoolCommand=-.48;
+          this.debicoTorque=dir*.72*gain;
+          this.trimPitch=-.08;
+          this.tensionAssist=.16;
+          break;
+        case 'largada':
+          this.spoolCommand=.82;
+          this.debicoTorque=dir*.16;
+          this.trimPitch=-.04;
+          this.tensionAssist=-.14;
+          break;
+        case 'mergulho_parafuso':
+          this.spoolCommand=.46;
+          this.debicoTorque=dir*1.18*gain;
+          this.trimPitch=.92;
+          this.tensionAssist=-.06;
+          break;
+        case 'lacada':
+          this.spoolCommand=-.28;
+          this.debicoTorque=dir*.82*gain;
+          this.trimPitch=.02;
+          this.tensionAssist=.10;
+          break;
+        case 'mestre_do_ceu':
+          this.spoolCommand=progress<.35?.58:-.92;
+          this.debicoTorque=dir*(progress<.5?.86:.22)*gain;
+          this.trimPitch=progress<.35?.12:-.24;
+          this.tensionAssist=progress<.35?-.08:.28;
+          break;
+        case 'perseguir':{
+          const target=this.targetKite||this.findClosestTarget(allKites,320);
+          const targetDir=target&&Number.isFinite(target.x)?(target.x>=this.kite.x?1:-1):dir;
+          this.spoolCommand=-.55;
+          this.debicoTorque=targetDir*.42*gain;
+          this.trimPitch=-.08;
+          this.tensionAssist=.12;
+          break;
+        }
+        case 'aparar':
         case 'aparar_retao':
         case 'aparar_despicada':
-        case 'aparar':
-          // Aparar: alivia a pressão mecânica de ataque, reposiciona a pipa e reduz a força normal no contato
-          this.reelVelocity = 2.8;
-          this.liftIntent = -0.3;
-          this.steerIntent = this.kite.x < 540 ? -0.6 : 0.6;
-          this.tensionAssist = -0.10;
+          this.spoolCommand=.38;
+          this.debicoTorque=-dir*.28;
+          this.trimPitch=.04;
+          this.tensionAssist=-.08;
           break;
-
         default:
-          break;
+          this.spoolCommand=0;
       }
-
-      if (this.actionTimer <= 0) {
-        this.currentAction = null;
-      }
-    } else {
-      // AUTO FLIGHT: Voo natural contínuo por equilíbrio de vento e cabresto quando não há comando ativo
-      this.applyAutoFlightTrim(dt, wind);
+      if(this.actionTimer<=0)this.currentAction=null;
+    }else{
+      this.applyAutoFlightTrim(wind);
     }
 
-    return {
-      reelVelocity: this.reelVelocity,
-      liftIntent: this.liftIntent,
-      steerIntent: this.steerIntent,
-      tensionAssist: this.tensionAssist
-    };
+    // Campos legados permanecem apenas como adaptadores durante a migração.
+    this.reelVelocity=this.spoolCommand*(this.spoolCommand<0?4.8:5.2);
+    this.liftIntent=-this.trimPitch*2.3;
+    this.steerIntent=this.debicoTorque;
+    return {spoolCommand:this.spoolCommand,debicoTorque:this.debicoTorque,trimPitch:this.trimPitch,
+      tensionAssist:this.tensionAssist,reelVelocity:this.reelVelocity,liftIntent:this.liftIntent,steerIntent:this.steerIntent};
   }
 
-  /**
-   * Voo automático estabilizado: mantém a pipa no céu oscilando suavemente com o vento
-   */
-  applyAutoFlightTrim(dt, wind) {
-    const wX = Number.isFinite(wind?.x) ? wind.x : 0;
-    const sway = Math.sin((this.kite.oscillationTimer || 0) * 1.8 + (this.kite.windPhase || 0));
-    // Pequeno ajuste para manter a pipa centralizada no céu aberto
-    const centerOffset = (this.kite.screenWidth * 0.5 - this.kite.x) / (this.kite.screenWidth * 0.5);
-    this.steerIntent = sway * 0.25 + centerOffset * 0.15;
-    this.liftIntent = Math.cos((this.kite.oscillationTimer || 0) * 1.4) * 0.18;
-    this.reelVelocity = -0.2 * Math.sin((this.kite.oscillationTimer || 0) * 0.8);
+  applyAutoFlightTrim(wind){
+    const wy=Number(wind?.y)||0;
+    const wz=Number(wind?.z)||0;
+    this.spoolCommand=0;
+    this.debicoTorque=clamp(wz*.025,-.05,.05);
+    this.trimPitch=clamp(-wy*.06,-.04,.04);
+    this.tensionAssist=0;
   }
 
-  findClosestTarget(allKites, maxReach = 300) {
-    if (!Array.isArray(allKites) || allKites.length < 2) return null;
-    let closest = null;
-    let minDist = maxReach;
-    for (const other of allKites) {
-      if (other === this.kite || other.isAscending || other.spawnProtection > 0) continue;
-      const d = Math.hypot(other.x - this.kite.x, other.y - this.kite.y);
-      if (d < minDist) {
-        minDist = d;
-        closest = other;
-      }
+  findClosestTarget(allKites,maxReach=300){
+    if(!Array.isArray(allKites)||allKites.length<2)return null;
+    let closest=null,minDist=maxReach;
+    for(const other of allKites){
+      if(other===this.kite||other.isAscending||other.spawnProtection>0)continue;
+      const d=Math.hypot(other.x-this.kite.x,other.y-this.kite.y);
+      if(d<minDist){minDist=d;closest=other;}
     }
     return closest;
   }

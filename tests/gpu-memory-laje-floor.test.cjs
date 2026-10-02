@@ -19,9 +19,12 @@ test('Otimização de GPU e Eliminação de Bugs de Pipa sob a Laje', () => {
   assert.match(kiteSource, /this\.y\s*=\s*Math\.min\(screenHeight\s*\*\s*0\.58,\s*this\.targetY\s*\+\s*45\)/, 'Kite deve nascer no céu acima da laje');
   assert.match(kiteSource, /this\.y\s*=\s*Math\.max\(35,\s*Math\.min\(this\.screenHeight\s*\*\s*0\.65,\s*this\.y\)\)/, 'Kite update deve travar y no céu');
 
-  // 3. Controles locais de teclado limitam descida
-  assert.match(appSource, /kite\.y\s*=\s*Math\.min\(maxKiteY,\s*kite\.y\s*\+\s*8\)/, 'Soltar linha deve travar no teto da laje');
-  assert.match(appSource, /kite\.y\s*=\s*Math\.min\(maxKiteY,\s*kite\.y\s*\+\s*14\)/, 'Despicada deve travar no teto da laje');
+  // 3. Controles locais não teleportam; limites pertencem ao integrador físico
+  const keyStart=appSource.indexOf('  executeKeyboardAction(action) {');
+  const keyBlock=appSource.slice(keyStart,appSource.indexOf('  setupSocketEvents()',keyStart));
+  assert.doesNotMatch(keyBlock,/kite\.(?:x|y|z|vx|vy|vz)\s*(?:=|\+=|-=)/,'teclado não pode escrever coordenadas');
+  const dynamics=fs.readFileSync(path.join(__dirname,'../frontend/src/engine/physics/KiteDynamics.js'),'utf8');
+  assert.match(dynamics,/clampAxis\(kite,'y','vy',minY,maxY\)/,'KiteDynamics deve impor limite físico de Y');
 
   // 4. Renderização Three.js única por frame (sem render duplicado no Pixi)
   assert.doesNotMatch(appSource, /origRender\s*=\s*this\.app\.render\.bind[\s\S]*this\.threeScene\.render\(\)/, 'Não deve renderizar Three.js duas vezes por frame');

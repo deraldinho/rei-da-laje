@@ -3,6 +3,7 @@ const assert = require('node:assert/strict');
 
 test('Manobras Paulistas (Retão, Mergulho, Relo Lateral, Despicada) e Controles', async (t) => {
   const { MANEUVERS, selectGiftManeuver, maneuverStats, applyManeuverMovement } = await import('../frontend/src/engine/Maneuvers.js');
+  const {PlayerIntentController}=await import('../frontend/src/engine/physics/PlayerIntentController.js');
 
   await t.test('selectGiftManeuver mapeia presentes para as manobras paulistas solicitadas', () => {
     assert.equal(selectGiftManeuver('Rosa'), 'retao', 'Rosa deve disparar Retão');
@@ -29,46 +30,21 @@ test('Manobras Paulistas (Retão, Mergulho, Relo Lateral, Despicada) e Controles
     assert.ok(stats.damage >= 1.2);
   });
 
-  await t.test('applyManeuverMovement executa avanço de Retão com tensão máxima', () => {
-    const fakeKite = {
-      x: 100, y: 200, screenWidth: 1000, screenHeight: 800,
-      isAscending: false, spawnProtection: 0,
-      maneuver: { name: 'retao', duration: 30, remaining: 29.5, speed: 1.5, reach: 250 },
-      lineTension: 0.5, lineSlack: 0.5
-    };
-    const moved = applyManeuverMovement(fakeKite, [], 1, { x: 0.2, y: 0 });
-    assert.equal(moved, true);
-    assert.ok(fakeKite.x > 100, 'Retão deve avançar a posição X');
-    assert.equal(fakeKite.lineTension, 1.0, 'Retão deve esticar a linha com tensão máxima 1.0');
-    assert.equal(fakeKite.lineSlack, 0, 'Retão deve zerar a folga da linha');
+  await t.test('Retão agenda sequência física sem teleporte',()=>{
+    const k={x:100,y:200,screenWidth:1000,screenHeight:800,isAscending:false,spawnProtection:0,maneuver:{name:'retao',duration:30,remaining:29.5,speed:1.5,reach:250}};k.intentController=new PlayerIntentController(k);const before={x:k.x,y:k.y};
+    assert.equal(applyManeuverMovement(k,[],1,{x:.2,y:0}),true);const intent=k.intentController.update(1/60,{x:.2,y:0},[k]);
+    assert.ok(intent.spoolCommand>0);assert.deepEqual({x:k.x,y:k.y},before);
   });
 
-  await t.test('applyManeuverMovement executa descida vertical de Mergulho', () => {
-    const fakeKite = {
-      x: 200, y: 150, screenWidth: 1000, screenHeight: 800,
-      isAscending: false, spawnProtection: 0,
-      maneuver: { name: 'mergulho', duration: 30, remaining: 29.5, speed: 1.5, reach: 250 },
-      lineTension: 0.5, contactSpeed: 0
-    };
-    const initialY = fakeKite.y;
-    const moved = applyManeuverMovement(fakeKite, [], 1, { x: 0, y: 0 });
-    assert.equal(moved, true);
-    assert.ok(fakeKite.y > initialY, 'Mergulho deve descer verticalmente aumentando Y');
-    assert.ok(fakeKite.contactSpeed >= 20, 'Mergulho deve conferir alta velocidade de impacto');
-    assert.equal(fakeKite.rotation, 0.52, 'Mergulho deve apontar o bico para baixo');
+  await t.test('Mergulho produz trim para baixo e folga física',()=>{
+    const k={x:200,y:150,screenWidth:1000,screenHeight:800,isAscending:false,spawnProtection:0,maneuver:{name:'mergulho',duration:30,remaining:29.5,speed:1.5,reach:250}};k.intentController=new PlayerIntentController(k);const beforeY=k.y;
+    assert.equal(applyManeuverMovement(k,[],1,{x:0,y:0}),true);const intent=k.intentController.update(1/60,{x:0,y:0},[k]);
+    assert.ok(intent.trimPitch>0);assert.ok(intent.spoolCommand>0);assert.equal(k.y,beforeY);
   });
 
-  await t.test('applyManeuverMovement executa Despicada no sentido do vento', () => {
-    const fakeKite = {
-      x: 500, y: 200, screenWidth: 1000, screenHeight: 800,
-      isAscending: false, spawnProtection: 0,
-      maneuver: { name: 'despicar', duration: 30, remaining: 29.5, speed: 1.35, reach: 200 },
-      lineSlack: 0
-    };
-    const wind = { x: 0.8, y: 0 }; // Vento forte para a direita (+)
-    const initialX = fakeKite.x;
-    const moved = applyManeuverMovement(fakeKite, [], 1, wind);
-    assert.equal(moved, true);
-    assert.ok(fakeKite.x > initialX, 'Despicada deve impulsionar a pipa na direção positiva do vento');
+  await t.test('Despicada gera torque no sentido do vento sem mover coordenadas',()=>{
+    const k={x:500,y:200,screenWidth:1000,screenHeight:800,isAscending:false,spawnProtection:0,maneuver:{name:'despicar',duration:30,remaining:29.5,speed:1.35,reach:200}};k.intentController=new PlayerIntentController(k);const beforeX=k.x;
+    assert.equal(applyManeuverMovement(k,[],1,{x:.8,y:0}),true);const intent=k.intentController.update(1/60,{x:.8,y:0},[k]);
+    assert.ok(intent.spoolCommand>0);assert.ok(intent.debicoTorque>0);assert.equal(k.x,beforeX);
   });
 });

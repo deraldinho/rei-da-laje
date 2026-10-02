@@ -8,19 +8,17 @@ const esm = async file => import(pathToFileURL(path.join(__dirname, '../frontend
 
 test('presentes geram manobras com alcance e duração limitados', async () => {
   const { selectGiftManeuver, maneuverStats, maneuverTarget, applyManeuverMovement } = await esm('Maneuvers.js');
-  assert.equal(selectGiftManeuver('Flor'), 'retao');
-  assert.equal(selectGiftManeuver('Donut'), 'despicar');
-  assert.equal(selectGiftManeuver('Capivara'), 'aparar_retao');
-  assert.equal(selectGiftManeuver('Perfume'), 'perseguir');
-  assert.equal(selectGiftManeuver('Leão'), 'aparar_despicada');
-  assert.equal(selectGiftManeuver('desconhecido'), null);
-  const rose = maneuverStats('retao',1,1), expensive = maneuverStats('retao',1000,1000);
-  assert.ok(expensive.reach > rose.reach && expensive.reach <= 390 && expensive.duration === 45);
+  const {PlayerIntentController}=await esm('physics/PlayerIntentController.js');
+  assert.equal(selectGiftManeuver('Flor'),'retao'); assert.equal(selectGiftManeuver('Donut'),'despicar');
+  assert.equal(selectGiftManeuver('Capivara'),'aparar_retao'); assert.equal(selectGiftManeuver('Perfume'),'perseguir');
+  assert.equal(selectGiftManeuver('Leão'),'aparar_despicada'); assert.equal(selectGiftManeuver('desconhecido'),null);
+  const rose=maneuverStats('retao',1,1), expensive=maneuverStats('retao',1000,1000);
+  assert.ok(expensive.reach>rose.reach&&expensive.reach<=390&&expensive.duration===45);
   const owner={x:100,y:100,screenWidth:1080,screenHeight:1920,isAscending:false,spawnProtection:0,maneuver:{...rose,remaining:rose.duration}};
-  const target={x:200,y:130,isAscending:false,spawnProtection:0};
-  assert.equal(maneuverTarget(owner,[owner,target],rose.reach),target);
-  assert.equal(applyManeuverMovement(owner,[owner,target],1),true);
-  assert.ok(owner.x>100 && owner.x<200);
+  owner.intentController=new PlayerIntentController(owner); const target={x:200,y:130,isAscending:false,spawnProtection:0};
+  assert.equal(maneuverTarget(owner,[owner,target],rose.reach),target); assert.equal(applyManeuverMovement(owner,[owner,target],1),true);
+  const intent=owner.intentController.update(1/60,{x:.2,y:0,z:0},[owner,target]);
+  assert.ok(intent.spoolCommand!==0||intent.debicoTorque!==0); assert.equal(owner.x,100); assert.equal(owner.y,100);
   assert.equal(maneuverTarget(owner,[owner,{...target,x:999}],10),null);
 });
 

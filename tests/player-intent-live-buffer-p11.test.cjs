@@ -23,18 +23,21 @@ test('P11 - PlayerIntentController: mapeamento de comandos clássicos para inten
   assert.ok(intent.reelVelocity < 0, 'Puxar deve recolher carretel (reelVelocity < 0)');
   assert.ok(intent.liftIntent > 0, 'Puxar deve elevar sustentação');
   assert.ok(intent.tensionAssist > 0, 'Puxar deve aumentar tensão');
+  assert.ok(intent.spoolCommand < 0 && intent.trimPitch < 0, 'Puxar canônico recolhe linha e orienta retão');
 
   // 2. Comando Descarregar
   controller.triggerAction('descarregar', 1.0);
   intent = controller.update(1 / 60, { x: 0.5, y: 0 }, []);
   assert.ok(intent.reelVelocity > 0, 'Descarregar deve soltar carretel (reelVelocity > 0)');
   assert.ok(intent.tensionAssist < 0, 'Descarregar deve reduzir tensão');
+  assert.ok(intent.spoolCommand > 0, 'Descarregar canônico deve liberar linha');
 
   // 3. Comando Despicar
   controller.triggerAction('despicar', 1.0);
   intent = controller.update(1 / 60, { x: 0.5, y: 0 }, []);
   assert.ok(intent.liftIntent < 0, 'Despicar deve apontar o bico para baixo (liftIntent < 0)');
   assert.ok(intent.steerIntent !== 0, 'Despicar deve ter componente lateral');
+  assert.ok(Math.abs(intent.debicoTorque) > 0.5, 'Despicar canônico deve aplicar torque angular');
 
   // 4. Comando Tenteio (pulsos)
   controller.triggerAction('tenteio', 1.5);

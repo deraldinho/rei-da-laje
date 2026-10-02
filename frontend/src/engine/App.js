@@ -440,59 +440,27 @@ export class GameApp {
       this.hud.showNotice('Nenhuma pipa no céu para controlar.', 1200);
       return;
     }
-
     let kite = this.selectedKiteUserId ? this.kites.get(this.selectedKiteUserId) : null;
-    if (!kite) {
-      kite = [...this.kites.values()].find(k => k.isKing) ||
-        [...this.kites.values()].find(k => k.isLeader) ||
-        this.kites.values().next().value;
-    }
+    if (!kite) kite = [...this.kites.values()].find(k => k.isKing) || [...this.kites.values()].find(k => k.isLeader) || this.kites.values().next().value;
     if (!kite) return;
-
     this.audio.ensureContext();
-    const wx = (typeof this.skyScene?.wind?.x === 'number') ? this.skyScene.wind.x : 0.2;
-    const windDir = Math.abs(wx) > 0.05 ? Math.sign(wx) : 1;
-
-    const maxKiteY = this.app.screen.height * 0.65;
-    const minKiteY = 40;
-
-    if (action === 'puxar') {
-      // Tecla 1: Puxar pipa (subida veloz de ataque, linha com tensão máxima)
-      kite.y = Math.max(minKiteY, kite.y - 30);
-      kite.lineTension = 1.0;
-      kite.lineSlack = 0;
-      kite.contactSpeed = Math.max(kite.contactSpeed || 0, 18);
-      kite.rotation = -0.15;
+    const emit3D=(count,color)=>{
+      if(!this.threeScene||this.threeScene.disabled)return;
+      const p3d=this.threeScene.screenToWorld(kite.x,kite.y,Number.isFinite(kite.z)?kite.z:140);
+      this.threeScene.emitSpark3D(p3d.x,p3d.y,p3d.z,count,color);
+    };
+    if(action==='puxar'){
+      startChatAction(kite,'puxar');
       this.audio.playLaunchSound();
-      this.sparks.emit(kite.x, kite.y, 6);
-      if (this.threeScene && !this.threeScene.disabled) {
-        const k3d = this.threeScene.kites3D?.get(String(kite.userId));
-        const p3d = this.threeScene.screenToWorld(kite.x, kite.y, k3d ? k3d.position.z : 140);
-        this.threeScene.emitSpark3D(p3d.x, p3d.y, p3d.z, 6, kite.line?.color || 0xffffff);
-      }
-      this.hud.showNotice(`🕹️ [1] PUXAR PIPA • ${kite.nickname}`, 1000);
-    } else if (action === 'soltar') {
-      // Tecla 2: Soltar linha (descarrega na carretilha, alivia tensão, deriva no vento)
-      kite.lineSlack = Math.min(1.0, (kite.lineSlack || 0) + 0.45);
-      kite.lineTension = 0.20;
-      kite.x += windDir * 24;
-      kite.y = Math.min(maxKiteY, kite.y + 8);
-      kite.x = Math.min(this.app.screen.width - 30, Math.max(30, kite.x));
-      this.hud.showNotice(`🕹️ [2] SOLTAR LINHA • ${kite.nickname}`, 1000);
-    } else if (action === 'despicada') {
-      // Tecla 3: Desbicada no sentido do vento (tranco seco e arrancada na direção que o vento sopra)
-      kite.x += windDir * 42;
-      kite.y = Math.min(maxKiteY, kite.y + 14);
-      kite.rotation = windDir * 0.42;
-      kite.lineTension = 0.95;
-      kite.contactSpeed = Math.max(kite.contactSpeed || 0, 20);
-      this.sparks.emit(kite.x, kite.y, 10);
-      if (this.threeScene && !this.threeScene.disabled) {
-        const k3d = this.threeScene.kites3D?.get(String(kite.userId));
-        const p3d = this.threeScene.screenToWorld(kite.x, kite.y, k3d ? k3d.position.z : 140);
-        this.threeScene.emitSpark3D(p3d.x, p3d.y, p3d.z, 10, kite.line?.color || 0xff9900);
-      }
-      this.hud.showNotice(`🕹️ [3] DESBICADA NO VENTO • ${kite.nickname}`, 1000);
+      this.sparks.emit(kite.x,kite.y,6); emit3D(6,kite.line?.color||0xffffff);
+      this.hud.showNotice('🕹️ [1] PUXAR PIPA • '+kite.nickname,1000);
+    }else if(action==='soltar'){
+      startChatAction(kite,'descarregar');
+      this.hud.showNotice('🕹️ [2] SOLTAR LINHA • '+kite.nickname,1000);
+    }else if(action==='despicada'){
+      startChatAction(kite,'embicar');
+      this.sparks.emit(kite.x,kite.y,10); emit3D(10,kite.line?.color||0xff9900);
+      this.hud.showNotice('🕹️ [3] DESBICAR • '+kite.nickname,1000);
     }
   }
 
