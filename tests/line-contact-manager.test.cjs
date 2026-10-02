@@ -72,3 +72,33 @@ test('empates de score rotacionam em seleções repetidas',async()=>{
   for(let i=0;i<4;i++) seen.add(m.selectForSolve()[0]?.pairKey);
   assert.ok(seen.size>1,`empate não rotacionou: ${[...seen]}`);
 });
+
+test('contatos sem slide não monopolizam os três solvers contra contato deslizante',async()=>{
+  const {LineContactManager}=await import(`${moduleUrl}?t=${Date.now()}-starvation`);
+  const m=new LineContactManager({maxTrackedContacts:12,maxSolvedContacts:3,maxContactsPerRope:3,minSlideSpeed:.35});
+  m.beginStep(0,1/60);
+  for(let i=0;i<3;i++){
+    const h={...hit(0),distance:.4,contactRadius:4};
+    m.touch(`stale${i}`,kite(`sa${i}`),kite(`sb${i}`),h,physics(0,1.5));
+  }
+  const moving={...hit(2),distance:2,contactRadius:4};
+  m.touch('moving',kite('ma'),kite('mb'),moving,physics(2,0));
+  m.endStep(0);
+  const selected=m.selectForSolve();
+  assert.ok(selected.some(c=>c.pairKey==='moving'),`deslizamento sofreu starvation: ${selected.map(c=>c.pairKey)}`);
+});
+
+test('pool cheio rotaciona contatos persistentes para novas pipas entrarem em combate',async()=>{
+  const {LineContactManager}=await import(`${moduleUrl}?t=${Date.now()}-tracking-fairness`);
+  const m=new LineContactManager({maxTrackedContacts:3,maxSolvedContacts:1,maxContactsPerRope:3});
+  const pairs=[['p0','a0','b0'],['p1','a1','b1'],['p2','a2','b2']];
+  for(let step=1;step<=8;step++){
+    m.beginStep(step*(1000/60),1/60);
+    for(const [key,a,b] of pairs) m.touch(key,kite(a),kite(b),hit(2),physics(2,.7));
+    if(step===8) m.touch('new',kite('newA'),kite('newB'),hit(2),physics(2,.7));
+    m.endStep();
+    m.selectForSolve();
+  }
+  assert.equal(m.contacts.size,3);
+  assert.ok(m.contacts.has('new'),`nova pipa ficou bloqueada pelo pool: ${[...m.contacts.keys()]}`);
+});

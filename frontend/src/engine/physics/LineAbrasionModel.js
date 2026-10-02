@@ -25,12 +25,15 @@ export function integrateLineAbrasion(contact,kiteA,kiteB,dtSeconds,config={}){
   const effectiveSlide=Math.max(0,vSlide-minSlide);
   const matA=materialOf(kiteA), matB=materialOf(kiteB);
   const friction=clamp((Number(matA.friction||0)+Number(matB.friction||0))*.5,0,2);
+  const frictionMultiplier=Math.max(0,Number(config.frictionMultiplier)||0);
   const normalForce=Math.max(0,Number(contact.normalForce)||0);
   const minContact=Math.max(0,Number(config.minContactTime)||0);
   const rampSec=Math.max(1e-6,Number(config.engagementRampSec)||.2);
   const contactTime=Math.max(0,Number(contact.contactTime)||0);
   const ramp=contactTime<=minContact?0:clamp((contactTime-minContact)/rampSec,0,1);
-  const baseRate=Math.max(0,Number(config.abrasionK)||0)*Math.max(0,Number(config.frictionMultiplier)||0)*friction*normalForce*effectiveSlide*ramp;
+  const physicalRate=Math.max(0,Number(config.abrasionK)||0)*normalForce*effectiveSlide;
+  const contactFloor=Math.max(0,Number(config.contactDamageFloor)||0);
+  const baseRate=(physicalRate+contactFloor)*frictionMultiplier*friction*ramp;
 
   // slideA usa vA-vB projetado em A. Para B, o movimento próprio relativo
   // é vB-vA, portanto o sinal físico equivalente é -slideB. Isso torna a

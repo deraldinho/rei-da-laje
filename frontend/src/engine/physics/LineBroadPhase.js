@@ -5,6 +5,7 @@ export class LineBroadPhase {
     this._entryPool = [];
     this._candidates = [];
     this._candidatePool = [];
+    this._pairCursor = 0;
     this._metrics = { inputLines: 0, candidatePairs: 0, rejectedX: 0, rejectedY: 0, checks: 0 };
   }
 
@@ -51,26 +52,42 @@ export class LineBroadPhase {
     metrics.checks = 0;
 
     let outIndex = 0;
-    outer: for (let i = 0; i < this._entries.length; i++) {
-      const a = this._entries[i];
-      for (let j = i + 1; j < this._entries.length; j++) {
+    const count = this._entries.length;
+    const totalPairs = (count * (count - 1)) / 2;
+    if (totalPairs > 0) {
+      let pairIndex = this._pairCursor % totalPairs;
+      const budget = Math.min(totalPairs, this.maxDiscoveryChecksPerScan);
+      for (let visited = 0; visited < budget; visited++) {
+        let remainder = pairIndex;
+        let i = 0;
+        let rowSize = count - 1;
+        while (rowSize > 0 && remainder >= rowSize) {
+          remainder -= rowSize;
+          i++;
+          rowSize--;
+        }
+        const j = i + 1 + remainder;
+        const a = this._entries[i];
         const b = this._entries[j];
-        if (b.minX > a.maxX + radius) {
-          metrics.rejectedX += this._entries.length - j;
-          break;
-        }
-        if (++metrics.checks > this.maxDiscoveryChecksPerScan) break outer;
-        if (b.minY > a.maxY + radius || a.minY > b.maxY + radius) {
+        metrics.checks++;
+
+        if (b.minX > a.maxX + radius || a.minX > b.maxX + radius) {
+          metrics.rejectedX++;
+        } else if (b.minY > a.maxY + radius || a.minY > b.maxY + radius) {
           metrics.rejectedY++;
-          continue;
+        } else {
+          const candidate = this._candidate(outIndex++);
+          const aFirst = a.id <= b.id;
+          candidate.pairKey = aFirst ? `${a.id}|${b.id}` : `${b.id}|${a.id}`;
+          candidate.kiteA = aFirst ? a.kite : b.kite;
+          candidate.kiteB = aFirst ? b.kite : a.kite;
+          this._candidates.push(candidate);
         }
-        const candidate = this._candidate(outIndex++);
-        const aFirst = a.id <= b.id;
-        candidate.pairKey = aFirst ? `${a.id}|${b.id}` : `${b.id}|${a.id}`;
-        candidate.kiteA = aFirst ? a.kite : b.kite;
-        candidate.kiteB = aFirst ? b.kite : a.kite;
-        this._candidates.push(candidate);
+        pairIndex = (pairIndex + 1) % totalPairs;
       }
+      this._pairCursor = pairIndex;
+    } else {
+      this._pairCursor = 0;
     }
     metrics.candidatePairs = this._candidates.length;
     return this._candidates;

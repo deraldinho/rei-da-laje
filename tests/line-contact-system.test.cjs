@@ -69,3 +69,27 @@ test('reset limpa contatos sem trocar a Map pública usada pelo GameApp',async()
   assert.strictEqual(system.contacts,publicMap);
   assert.equal(publicMap.size,0);
 });
+
+test('contato abrasivo não sofre starvation atrás de contatos antigos sem deslizamento',async()=>{
+  const managerUrl=pathToFileURL(path.resolve(__dirname,'../frontend/src/engine/physics/LineContactManager.js')).href;
+  const {LineContactManager}=await import(`${managerUrl}?t=${Date.now()}`);
+  const manager=new LineContactManager({maxTrackedContacts:12,maxSolvedContacts:3,maxContactsPerRope:3,minSlideSpeed:.35});
+  const makeKite=id=>({userId:id,rope:{material:{cutResistance:1}}});
+  const stale=[['s1','a1','b1'],['s2','a2','b2'],['s3','a3','b3']];
+  const damage=['damage','a4','b4'];
+  const selectedCounts=new Map();
+  const touch=(entry,vSlide,normalForce,overlap=.5)=>{
+    const [key,aId,bId]=entry;
+    const radius=10, distance=radius*(1-overlap);
+    manager.touch(key,makeKite(aId),makeKite(bId),{hit:true,distance,contactRadius:radius},{vSlide,normalForce});
+  };
+  for(let step=0;step<60;step++){
+    manager.beginStep(step*(1000/60),1/60);
+    for(const entry of stale) touch(entry,0,1.5,1);
+    touch(damage,2,0,.5);
+    manager.endStep();
+    const out=[]; manager.selectForSolve(out);
+    for(const c of out) selectedCounts.set(c.pairKey,(selectedCounts.get(c.pairKey)||0)+1);
+  }
+  assert.ok((selectedCounts.get('damage')||0)>0,`contato abrasivo ficou sem solver: ${JSON.stringify([...selectedCounts])}`);
+});

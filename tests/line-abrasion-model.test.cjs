@@ -12,15 +12,18 @@ function hit(slide=0,sinAngle=1){ return {hit:true,x:0,y:0,z:0,sinAngle,slidingS
   relativeVx:slide,relativeVy:0,segmentIndexA:1,segmentIndexB:1,s:.5,t:.5,distance:0,contactRadius:2}; }
 function contact(metrics,time=.5){ return {...metrics,contactTime:time,slidingDistance:0,abrasionA:0,abrasionB:0,abrasionRateA:0,abrasionRateB:0}; }
 
-test('sem contato ou sem slide não existe abrasão significativa',async()=>{
+test('contato engatado gera desgaste mínimo mesmo sem slide e fricção multiplica o dano',async()=>{
   const [{computeLineContactPhysics},{integrateLineAbrasion},{DEFAULT_RELINHO_PHYSICS_CONFIG},{getLineMaterial}]=await Promise.all([
     import(`${physicsUrl}?t=${Date.now()}`),import(`${abrasionUrl}?t=${Date.now()}`),import(configUrl),import(materialUrl)]);
   const a=kite('a',getLineMaterial('algodao')),b=kite('b',getLineMaterial('algodao'));
   const none=computeLineContactPhysics(a,b,{hit:false},DEFAULT_RELINHO_PHYSICS_CONFIG);
   assert.equal(none.vSlide,0); assert.equal(none.normalForce,0);
-  const zero=contact(computeLineContactPhysics(a,b,hit(0),DEFAULT_RELINHO_PHYSICS_CONFIG));
-  integrateLineAbrasion(zero,a,b,1/60,DEFAULT_RELINHO_PHYSICS_CONFIG);
-  assert.ok(Math.abs(zero.abrasionA)<1e-12); assert.ok(Math.abs(zero.abrasionB)<1e-12);
+  const low=contact(computeLineContactPhysics(a,b,hit(0),DEFAULT_RELINHO_PHYSICS_CONFIG),.5);
+  const high=contact(computeLineContactPhysics(a,b,hit(0),DEFAULT_RELINHO_PHYSICS_CONFIG),.5);
+  integrateLineAbrasion(low,a,b,1/60,{...DEFAULT_RELINHO_PHYSICS_CONFIG,frictionMultiplier:.5});
+  integrateLineAbrasion(high,a,b,1/60,{...DEFAULT_RELINHO_PHYSICS_CONFIG,frictionMultiplier:2});
+  assert.ok(low.wearDeltaA>0&&low.wearDeltaB>0,'contato válido não pode ficar sem dano');
+  assert.ok(high.wearDeltaA>low.wearDeltaA*3.9,'fricção deve multiplicar o desgaste');
 });
 
 test('slide maior aumenta a taxa de abrasão e tensão maior aumenta dentro de limites',async()=>{

@@ -10,6 +10,7 @@ const materialUrl = pathToFileURL(path.resolve(__dirname, '../frontend/src/engin
 const expectedDefaults = {
   abrasionK: 0.04,
   frictionMultiplier: 1.0,
+  contactDamageFloor: 0.004,
   minSlideSpeed: 0.75,
   tensionMultiplier: 1,
   angleExponent: 1,

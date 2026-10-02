@@ -13,11 +13,11 @@ function mockKite(opts={}){
 function contact(slide=12){return {phase:'GRINDING',contactTime:.5,slidingSpeed:slide,vSlide:slide,slideA:slide,slideB:-slide,
   relativeVx:slide,relativeVy:0,sinAngle:1,x:400,y:500,z:0,segmentIndexA:2,segmentIndexB:3,s:.3,t:.7};}
 
-test('P3.1 - fachada tribológica mantém vSlide explícito zero como abrasão zero',async()=>{
+test('P3.1 - fachada tribológica aplica dano-base de contato mesmo com vSlide zero',async()=>{
   const {RelinhoContactSolver}=await load('frontend/src/engine/physics/RelinhoContactSolver.js');
   const a=mockKite(),b=mockKite({userId:'b'});
   const work=RelinhoContactSolver.calculateFrictionalWork(a,b,{x:400,y:500},{...contact(0),slidingSpeed:0,vSlide:0});
-  assert.equal(work.damageRateA,0); assert.equal(work.damageRateB,0); assert.equal(work.slidingSpeed,0);
+  assert.ok(work.damageRateA>0); assert.ok(work.damageRateB>0); assert.equal(work.slidingSpeed,0);
 });
 
 test('P3.2 - fachada preserva assimetria física Chile versus Algodão/Kevlar',async()=>{

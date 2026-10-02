@@ -99,7 +99,7 @@ try {
       handY:Number.isFinite(kite.line?.visualBaseY)?kite.line.visualBaseY:kite.baseY
     })).sort((a,b)=>(a.handY-b.handY)||(a.handX-b.handX));
     const apply=candidatePairs=>{
-      game.relinhoContacts.clear();game._ropeCollisionHints.clear();game.cutCooldowns.clear();
+      game.relinhoContactSystem.reset();game.cutCooldowns.clear();
       items.forEach(({kite,handX,handY})=>{
         kite.isAscending=false;kite.spawnProtection=1e9;kite.maxLineHP=1e9;kite.lineHP=1e9;
         kite.x=handX;kite.y=Math.max(140,handY-1050);kite.targetX=kite.x;kite.targetY=kite.y;

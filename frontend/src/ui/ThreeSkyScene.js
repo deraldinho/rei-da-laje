@@ -23,7 +23,8 @@ import {
 } from './three/ThreeCharacters.js';
 import {
   ThreeKites,
-  createKiteModel3D
+  createKiteModel3D,
+  configureKiteModelType3D
 } from './three/ThreeKites.js';
 import { ThreeLines } from './three/ThreeLines.js';
 import { FlyawayKite3DPool } from './three/FlyawayKite3DPool.js';
@@ -354,7 +355,7 @@ export class ThreeSkyScene {
 
     // Aplica o tema inicial e prÃ©-aquece os materiais usados no corte.
     this.setTheme(this.themeCode);
-    this.prewarmCutVisuals();
+    this.prewarmVisualPools();
   }
 
   acquireActiveVisual(userId, kite) {
@@ -389,18 +390,141 @@ export class ThreeSkyScene {
   }
 
   prewarmCutVisuals() {
-    if (!this.renderer || !this.scene || !this.camera) return;
-    const flyaway = this.flyawayPool?.peekForPrewarm?.();
-    const broken = this.lines?.peekBrokenRopeForPrewarm?.();
-    const flyawayWasVisible = flyaway?.visible;
-    const brokenWasVisible = broken?.visible;
-    if (flyaway) flyaway.visible = true;
-    if (broken) broken.visible = true;
+    return this.prewarmVisualPools();
+  }
+
+  _prewarmFlyawayDecal(renderer) {
+    const sourceDecal = this.flyawayPool.items[0]?.userData?.decal;
+    if (!renderer || !sourceDecal?.geometry || !sourceDecal?.material) return false;
+    const decalWarmScene = new THREE.Scene();
+    decalWarmScene.fog = this.scene.fog;
+    const decalWarmCamera = new THREE.OrthographicCamera(-30, 30, 24, -24, 0.1, 20);
+    decalWarmCamera.position.set(0, 0, 5);
+    decalWarmCamera.lookAt(0, 0, 0);
+    const decalWarmMesh = new THREE.Mesh(sourceDecal.geometry, sourceDecal.material);
+    decalWarmMesh.frustumCulled = false;
+    decalWarmMesh.scale.setScalar(0.24);
+    decalWarmMesh.position.set(-24, 18, 0);
+    decalWarmScene.add(decalWarmMesh);
+    this.flyawayPool.items.forEach((flyaway, index) => {
+      if (index === 0) return;
+      const decal = flyaway?.userData?.decal;
+      if (!decal?.geometry || !decal?.material) return;
+      const mesh = new THREE.Mesh(decal.geometry, decal.material);
+      mesh.frustumCulled = false;
+      mesh.scale.setScalar(0.24);
+      mesh.position.set(-24 + (index % 8) * 7, 18 - Math.floor(index / 8) * 7, 0);
+      decalWarmScene.add(mesh);
+    });
+    renderer.render(decalWarmScene, decalWarmCamera);
+    return true;
+  }
+
+  prewarmVisualPools() {
+    if (this._visualPoolsPrewarmed) return true;
+    if (!this.renderer || !this.scene || !this.camera) {
+      this._visualPoolsPrewarmed = false;
+      return false;
+    }
+
+    const renderer = this.renderer;
+    const variants = ['tradicional', 'raia', 'peixinho'];
+    const visibility = [];
+    const rememberVisible = object => {
+      if (!object) return;
+      visibility.push([object, object.visible]);
+      object.visible = true;
+    };
+    let previousTarget = null;
+    let warmTarget = null;
+    const previousShadowMapEnabled = renderer.shadowMap?.enabled;
+    const previousDirCastShadow = this.dirLight?.castShadow;
+
     try {
-      this.renderer.compile(this.scene, this.camera);
+      this.activeVisualPool.slots.forEach((slot, index) => {
+        configureKiteModelType3D(slot.kite, variants[index % variants.length], index % 4);
+        rememberVisible(slot.kite);
+        rememberVisible(slot.player);
+        rememberVisible(slot.line);
+        rememberVisible(slot.player.userData.badgeGroup);
+        rememberVisible(slot.player.userData.glassesGroup);
+        rememberVisible(slot.player.userData.crown);
+        rememberVisible(slot.kite.userData.hpGroup);
+        rememberVisible(slot.kite.userData.crown);
+        rememberVisible(slot.kite.userData.aura);
+        rememberVisible(slot.kite.userData.shieldMesh);
+        rememberVisible(slot.kite.userData.tornadoMesh);
+        slot.kite.position.set((index % 8 - 3.5) * 8, (Math.floor(index / 8) - 2.5) * 8, 0);
+        slot.player.position.set((index % 8 - 3.5) * 8, -35, 0);
+      });
+
+      this.flyawayPool.items.forEach((flyaway, index) => {
+        this.flyawayPool._configure(flyaway, {
+          kiteType: variants[index % variants.length],
+          bodyColor: 0xff5722 + (index % 8) * 0x001100,
+          nickname: `Prewarm ${index}`
+        });
+        rememberVisible(flyaway);
+        flyaway.position.set((index % 8 - 3.5) * 7, 30 + Math.floor(index / 8) * 6, 20);
+      });
+
+      this.lines._brokenRopePool.forEach((broken, index) => {
+        rememberVisible(broken);
+        const attr = broken.geometry?.attributes?.position;
+        if (attr?.array) {
+          for (let point = 0; point < attr.count; point++) {
+            attr.array[point * 3] = (index % 8 - 3.5) * 6 + point * 0.4;
+            attr.array[point * 3 + 1] = -20 + Math.floor(index / 8) * 3 - point * 0.25;
+            attr.array[point * 3 + 2] = 10;
+          }
+          attr.needsUpdate = true;
+        }
+      });
+
+      previousTarget = renderer.getRenderTarget?.() || null;
+      warmTarget = new THREE.WebGLRenderTarget(8, 8, {
+        depthBuffer: true,
+        stencilBuffer: false
+      });
+      warmTarget.texture.colorSpace = renderer.outputColorSpace;
+      renderer.setRenderTarget?.(null);
+      renderer.compile(this.scene, this.camera);
+
+      if (renderer.shadowMap) renderer.shadowMap.enabled = false;
+      if (this.dirLight) this.dirLight.castShadow = false;
+      renderer.compile(this.scene, this.camera);
+
+      renderer.setRenderTarget?.(warmTarget);
+      renderer.render(this.scene, this.camera);
+      this._prewarmFlyawayDecal(renderer);
+
+      if (renderer.shadowMap && previousShadowMapEnabled !== undefined) {
+        renderer.shadowMap.enabled = previousShadowMapEnabled;
+      }
+      if (this.dirLight && previousDirCastShadow !== undefined) {
+        this.dirLight.castShadow = previousDirCastShadow;
+      }
+      renderer.render(this.scene, this.camera);
+      this._prewarmFlyawayDecal(renderer);
+      this._visualPoolsPrewarmed = true;
+      return true;
+    } catch (error) {
+      this._visualPoolsPrewarmed = false;
+      console.warn('[ThreeSkyScene] prewarm 3D falhou; seguindo com fallback:', error);
+      return false;
     } finally {
-      if (flyaway) flyaway.visible = Boolean(flyawayWasVisible);
-      if (broken) broken.visible = Boolean(brokenWasVisible);
+      if (renderer.shadowMap && previousShadowMapEnabled !== undefined) {
+        renderer.shadowMap.enabled = previousShadowMapEnabled;
+      }
+      if (this.dirLight && previousDirCastShadow !== undefined) {
+        this.dirLight.castShadow = previousDirCastShadow;
+      }
+      try { renderer.setRenderTarget?.(previousTarget); } catch (_) {}
+      try { warmTarget?.dispose(); } catch (_) {}
+      for (const [object, wasVisible] of visibility) object.visible = Boolean(wasVisible);
+      for (const slot of this.activeVisualPool.slots) {
+        if (!slot.__poolOwnerId) resetActiveVisualSlot3D(slot);
+      }
     }
   }
 

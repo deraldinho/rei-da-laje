@@ -49,3 +49,9 @@ test('troca de textura da voada não invalida shader já pré-aquecido', () => {
   assert.doesNotMatch(configure, /(?:bodyMat|decalMat)\.needsUpdate\s*=\s*true|(?:bodyMat|decalMat)\.map\s*=/,
     'trocar uma textura não-nula por outra não deve forçar recompilação do material');
 });
+
+test('decal transparente da pipa voada usa single-pass para evitar shader duplo no primeiro corte', () => {
+  const factory = poolSource.split('export function createFlyawayKiteModel3D')[1]
+    ?.split('export class FlyawayKite3DPool')[0] || '';
+  assert.match(factory, /decalMat\.forceSinglePass\s*=\s*true/);
+});

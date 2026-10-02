@@ -62,6 +62,7 @@ export function createFlyawayKiteModel3D() {
     side: THREE.DoubleSide,
     transparent: true
   });
+  decalMat.forceSinglePass = true;
   const decal = new THREE.Mesh(getSharedDecalGeo(false), decalMat);
   decal.position.set(0, 1.2, 0.65);
   group.add(decal);

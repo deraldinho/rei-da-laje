@@ -17,7 +17,10 @@
     "test:browser": "node tests/browser-smoke.mjs",
     "test:perf": "node tests/browser-perf-40.mjs",
     "test:soak": "node tests/runtime-soak.mjs",
-    "verify": "node tests/verify.mjs"
+    "verify": "node tests/verify.mjs",
+    "test:cut-perf": "node tests/browser-cut-perf-40.mjs",
+    "test:relinho-bench": "node --expose-gc tests/benchmark-relinho-abrasion.mjs",
+    "test:relinho-browser": "node tests/browser-relinho-perf-40.mjs"
   },
   "dependencies": {
     "concurrently": "^8.2.2",

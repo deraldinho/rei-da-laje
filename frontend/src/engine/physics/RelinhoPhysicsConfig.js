@@ -1,6 +1,7 @@
 export const DEFAULT_RELINHO_PHYSICS_CONFIG = Object.freeze({
   abrasionK: 0.04,
   frictionMultiplier: 1.0,
+  contactDamageFloor: 0.004,
   minSlideSpeed: 0.75,
   tensionMultiplier: 1,
   angleExponent: 1,
@@ -16,7 +17,7 @@ export const DEFAULT_RELINHO_PHYSICS_CONFIG = Object.freeze({
 });
 
 const LIMITS = Object.freeze({
-  abrasionK: [0.001, 1], frictionMultiplier: [0, 4], minSlideSpeed: [0, 50],
+  abrasionK: [0.001, 1], frictionMultiplier: [0, 4], contactDamageFloor: [0, 0.05], minSlideSpeed: [0, 50],
   tensionMultiplier: [0.1, 4], angleExponent: [0.25, 4], minContactTime: [0, 2],
   engagementRampSec: [0.01, 3], releaseGraceSec: [0.02, 2], maxWearPerTick: [0.0001, 0.05],
   discoveryHz: [1, 60], maxSolvedContacts: [1, 12], maxContactsPerRope: [1, 6],

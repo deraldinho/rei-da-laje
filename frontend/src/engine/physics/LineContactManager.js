@@ -3,6 +3,7 @@
 function createContact(poolIndex) {
   return {
     _poolIndex: poolIndex, _everUsed: false, _inUse: false, _lastTouchedStep: -1, _distanceStep: -1,
+    _firstTouchedStep: -1, _lastSolvedStep: -1,
     pairKey: '', lineAId: '', lineBId: '', kiteA: null, kiteB: null,
     x: 0, y: 0, z: 0, segmentIndexA: 0, segmentIndexB: 0, s: .5, t: .5,
     crossingAngle: 0, sinAngle: 0, tensionA: 0, tensionB: 0, effectiveTension: 0, normalForce: 0,
@@ -23,7 +24,7 @@ function resetContact(c) {
   c.abrasionRateA=0; c.abrasionRateB=0; c.wearDeltaA=0; c.wearDeltaB=0;
   c.startedAt=0; c.lastSeenAt=0; c.releasedAt=0; c.active=false; c.phase='FREE';
   c.distance=Infinity; c.contactRadius=0; c.overlapQuality=0; c.score=0;
-  c._lastTouchedStep=-1; c._distanceStep=-1; c._inUse=false;
+  c._lastTouchedStep=-1; c._distanceStep=-1; c._firstTouchedStep=-1; c._lastSolvedStep=-1; c._inUse=false;
   return c;
 }
 
@@ -40,7 +41,8 @@ export class LineContactManager {
     this._nowMs = 0;
     this._dtSeconds = 1/60;
     this._rotationCursor = 0;
-    this._metrics = { createdContacts:0, reusedContacts:0, droppedContacts:0, expiredContacts:0, activeContacts:0, selectedContacts:0 };
+    this._lastTrackingRotationStep = 0;
+    this._metrics = { createdContacts:0, reusedContacts:0, droppedContacts:0, expiredContacts:0, rotatedContacts:0, activeContacts:0, selectedContacts:0 };
     this._ensurePool(this.config.maxTrackedContacts);
   }
 
@@ -69,7 +71,31 @@ export class LineContactManager {
   }
 
   _acquire() {
-    const c = this._free.pop();
+    let c = this._free.pop();
+    if (!c) {
+      const rotationGap = 6;
+      if (this._stepId - this._lastTrackingRotationStep >= rotationGap) {
+        let victim = null;
+        let victimServiceAge = Infinity;
+        let victimContactTime = -Infinity;
+        for (const item of this.contacts.values()) {
+          if (item.phase === 'RELEASE') { victim = item; break; }
+          const lastService = item._lastSolvedStep >= 0 ? item._lastSolvedStep : item._firstTouchedStep;
+          const serviceAge = Math.max(0, this._stepId - lastService);
+          if (serviceAge < victimServiceAge || (serviceAge === victimServiceAge && item.contactTime > victimContactTime)) {
+            victim = item;
+            victimServiceAge = serviceAge;
+            victimContactTime = item.contactTime;
+          }
+        }
+        if (victim) {
+          this.contacts.delete(victim.pairKey);
+          c = victim;
+          this._lastTrackingRotationStep = this._stepId;
+          this._metrics.rotatedContacts++;
+        }
+      }
+    }
     if (!c) { this._metrics.droppedContacts++; return null; }
     const reused = c._everUsed;
     resetContact(c);
@@ -93,12 +119,12 @@ export class LineContactManager {
       c = this._acquire();
       if (!c) return null;
       c.pairKey=key; c.lineAId=String(kiteA.userId ?? ''); c.lineBId=String(kiteB.userId ?? '');
-      c.kiteA=kiteA; c.kiteB=kiteB; c.startedAt=this._nowMs; c.phase='CONTACT'; c.active=true;
+      c.kiteA=kiteA; c.kiteB=kiteB; c.startedAt=this._nowMs; c._firstTouchedStep=this._stepId; c._lastSolvedStep=-1; c.phase='CONTACT'; c.active=true;
       this.contacts.set(key,c);
     } else if (c.phase === 'RELEASE') {
       c.contactTime=0; c.slidingDistance=0; c.abrasionA=0; c.abrasionB=0;
       c.abrasionRateA=0; c.abrasionRateB=0; c.wearDeltaA=0; c.wearDeltaB=0;
-      c.startedAt=this._nowMs; c.releasedAt=0; c.phase='CONTACT'; c.active=true;
+      c.startedAt=this._nowMs; c.releasedAt=0; c._firstTouchedStep=this._stepId; c._lastSolvedStep=-1; c.phase='CONTACT'; c.active=true;
     }
 
     c.kiteA=kiteA; c.kiteB=kiteB;
@@ -146,8 +172,12 @@ export class LineContactManager {
     const slide=Math.min(1,c.vSlide/12);
     const normal=Math.min(1,c.normalForce/1.5);
     const age=Math.min(1,c.contactTime/.8);
-    const hysteresis=c.active?.06:0;
-    c.score=c.overlapQuality*.55+slide*1.2+normal*.9+age*.18+hysteresis;
+    const sliding=c.vSlide>this.config.minSlideSpeed;
+    if(!sliding){
+      c.score=c.overlapQuality*.08+normal*.06+age*.04+(c.active?.02:0);
+    }else{
+      c.score=c.overlapQuality*.35+slide*1.25+normal*.9+age*.12+(c.active?.04:0);
+    }
     return c.score;
   }
 
@@ -155,7 +185,13 @@ export class LineContactManager {
     out.length=0; this._selection.length=0; this._perRope.clear();
     for(const c of this.contacts.values()) if(c.phase!=='RELEASE'&&c.active){ this._score(c); this._selection.push(c); }
     const poolSize=Math.max(1,this._pool.length), cursor=this._rotationCursor%poolSize;
+    const fairnessCycle=Math.max(1,Math.ceil(this.config.maxTrackedContacts/Math.max(1,this.config.maxSolvedContacts)));
+    const waitSteps=c=>Math.max(0,this._stepId-(c._lastSolvedStep>=0?c._lastSolvedStep:c._firstTouchedStep));
     this._selection.sort((a,b)=>{
+      const waitA=waitSteps(a), waitB=waitSteps(b);
+      const starvedA=waitA>=fairnessCycle, starvedB=waitB>=fairnessCycle;
+      if(starvedA!==starvedB) return starvedA?-1:1;
+      if(starvedA&&starvedB&&waitA!==waitB) return waitB-waitA;
       const diff=b.score-a.score;
       if(Math.abs(diff)>1e-9) return diff;
       const ra=(a._poolIndex-cursor+poolSize)%poolSize;
@@ -166,7 +202,7 @@ export class LineContactManager {
       if(out.length>=this.config.maxSolvedContacts) break;
       const ca=this._perRope.get(c.lineAId)||0, cb=this._perRope.get(c.lineBId)||0;
       if(ca>=this.config.maxContactsPerRope||cb>=this.config.maxContactsPerRope) continue;
-      out.push(c); this._perRope.set(c.lineAId,ca+1); this._perRope.set(c.lineBId,cb+1);
+      out.push(c); c._lastSolvedStep=this._stepId; this._perRope.set(c.lineAId,ca+1); this._perRope.set(c.lineBId,cb+1);
     }
     this._rotationCursor=(this._rotationCursor+1)%poolSize;
     this._metrics.selectedContacts=out.length;
@@ -178,7 +214,7 @@ export class LineContactManager {
     this.contacts.clear();
     this._selection.length=0; this._selected.length=0; this._perRope.clear();
     this._rebuildFree();
-    this._stepId=0; this._rotationCursor=0;
+    this._stepId=0; this._rotationCursor=0; this._lastTrackingRotationStep=0;
     this._metrics.activeContacts=0; this._metrics.selectedContacts=0;
     return this;
   }

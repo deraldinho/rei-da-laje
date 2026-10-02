@@ -59,3 +59,17 @@ test('scan reutiliza array e objetos candidatos entre ticks', async () => {
   assert.strictEqual(second, first, 'array de candidatos deve ser reutilizado');
   assert.strictEqual(second[0], candidate, 'objeto candidato deve ser reutilizado');
 });
+
+test('cap de descoberta gira entre regiões densas e não deixa pares do fim da arena sem combate', async () => {
+  const { LineBroadPhase } = await import(`${moduleUrl}?t=${Date.now()}`);
+  const broad = new LineBroadPhase({ maxDiscoveryChecksPerScan: 96 });
+  const dense = Array.from({ length:16 }, (_,i) => kite(`a${String(i).padStart(2,'0')}`,0,100,0,100));
+  const lateA = kite('zA',1000,1100,0,100);
+  const lateB = kite('zB',1020,1120,10,110);
+  const list = [...dense, lateA, lateB];
+  let sawLatePair = false;
+  for (let scan=0; scan<20 && !sawLatePair; scan++) {
+    sawLatePair = broad.scan(list).some(candidate => candidate.pairKey === 'zA|zB');
+  }
+  assert.equal(sawLatePair,true,'par zA|zB nunca recebeu orçamento de descoberta');
+});
