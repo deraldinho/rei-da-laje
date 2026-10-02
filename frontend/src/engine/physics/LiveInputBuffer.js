@@ -1,90 +1,63 @@
+import { createCommentGesture } from './CommentGestureEngine.js';
+
 /**
- * LiveInputBuffer - Amortecedor de Entradas de Chat e Curtidas (P12)
- * 
- * Resolve o problema de rajadas de comentários do TikTok:
- * - Evita aplicar 30 impulsos pontuais bruscos que fariam a pipa quebrar ou teleportar.
- * - Acumula commentEnergy e drena suavemente a 60 Hz.
- * - Transforma a intensidade da torcida em aceleração contínua da carretilha.
+ * Amortece entradas da live sem criar um segundo controlador físico.
+ * Comentários viram envelopes curtos; a fila existente continua limitada.
  */
 export class LiveInputBuffer {
   constructor(kite) {
     this.kite = kite;
-    this.commentEnergy = 0;       // Energia acumulada de comentários
-    this.likeEnergy = 0;          // Energia acumulada de curtidas
-    this.pendingCommands = [];    // Fila rápida de comandos com despike
+    this.commentEnergy = 0;
+    this.likeEnergy = 0;
+    this.pendingCommands = []; // nome legado; agora contém gestos físicos.
     this.lastCommandTime = 0;
   }
 
-  /**
-   * Registra um comentário recebido do público
-   * @param {string} text Texto do comentário ou comando
-   * @param {string} user Identificador do usuário
-   */
-  addComment(text = '', user = null) {
+  addComment(text = '', user = null, context = {}) {
     const clean = String(text || '').trim().toLowerCase();
-    this.commentEnergy = Math.min(50.0, this.commentEnergy + 1.2);
-
-    // Identifica comandos clássicos no texto
-    let cmd = null;
-    if (clean.includes('puxar') || clean.includes('#puxar') || clean.includes('puxa') || clean === '1') {
-      cmd = 'puxar';
-    } else if (clean.includes('descarregar') || clean.includes('#descarregar') || clean.includes('solta') || clean === '2') {
-      cmd = 'descarregar';
-    } else if (clean.includes('despicar') || clean.includes('#despicar') || clean.includes('desbica') || clean === '3') {
-      cmd = 'despicar';
-    } else if (clean.includes('tenteio') || clean.includes('#tenteio') || clean.includes('tenteia') || clean === '4') {
-      cmd = 'tenteio';
+    if (!clean) return null;
+    this.commentEnergy = Math.min(50, this.commentEnergy + 1.2);
+    const userId = String(user || this.kite?.userId || 'anon');
+    const gesture = createCommentGesture({ text: clean, userId, kite: this.kite,
+      wind: context.wind || null, lineDensity: context.lineDensity || null,
+      engagement: Number(context.engagement) || 0 });
+    if (!gesture) return null;
+    const now = Number(context.nowMs) || Date.now();
+    const last = this.pendingCommands[this.pendingCommands.length - 1];
+    if (last && last.userId === userId && last.text === clean && now - last.at < 220) {
+      last.gesture = gesture;
+      last.at = now;
+      return gesture;
     }
-
-    if (cmd) {
-      this.pendingCommands.push({ cmd, at: Date.now() });
-      if (this.pendingCommands.length > 5) this.pendingCommands.shift();
-    }
+    this.pendingCommands.push({ gesture, at: now, text: clean, userId });
+    if (this.pendingCommands.length > 5) this.pendingCommands.shift();
+    return gesture;
   }
 
-  /**
-   * Registra rajada de curtidas (likes)
-   * @param {number} count Quantidade de curtidas
-   */
   addLikes(count = 1) {
     const safeCount = Math.max(1, Math.min(100, Number(count) || 1));
-    this.likeEnergy = Math.min(40.0, this.likeEnergy + safeCount * 0.4);
+    this.likeEnergy = Math.min(40, this.likeEnergy + safeCount * 0.4);
   }
 
-  /**
-   * Atualização determinística no ciclo físico de 60 Hz
-   * Drena a energia suavemente e aciona o PlayerIntentController
-   * @param {number} dt Delta de tempo fixo (segundos)
-   * @param {PlayerIntentController} intentController Controlador de intenção da pipa
-   */
-  step(dt = 1 / 60, intentController = null) {
-    // Decaimento suave exponencial da energia
-    this.commentEnergy *= Math.pow(0.92, dt * 60);
-    this.likeEnergy *= Math.pow(0.94, dt * 60);
-
+  step(dt = 1 / 60, intentController = null, context = {}) {
+    const seconds = Math.max(0, Math.min(.1, Number(dt) || 1 / 60));
+    this.commentEnergy *= Math.pow(0.92, seconds * 60);
+    this.likeEnergy *= Math.pow(0.94, seconds * 60);
     if (!intentController) return;
 
-    // Se houver comando explícito pendente e o controlador estiver livre
-    const now = Date.now();
-    if (this.pendingCommands.length > 0 && (!intentController.currentAction || intentController.actionTimer <= 0.15)) {
-      if (now - this.lastCommandTime >= 280) {
-        const next = this.pendingCommands.shift();
-        intentController.triggerAction(next.cmd, 1.1, { intensity: 1.0 + Math.min(1.0, this.commentEnergy * 0.05) });
-        this.lastCommandTime = now;
-      }
+    const now = Number(context.nowMs) || Date.now();
+    const free = !intentController.currentAction || intentController.actionTimer <= .15;
+    if (this.pendingCommands.length > 0 && free && now - this.lastCommandTime >= 160) {
+      const next = this.pendingCommands.shift();
+      intentController.triggerIntentEnvelope?.(next.gesture);
+      this.lastCommandTime = now;
     }
 
-    // Energia de chat geral (torcida) gera tensão e aceleração leve da carretilha
-    if (this.commentEnergy > 1.0 && !intentController.currentAction) {
-      const cheerPull = Math.min(2.5, this.commentEnergy * 0.12);
-      intentController.reelVelocity -= cheerPull;
-      intentController.liftIntent += cheerPull * 0.15;
-      intentController.tensionAssist += cheerPull * 0.04;
-    }
-
-    // Energia de curtidas gera sustentação e estabilidade
-    if (this.likeEnergy > 1.0) {
-      intentController.liftIntent += Math.min(0.35, this.likeEnergy * 0.02);
+    // Curtidas continuam como influência leve; comentários já possuem gesto próprio.
+    if (this.likeEnergy > 1 && !intentController.currentAction) {
+      const lift = Math.min(.35, this.likeEnergy * .02);
+      intentController.trimPitch -= lift * .12;
+      intentController.tensionAssist += lift * .08;
     }
   }
 }

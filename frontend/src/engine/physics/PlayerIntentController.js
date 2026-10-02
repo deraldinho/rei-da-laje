@@ -26,8 +26,18 @@ export class PlayerIntentController{
     this.customSteer=null;
     this.intensity=1;
     this.tenteioPulseTimer=0;
+    this.intentEnvelope=null;
   }
 
+  triggerIntentEnvelope(envelope={}){
+    const duration=clamp(envelope.duration??.8,.3,2);
+    this.intentEnvelope={source:String(envelope.source||'comment'),
+      spoolCommand:clamp(envelope.spoolCommand??0,-1,1),debicoTorque:clamp(envelope.debicoTorque??0,-1.2,1.2),
+      trimPitch:clamp(envelope.trimPitch??0,-.4,.4),tensionAssist:clamp(envelope.tensionAssist??0,-.4,.4)};
+    this.currentAction='comment_gesture';this.actionDuration=duration;this.actionTimer=duration;
+    this.intensity=clamp(envelope.intensity??1,.35,1.5);this.targetKite=null;this.customSteer=null;
+    return this.currentAction;
+  }
   triggerAction(actionName,duration=1.2,options={}){
     this.currentAction=normalizePhysicalAction(actionName);
     this.actionDuration=Math.max(.2,Number(duration)||1.2);
@@ -61,7 +71,14 @@ export class PlayerIntentController{
       const dir=this.actionDirection(wind);
       const gain=this.intensity;
       switch(this.currentAction){
-        case 'puxar':
+        case 'comment_gesture':{
+          const e=this.intentEnvelope||{};
+          this.spoolCommand=clamp((Number(e.spoolCommand)||0)*gain,-1,1);
+          this.debicoTorque=clamp((Number(e.debicoTorque)||0)*gain,-1.2,1.2);
+          this.trimPitch=clamp((Number(e.trimPitch)||0)*gain,-.4,.4);
+          this.tensionAssist=clamp((Number(e.tensionAssist)||0)*gain,-.4,.4);
+          break;
+        }        case 'puxar':
           this.spoolCommand=-1;
           this.trimPitch=-.24*gain;
           this.tensionAssist=.24*gain;
@@ -167,7 +184,7 @@ export class PlayerIntentController{
         default:
           this.spoolCommand=0;
       }
-      if(this.actionTimer<=0)this.currentAction=null;
+      if(this.actionTimer<=0){if(this.currentAction==='comment_gesture')this.intentEnvelope=null;this.currentAction=null;}
     }else{
       this.applyAutoFlightTrim(wind);
     }

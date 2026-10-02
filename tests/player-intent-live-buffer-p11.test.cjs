@@ -62,11 +62,11 @@ test('P12 - LiveInputBuffer: amortecimento determinístico de rajadas de torcida
     buffer.addComment('Bora pipa linda #puxar');
   }
   assert.ok(buffer.commentEnergy > 5, 'Comentários devem carregar commentEnergy');
-  assert.ok(buffer.pendingCommands.length > 0, 'Comando #puxar deve ser reconhecido');
+  assert.ok(buffer.pendingCommands.length > 0, 'Comentários devem gerar gestos físicos na fila existente');
 
   // Drena suavemente por alguns passos físicos
   buffer.step(1 / 60, controller);
-  assert.ok(controller.currentAction === 'puxar', 'Buffer deve acionar intentController sem teleporte');
+  assert.ok(controller.currentAction === 'comment_gesture', 'Buffer deve acionar gesto físico sem teleporte');
 });
 
 test('P12 - ManeuverQueue: prioridade de presentes e transições suaves', async () => {
