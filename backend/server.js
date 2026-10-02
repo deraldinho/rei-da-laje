@@ -45,6 +45,10 @@ const HOST = process.env.HOST || '127.0.0.1';
 // Middlewares
 app.use(cors({ origin: corsOriginValidator }));
 app.use(express.json());
+const AVATAR_CACHE_ROOT = process.env.PIPA_AVATAR_CACHE_DIR || path.join(__dirname, 'data', 'avatars');
+app.use('/player-assets/avatars', express.static(AVATAR_CACHE_ROOT, {
+  fallthrough: false, index: false, dotfiles: 'deny', maxAge: '1h'
+}));
 
 // Instâncias dos Gerenciadores
 const initialSettings = settingsManager.getSettings();

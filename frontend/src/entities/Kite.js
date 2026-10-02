@@ -13,6 +13,12 @@ import { PlayerIntentController } from '../engine/physics/PlayerIntentController
 import { LiveInputBuffer } from '../engine/physics/LiveInputBuffer.js';
 import { ManeuverQueue } from '../engine/physics/ManeuverQueue.js';
 
+const isSafeAvatarUrl = value => {
+  const url=String(value||'').trim();
+  return /^https:\/\/[^\s]+$/i.test(url)
+    || /^\/player-assets\/avatars\/[a-f0-9]{64}\.(?:jpg|png|webp)$/i.test(url);
+};
+
 /**
  * Entidade Principal da Pipa:
  * - Corpo geométrico clássico (Peixinho, Raiada, Carrapeta)
@@ -381,7 +387,7 @@ export class Kite extends PIXI.Container {
   loadAvatar() {
     const token=++this.avatarLoadToken;
     const url=String(this.profilePictureUrl||'');
-    if (!/^https:\/\/[^\s]+$/i.test(url)) return;
+    if (!isSafeAvatarUrl(url)) return;
     const image=new Image();
     image.crossOrigin='anonymous';
     image.referrerPolicy='no-referrer';
@@ -412,7 +418,7 @@ export class Kite extends PIXI.Container {
       this.renderTag();
     }
     const next=String(profilePictureUrl||'');
-    if (!/^https:\/\/[^\s]+$/i.test(next) || next===this.profilePictureUrl) return;
+    if (!isSafeAvatarUrl(next) || next===this.profilePictureUrl) return;
     this.profilePictureUrl=next;
     this.avatarLoadToken++;
     if (this.avatarSprite) {
