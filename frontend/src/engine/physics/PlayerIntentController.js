@@ -22,7 +22,6 @@ export class PlayerIntentController{
     this.currentAction=null;
     this.actionTimer=0;
     this.actionDuration=0;
-    this.targetKite=null;
     this.customSteer=null;
     this.intensity=1;
     this.tenteioPulseTimer=0;
@@ -35,14 +34,13 @@ export class PlayerIntentController{
       spoolCommand:clamp(envelope.spoolCommand??0,-1,1),debicoTorque:clamp(envelope.debicoTorque??0,-1.2,1.2),
       trimPitch:clamp(envelope.trimPitch??0,-.4,.4),tensionAssist:clamp(envelope.tensionAssist??0,-.4,.4)};
     this.currentAction='comment_gesture';this.actionDuration=duration;this.actionTimer=duration;
-    this.intensity=clamp(envelope.intensity??1,.35,1.5);this.targetKite=null;this.customSteer=null;
+    this.intensity=clamp(envelope.intensity??1,.35,1.5);this.customSteer=null;
     return this.currentAction;
   }
   triggerAction(actionName,duration=1.2,options={}){
     this.currentAction=normalizePhysicalAction(actionName);
     this.actionDuration=Math.max(.2,Number(duration)||1.2);
     this.actionTimer=this.actionDuration;
-    this.targetKite=options.target||null;
     this.customSteer=Number.isFinite(options.steerDir)?clamp(options.steerDir,-1,1):null;
     this.intensity=clamp(options.intensity||1,.5,2.5);
     return this.currentAction;
@@ -50,8 +48,6 @@ export class PlayerIntentController{
 
   actionDirection(wind){
     if(this.customSteer!==null)return this.customSteer||1;
-    if(this.targetKite&&Number.isFinite(this.targetKite.x)&&Number.isFinite(this.kite?.x))
-      return this.targetKite.x>=this.kite.x?1:-1;
     const wx=Number(wind?.x)||0;
     if(Math.abs(wx)>.05)return Math.sign(wx);
     const rate=Number(this.kite?.attitude?.headingRate)||0;
@@ -164,15 +160,12 @@ export class PlayerIntentController{
           this.trimPitch=progress<.35?.12:-.24;
           this.tensionAssist=progress<.35?-.08:.28;
           break;
-        case 'perseguir':{
-          const target=this.targetKite||this.findClosestTarget(allKites,320);
-          const targetDir=target&&Number.isFinite(target.x)?(target.x>=this.kite.x?1:-1):dir;
+        case 'perseguir':
           this.spoolCommand=-.55;
-          this.debicoTorque=targetDir*.42*gain;
+          this.debicoTorque=dir*.42*gain;
           this.trimPitch=-.08;
           this.tensionAssist=.12;
           break;
-        }
         case 'aparar':
         case 'aparar_retao':
         case 'aparar_despicada':
@@ -206,14 +199,4 @@ export class PlayerIntentController{
     this.tensionAssist=0;
   }
 
-  findClosestTarget(allKites,maxReach=300){
-    if(!Array.isArray(allKites)||allKites.length<2)return null;
-    let closest=null,minDist=maxReach;
-    for(const other of allKites){
-      if(other===this.kite||other.isAscending||other.spawnProtection>0)continue;
-      const d=Math.hypot(other.x-this.kite.x,other.y-this.kite.y);
-      if(d<minDist){minDist=d;closest=other;}
-    }
-    return closest;
-  }
 }

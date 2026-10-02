@@ -1,3 +1,5 @@
+import { planGiftManeuver } from './physics/GiftManeuverAI.js';
+
 /** Benefícios por presentes e manobras paulistas autênticas */
 export const MANEUVERS = Object.freeze({
   retao: { duration: 30, maxDuration: 45, reach: 240, speed: 1.55, damage: 1.25 },
@@ -49,26 +51,17 @@ export function maneuverStats(name, giftCost = 1, repeatCount = 1) {
   };
 }
 
-export function maneuverTarget(owner, kites, reach) {
-  if (!owner || !(reach > 0)) return null;
-  const list = Array.isArray(kites) ? kites : [...(kites || [])];
-  return list.filter(k => k !== owner && !k.isAscending && k.spawnProtection <= 0)
-    .map(k => ({ kite: k, distance: Math.hypot(k.x - owner.x, k.y - owner.y) }))
-    .filter(item => item.distance <= reach)
-    .sort((a,b) => a.distance - b.distance)[0]?.kite || null;
-}
-
-/** Manobra física: escolhe alvo/intensidade e agenda intenção; nunca move coordenadas. */
-export function applyManeuverMovement(kite,kites,delta,wind=null){
+/** Manobra física planejada por densidade; nunca seleciona jogador. */
+export function applyManeuverMovement(kite,kites,delta,wind=null,densityField=null){
   const maneuver=kite?.maneuver;
   if(!maneuver||kite.isAscending||kite.spawnProtection>0||!(maneuver.remaining>0))return false;
   const mName=String(maneuver.name||'retao').toLowerCase();
   if(!kite.intentController)return false;
   if(kite.intentController.currentAction!==mName||kite.intentController.actionTimer<=.05){
-    const target=maneuverTarget(kite,kites,maneuver.reach);
-    const steerDir=target&&Number.isFinite(target.x)?(target.x>=kite.x?1:-1):null;
-    kite.intentController.triggerAction(mName,Math.max(.25,Math.min(2.4,maneuver.remaining)),{
-      intensity:Math.min(2,(maneuver.speed||1.3)*1.1),target,steerDir
+    const plan=maneuver.plan||planGiftManeuver(kite,maneuver,wind,densityField);
+    maneuver.plan=plan;
+    kite.intentController.triggerAction(mName,Math.min(plan.duration,maneuver.remaining),{
+      intensity:plan.intensity,steerDir:plan.steerDir
     });
   }
   return true;
