@@ -1,15 +1,13 @@
 import { createCommentGesture } from './CommentGestureEngine.js';
+import { createInteractionGesture } from './InteractionGestureEngine.js';
 
-/**
- * Amortece entradas da live sem criar um segundo controlador físico.
- * Comentários viram envelopes curtos; a fila existente continua limitada.
- */
+/** Amortece entradas da live sem criar um segundo controlador físico. */
 export class LiveInputBuffer {
   constructor(kite) {
     this.kite = kite;
     this.commentEnergy = 0;
     this.likeEnergy = 0;
-    this.pendingCommands = []; // nome legado; agora contém gestos físicos.
+    this.pendingCommands = [];
     this.lastCommandTime = 0;
   }
 
@@ -22,23 +20,31 @@ export class LiveInputBuffer {
       wind: context.wind || null, lineDensity: context.lineDensity || null,
       engagement: Number(context.engagement) || 0 });
     if (!gesture) return null;
-    const now = Number(context.nowMs) || Date.now();
-    const last = this.pendingCommands[this.pendingCommands.length - 1];
-    if (last && last.userId === userId && last.text === clean && now - last.at < 220) {
-      last.gesture = gesture;
-      last.at = now;
-      return gesture;
+    return this._enqueue({ gesture, at:Number(context.nowMs)||Date.now(), text:clean, userId, type:'comment', count:1 }, 220);
+  }
+  addInteraction(type='interaction', count=1, context={}) {
+    const kind=String(type||'interaction').toLowerCase();
+    if(kind==='comment') return this.addComment(context.text||'',context.userId||this.kite?.userId,context);
+    const safeCount=Math.max(1,Math.min(1000,Number(count)||1));
+    if(kind==='like')this.likeEnergy=Math.min(40,this.likeEnergy+Math.min(100,safeCount)*.4);
+    const userId=String(context.userId||this.kite?.userId||'anon');
+    const gesture=createInteractionGesture({type:kind,count:safeCount,userId,kite:this.kite,wind:context.wind||null});
+    return this._enqueue({gesture,at:Number(context.nowMs)||Date.now(),text:'',userId,type:kind,count:safeCount},kind==='like'?240:120);
+  }
+
+  _enqueue(item,coalesceMs=0){
+    const last=this.pendingCommands[this.pendingCommands.length-1];
+    if(last&&last.userId===item.userId&&last.type===item.type&&item.at-last.at<coalesceMs){
+      if(item.type==='like'){
+        last.count=Math.min(1000,(Number(last.count)||1)+(Number(item.count)||1));
+        last.gesture=createInteractionGesture({type:'like',count:last.count,userId:item.userId,kite:this.kite});
+      }else last.gesture=item.gesture;
+      last.at=item.at;return last.gesture;
     }
-    this.pendingCommands.push({ gesture, at: now, text: clean, userId });
-    if (this.pendingCommands.length > 5) this.pendingCommands.shift();
-    return gesture;
+    this.pendingCommands.push(item);if(this.pendingCommands.length>5)this.pendingCommands.shift();return item.gesture;
   }
 
-  addLikes(count = 1) {
-    const safeCount = Math.max(1, Math.min(100, Number(count) || 1));
-    this.likeEnergy = Math.min(40, this.likeEnergy + safeCount * 0.4);
-  }
-
+  addLikes(count = 1) { return this.addInteraction('like',count); }
   step(dt = 1 / 60, intentController = null, context = {}) {
     const seconds = Math.max(0, Math.min(.1, Number(dt) || 1 / 60));
     this.commentEnergy *= Math.pow(0.92, seconds * 60);
@@ -53,7 +59,6 @@ export class LiveInputBuffer {
       this.lastCommandTime = now;
     }
 
-    // Curtidas continuam como influência leve; comentários já possuem gesto próprio.
     if (this.likeEnergy > 1 && !intentController.currentAction) {
       const lift = Math.min(.35, this.likeEnergy * .02);
       intentController.trimPitch -= lift * .12;

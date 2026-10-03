@@ -15,7 +15,6 @@ import { RooftopPlayer } from '../ui/RooftopPlayer.js';
 import { liveVisualScale } from '../ui/LiveLayout.js';
 import { rooftopSlotOrder, rooftopPlayerLayout, rooftopHandAnchor, rooftopAnchorY } from '../ui/RooftopLayout.js';
 import { applyManeuverMovement, maneuverStats, selectGiftManeuver } from './Maneuvers.js';
-import { applyLikeSpool } from './RelinhoMechanics.js';
 import { CHECKPOINT_KEY, captureArena, readArenaCheckpoint, restoreKiteState, applyArenaLiveState } from './ArenaCheckpoint.js';
 import { startChatAction, applyChatAction } from './ChatControls.js';
 import { RopeCollision } from './physics/RopeCollision.js';
@@ -554,13 +553,14 @@ export class GameApp {
       this.hud.showManeuver(kite.nickname, stats.name);
     });
     this._socketSubscriptions.on('competition:comment', (data) => {
-      const text = String(data?.text || '').trim();
-      if (!text) return;
-      const energy = this.crowdEnergy.accept({ userId:data?.userId, text });
-      const kite = this.kites.get(String(data?.userId || ''));
-      if (kite) kite.inputBuffer?.addComment(text, data?.userId, {
-        wind: Wind.sample(this.windTime), lineDensity:this.lineDensityField, engagement:energy
-      });
+      const text=String(data?.text||'').trim(); if(text)this.crowdEnergy.accept({userId:data?.userId,text});
+    });
+    this._socketSubscriptions.on('competition:interaction', (data) => {
+      const kite=this.kites.get(String(data?.userId||'')); if(!kite)return;
+      const type=String(data?.type||'interaction').toLowerCase();
+      const context={userId:data?.userId,text:String(data?.text||''),wind:Wind.sample(this.windTime),lineDensity:this.lineDensityField,engagement:this.crowdEnergy.value};
+      if(type==='comment')kite.inputBuffer?.addComment(context.text,data?.userId,context);
+      else kite.inputBuffer?.addInteraction(type,data?.count||1,context);
     });
     this._socketSubscriptions.on('competition:chat_action', (data) => {
       if (!data?.userId || !data?.action) return;
@@ -705,19 +705,7 @@ export class GameApp {
     });
     this._socketSubscriptions.on('tiktok:status', data => this.hud.setLiveStatus(data));
     this._socketSubscriptions.on('likes:burst', (data) => {
-      const duration = Math.min(30, Math.max(1, Number(data?.durationSeconds) || 30));
-      for (const k of this.kites.values()) k.likeBoostRemaining = duration;
-      this.hud.showBoost();
-      const kite = this.kites.get(String(data?.userId || ''));
-      if (!kite) return;
-      const count = Math.max(1, Number(data?.likeCount || data?.totalLikes) || 1);
-      kite.inputBuffer?.addLikes(count);
-      const spool = applyLikeSpool(kite, count);
-      const stats = maneuverStats('despicar', 1, 1);
-      stats.duration = Math.min(2.4, .55 + Math.min(25, count) * .055 + spool * .65);
-      stats.remaining = stats.duration;
-      kite.setManeuver(stats);
-      this.hud.showManeuver(kite.nickname, 'despicar');
+      if(data?.userId)this.hud.showBoost();
     });
     this._socketSubscriptions.on('arena:state', payload => {
       if (this.isCombatAuthority || !payload || !Array.isArray(payload.kites)) return;
