@@ -151,6 +151,14 @@ tiktokService.onTransportDown = () => {
   setTimeout(autoConnectSavedLive, 750).unref();
 };
 
+tiktokService.onLiveEnded = () => {
+  arenaStore.reset(gameRules, buffManager, { scope: 'kites' });
+  recentValidatedCuts.clear();
+  catchRegistry.clear();
+  io.emit('arena:reset', { scope: 'kites', reason: 'live_ended' });
+  io.emit('competition:queue', { length: gameRules.queue.length });
+};
+
 // Rota do Painel Admin Dev
 app.get('/admin', (req, res) => {
   res.sendFile(path.join(__dirname, 'views', 'admin.html'));

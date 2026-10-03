@@ -38,6 +38,7 @@ class TikTokService {
     this.activityMonitor = new LiveActivityMonitor();
     this.replayStore = null;
     this.playerPlatform = null;
+    this.onLiveEnded = null;
   }
 
   /**
@@ -376,7 +377,12 @@ class TikTokService {
         phase: 'reconnecting', retrying: true });
     });
     client.on('liveEnded', () => {
+      const wasConnected = this.isConnected;
       this.markWaitingForLive(client, { kind:'LIVE_ENDED', attempt:1, delayMs:120000 });
+      if (wasConnected) {
+        try { this.onLiveEnded?.(); }
+        catch (error) { console.error('[TikTok Live] Falha ao encerrar arena:', error?.message || error); }
+      }
     });
     client.on('error', error => {
       this.markTransportDown(client, 'Conexão com a Live interrompida. Reconexão automática em andamento.', error?.code || error?.cause?.code);
