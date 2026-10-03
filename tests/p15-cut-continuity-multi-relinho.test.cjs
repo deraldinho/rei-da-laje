@@ -127,3 +127,53 @@ test('P15.1: checkpoint backend preserva ropeNodes sanitizados para validação 
     {x:200,y:1750,z:0},{x:480,y:900,z:0},{x:800,y:300,z:0}
   ]);
 });
+
+
+test('P15.3: backend aceita corte real pelo par de segmentos 3D mesmo se cutX/cutY derivarem alguns frames', () => {
+  const { validateCutClaim } = require('../backend/cutClaimValidator');
+  const rules = { activePlayers:new Map([['A',{}],['B',{}]]) };
+  const now = Date.now();
+  const states = new Map([
+    ['A',{updatedAt:now,screenWidth:1080,screenHeight:1920,ropeNodes:[
+      {x:100,y:100,z:20},{x:500,y:500,z:50},{x:900,y:900,z:80}
+    ]}],
+    ['B',{updatedAt:now,screenWidth:1080,screenHeight:1920,ropeNodes:[
+      {x:100,y:900,z:55},{x:500,y:500,z:52},{x:900,y:100,z:49}
+    ]}]
+  ]);
+  const result = validateCutClaim({
+    winnerId:'A', loserId:'B', cutX:610, cutY:620,
+    contactEvidence:{
+      contactAId:'A', contactBId:'B', segmentIndexA:0, segmentIndexB:0,
+      s:1, t:1, contactRadius:12
+    }
+  },rules,states,now);
+  assert.equal(result.ok,true,result.reason);
+  assert.ok(Math.hypot(result.cutX-500,result.cutY-500)<5,
+    `ponto canônico deveria vir do contato dos segmentos: ${result.cutX},${result.cutY}`);
+});
+
+test('P15.3: frontend envia evidência dos dois segmentos físicos no claim de corte', () => {
+  const app = fs.readFileSync(path.resolve(__dirname,'../frontend/src/engine/App.js'),'utf8');
+  assert.match(app,/contactEvidence\s*=\s*\{/);
+  assert.match(app,/contactAId:\s*String\(contact\.kiteA\.userId\)/);
+  assert.match(app,/contactBId:\s*String\(contact\.kiteB\.userId\)/);
+  assert.match(app,/segmentIndexA:\s*contact\.segmentIndexA/);
+  assert.match(app,/segmentIndexB:\s*contact\.segmentIndexB/);
+  assert.match(app,/contactEvidence\s*[,}]/);
+});
+
+test('P15.3: evidência 3D ainda rejeita segmentos fisicamente separados', () => {
+  const { validateCutClaim } = require('../backend/cutClaimValidator');
+  const rules = { activePlayers:new Map([['A',{}],['B',{}]]) };
+  const now = Date.now();
+  const states = new Map([
+    ['A',{updatedAt:now,ropeNodes:[{x:0,y:0,z:0},{x:500,y:0,z:0}]}],
+    ['B',{updatedAt:now,ropeNodes:[{x:0,y:300,z:0},{x:500,y:300,z:0}]}]
+  ]);
+  const result = validateCutClaim({winnerId:'A',loserId:'B',cutX:250,cutY:150,
+    contactEvidence:{contactAId:'A',contactBId:'B',segmentIndexA:0,segmentIndexB:0,
+      s:.5,t:.5,contactRadius:12}},rules,states,now);
+  assert.equal(result.ok,false);
+  assert.equal(result.reason,'PHYSICAL_SEGMENT_MISMATCH');
+});

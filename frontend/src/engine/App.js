@@ -1240,7 +1240,17 @@ export class GameApp {
       }
       if (!combat.tied && combat.winner && combat.loser) {
         this.cutCooldowns.set(cut.pairKey, wallNow);
-        this.handleCutSuccess(combat.winner, combat.loser, combat.cutX, combat.cutY, combat.breakInfo);
+        const contactEvidence = {
+          contactAId: String(contact.kiteA.userId),
+          contactBId: String(contact.kiteB.userId),
+          segmentIndexA: contact.segmentIndexA,
+          segmentIndexB: contact.segmentIndexB,
+          s: contact.s,
+          t: contact.t,
+          contactRadius: contact.contactRadius,
+          distance: contact.distance
+        };
+        this.handleCutSuccess(combat.winner, combat.loser, combat.cutX, combat.cutY, combat.breakInfo, contactEvidence);
       }
     }
 
@@ -1257,7 +1267,7 @@ export class GameApp {
     });
   }
 
-  handleCutSuccess(winner, loser, cutX, cutY, breakInfo = null) {
+  handleCutSuccess(winner, loser, cutX, cutY, breakInfo = null, contactEvidence = null) {
     if (!winner || !loser) return;
     const loserUserId = String(loser.userId);
     if (!this.kites.has(loser.userId) && !this.kites.has(loserUserId)) return;
@@ -1300,6 +1310,7 @@ export class GameApp {
       cutY,
       breakSegmentIndex: Number.isFinite(effectiveBreakInfo.segmentIndex) ? effectiveBreakInfo.segmentIndex : null,
       breakSegmentT: Number.isFinite(effectiveBreakInfo.segmentT) ? effectiveBreakInfo.segmentT : null,
+      contactEvidence,
       lineType: winner.lineType,
       checkpoint: checkpointPayload
     }, (ack) => {

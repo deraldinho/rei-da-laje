@@ -84,3 +84,11 @@ Com o novo voo tridimensional, a abrasão ambiental foi recalibrada para `abrasi
 A autoridade de simulação continua única para impedir que duas abas decidam cortes diferentes. A cada 150 ms, somente o navegador autoridade envia `arena:live_state` ao backend. O backend sanitiza o snapshot em memória e retransmite `arena:state` aos demais navegadores, sem persistir em disco nessa frequência.
 
 O snapshot vivo inclui posição 3D, velocidade, HP da linha, tensão, comprimento liberado, desgaste por segmento e nós XYZ da corda. OBS, Chrome, Edge e previews aplicam o mesmo estado canônico; observadores não calculam dano próprio. O evento `game:cut_occurred` continua sendo a única confirmação irreversível de corte/voada/pontuação.
+
+### Validação canônica do corte por segmentos 3D
+
+O claim de corte agora envia `contactEvidence` com os dois IDs de linha, índices dos segmentos, frações `s/t` e raio de contato. O backend usa o checkpoint anexado ao claim para reconstruir esses dois segmentos em 3D e recalcular o ponto canônico do corte.
+
+Isso elimina falsos `PHYSICAL_POINT_MISMATCH` causados por `cutX/cutY` defasados entre o frame do solver e o snapshot, sem liberar cortes impossíveis: segmentos separados continuam rejeitados como `PHYSICAL_SEGMENT_MISMATCH`.
+
+Regressão: `tests/p15-cut-continuity-multi-relinho.test.cjs` cobre aceitação de contato 3D real, rejeição de segmentos separados e presença da evidência no payload do frontend.
