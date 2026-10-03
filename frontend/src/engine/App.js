@@ -545,7 +545,8 @@ export class GameApp {
     this._socketSubscriptions.on('competition:maneuver', data => {
       const kite = this.kites.get(String(data?.userId || ''));
       if (!kite) return;
-      const maneuverName = selectGiftManeuver(data?.giftName) || String(data?.giftName || 'retao');
+      const maneuverName = selectGiftManeuver(data?.giftName);
+      if (!maneuverName) return;
       const stats = maneuverStats(maneuverName, data?.giftCost, data?.repeatCount);
       if (!stats) return;
       stats.plan = planGiftManeuver(kite, stats, Wind.sample(this.windTime), this.lineDensityField);

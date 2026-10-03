@@ -14,7 +14,6 @@ const GiftCatalog = require('./giftCatalog');
 const playerSpawnPayload = require('./playerSpawnPayload');
 const { requireLocalControl, canClaimCombat, isLoopbackOrigin } = require('./localControl');
 const { requireSimulationEnabled } = require('./simulationGuard');
-const SimulationBotPilot = require('./simulationBotPilot');
 const { capturePlayerStates } = require('./arenaLiveState');
 const { validateCutClaim } = require('./cutClaimValidator');
 const { CatchClaimRegistry } = require('./catchClaimRegistry');
@@ -509,8 +508,6 @@ app.post('/api/competition/admin-action', requireLocalControl, (req, res) => {
 // Somente um renderizador pode informar cortes por vez.
 let combatOwnerSocketId = null;
 let combatOwnerLastHeartbeatAt = 0;
-const simulationBotPilot = new SimulationBotPilot(io, gameRules);
-setInterval(() => { if (combatOwnerSocketId) simulationBotPilot.tick(); }, 600).unref();
 latestArenaFps = null;
 setInterval(() => {
   if (!combatOwnerSocketId || Date.now() - combatOwnerLastHeartbeatAt < 12000) return;

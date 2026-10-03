@@ -36,8 +36,9 @@ export function selectGiftManeuver(giftName) {
 }
 
 export function maneuverStats(name, giftCost = 1, repeatCount = 1) {
-  const mName = (typeof name === 'string' && MANEUVERS[name]) ? name : (selectGiftManeuver(name) || 'retao');
-  const base = MANEUVERS[mName] || MANEUVERS.retao;
+  const mName = (typeof name === 'string' && MANEUVERS[name]) ? name : selectGiftManeuver(name);
+  if (!mName) return null;
+  const base = MANEUVERS[mName];
   const count = Math.min(20, Math.max(1, Math.floor(Number(repeatCount) || 1)));
   // Alcance cresce sublinearmente: presente caro não atinge o céu inteiro.
   const tier = Math.min(2.0, 1 + Math.log10(Math.max(1, Number(giftCost) || 1)) * 0.22);
