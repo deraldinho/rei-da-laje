@@ -217,9 +217,12 @@ export class RopePhysics {
     const outwardFlow=Math.max(0,along);
     const terminalPullTension=Math.min(.34,outwardFlow*outwardFlow*.075*(.75+.25*exposedLength));
     const windTension=Math.min(.42,lineDragTension+terminalPullTension);
+    // Com vento operacional a linha transmite tração contínua mesmo mantendo barriga.
+    const airSpeed=Math.hypot(airX,airY,airZ);
+    const aerodynamicTensionFloor=airSpeed>=.12?Math.min(.38,.26+Math.max(0,airSpeed-.12)*.06):.08;
     // strain >= 0.98 indica linha reta e esticada; strain < 0.85 indica bastante folga
     const geometricTension=Math.max(0.04,0.12+(strain-.75)*3.5);
-    const rawTension=Math.max(0.08,Math.min(1,geometricTension+windTension));
+    const rawTension=Math.max(aerodynamicTensionFloor,Math.min(1,geometricTension+windTension));
     this.tension = Math.max(0.08, Math.min(1.0, this.tension + (rawTension - this.tension) * Math.min(1.0, safeDt * 8)));
     // Vento ambiental pode levar a pipa ao limite do tirante sem equivaler a uma
     // puxada ativa do carretel. Sobre-extens?o vira carga estrutural forte apenas
