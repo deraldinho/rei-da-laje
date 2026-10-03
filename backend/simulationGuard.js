@@ -4,7 +4,22 @@ function isSimulationEnabled(env = process.env) {
 
 function isAdminSimulationRequest(req = {}) {
   const value = req?.headers?.['x-pipa-simulation'] ?? req?.get?.('X-Pipa-Simulation');
-  return String(value || '').trim().toLowerCase() === 'admin';
+  if (String(value || '').trim().toLowerCase() === 'admin') return true;
+
+  const referer = String(req?.headers?.referer || req?.headers?.referrer || '');
+  const remoteAddress = String(req?.socket?.remoteAddress || req?.ip || '').toLowerCase();
+  const loopback = remoteAddress === '::1' || remoteAddress === 'localhost'
+    || /^127(?:\.\d{1,3}){3}$/.test(remoteAddress)
+    || /^::ffff:127(?:\.\d{1,3}){3}$/.test(remoteAddress);
+  if (!loopback || !referer) return false;
+  try {
+    const url = new URL(referer);
+    const host = String(url.hostname || '').toLowerCase();
+    const localHost = host === 'localhost' || host === '::1' || /^127(?:\.\d{1,3}){3}$/.test(host);
+    return localHost && url.pathname === '/admin';
+  } catch (_) {
+    return false;
+  }
 }
 
 function isSimulationUserId(value = '') {

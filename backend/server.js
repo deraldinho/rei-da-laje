@@ -161,6 +161,7 @@ tiktokService.onLiveEnded = () => {
 
 // Rota do Painel Admin Dev
 app.get('/admin', (req, res) => {
+  res.set('Cache-Control', 'no-store');
   res.sendFile(path.join(__dirname, 'views', 'admin.html'));
 });
 

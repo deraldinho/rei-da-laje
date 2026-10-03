@@ -62,3 +62,17 @@ test('chat simulado não grava perfil persistente e chega marcado ao GameRules',
   assert.equal(observed,0);
   assert.equal(received.isSimulation,true);
 });
+
+test('painel Admin já aberto continua autorizado pelo referer local', () => {
+  const { isAdminSimulationRequest } = require('../backend/simulationGuard');
+  const req={
+    headers:{ referer:'http://127.0.0.1:3000/admin' },
+    socket:{ remoteAddress:'127.0.0.1' }
+  };
+  assert.equal(isAdminSimulationRequest(req),true);
+});
+
+test('rota /admin desativa cache para não manter JavaScript antigo', () => {
+  const source=fs.readFileSync(path.resolve(__dirname,'../backend/server.js'),'utf8');
+  assert.match(source,/app\.get\('\/admin',[\s\S]{0,180}Cache-Control['"],\s*['"]no-store['"]/);
+});
