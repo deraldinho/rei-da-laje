@@ -141,3 +141,15 @@ O jogo só é considerado pronto para esta etapa quando esse fluxo passa de pont
 ## 12. Fora de escopo desta finalização
 
 Esta etapa não redesenha economia, skins, loja, câmera, ranking ou física de abrasão já validada, salvo correção necessária para preservar o novo loop de interação. Também não cria novos poderes: usa os poderes de presente já existentes.
+
+## 11. Poderes sem efeito real ficam desativados
+
+Nenhum poder, buff visual ou habilidade automática pode aparecer como gameplay ativo se não produzir um efeito mecânico real e testado.
+
+- poderes não mapeados para uma manobra física válida devem ser no-op no combate;
+- efeitos legados sem impacto verificável não devem ser anunciados como habilidade ativa;
+- bots não podem disparar esses poderes automaticamente;
+- HUD/feedback só pode anunciar poder quando a ação correspondente realmente entrar no controlador físico;
+- presentes sem poder específico continuam gerando apenas o pulso físico normal de interação.
+
+Critério de aceitação: todo poder exibido durante a Live deve ter teste que comprove uma alteração física observável, ou então permanecer desativado.
