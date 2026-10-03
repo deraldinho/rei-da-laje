@@ -31,7 +31,7 @@ export class LineBroadPhase {
     const radius = Math.max(0, Number(contactRadius) || 0);
     let entryCount = 0;
     for (const kite of (kites || [])) {
-      if (!kite?.rope?.getAABB || kite.isAscending || Number(kite.spawnProtection) > 0 || kite.pendingCut || kite.isPendingCut) continue;
+      if (!kite?.rope?.getAABB || kite.pendingCut || kite.isPendingCut) continue;
       const box = kite.rope.getAABB();
       if (!box || ![box.minX, box.maxX, box.minY, box.maxY].every(Number.isFinite)) continue;
       const entry = this._entry(entryCount++);

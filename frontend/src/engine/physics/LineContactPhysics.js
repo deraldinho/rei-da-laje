@@ -1,3 +1,4 @@
+import { contactScaleForPair } from './PhysicsScale.js';
 const clamp=(v,min,max)=>Math.max(min,Math.min(max,Number(v)||0));
 
 function naturalTension(kite){
@@ -19,9 +20,13 @@ export function computeLineContactPhysics(kiteA,kiteB,hit,config={},out={}){
   const tensionMultiplier=Math.max(0,Number(config.tensionMultiplier)||0);
   const effectiveTension=.5*(tensionA+tensionB)*tensionMultiplier;
   const normalForce=effectiveTension*angleInfluence;
-  const relativeVx=Number(hit.relativeVx)||0, relativeVy=Number(hit.relativeVy)||0;
-  const slideA=Number(hit.slideA)||0, slideB=Number(hit.slideB)||0;
-  const vSlide=Number.isFinite(hit.slidingSpeed)?Math.max(0,hit.slidingSpeed):.5*(Math.abs(slideA)+Math.abs(slideB));
+  const worldScale=contactScaleForPair(kiteA,kiteB);
+  const relativeVxRaw=Number(hit.relativeVx)||0, relativeVyRaw=Number(hit.relativeVy)||0;
+  const slideARaw=Number(hit.slideA)||0, slideBRaw=Number(hit.slideB)||0;
+  const vSlideRaw=Number.isFinite(hit.slidingSpeed)?Math.max(0,hit.slidingSpeed):.5*(Math.abs(slideARaw)+Math.abs(slideBRaw));
+  const relativeVx=relativeVxRaw/worldScale, relativeVy=relativeVyRaw/worldScale;
+  const slideA=slideARaw/worldScale, slideB=slideBRaw/worldScale;
+  const vSlide=vSlideRaw/worldScale;
   Object.assign(out,{tensionA,tensionB,effectiveTension,sinAngle,crossingAngle:Math.asin(sinAngle),
     angleInfluence,normalForce,relativeVx,relativeVy,vSlide,slideA,slideB});
   return out;

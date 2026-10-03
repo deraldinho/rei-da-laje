@@ -6,6 +6,12 @@ function fract(value) {
   return value - Math.floor(value);
 }
 
+function sparseLaneRank(idx, count) {
+  if (count < 3 || count > 8) return idx;
+  const half = Math.ceil(count / 2);
+  return idx % 2 === 0 ? Math.floor(idx / 2) : half + Math.floor(idx / 2);
+}
+
 export function spawnTargetForRank(rank, total, width, height) {
   const count = Math.max(1, Math.min(40, Math.floor(Number(total) || 1)));
   const idx = clamp(Math.floor(Number(rank) || 0), 0, count - 1);
@@ -17,9 +23,10 @@ export function spawnTargetForRank(rank, total, width, height) {
   const usable = w - margin * 2;
   const nominalGap = usable / (count - 1);
   const jitter = Math.min(w * 0.012, nominalGap * 0.38);
+  const laneIdx = sparseLaneRank(idx, count);
   const xNoise = Math.sin((idx + 1) * 12.9898) * jitter;
   const altitudeSeed = fract((idx + 1) * 0.61803398875 + 0.31);
-  const x = margin + (idx / (count - 1)) * usable + xNoise;
+  const x = margin + (laneIdx / (count - 1)) * usable + xNoise;
   const y = h * (0.19 + altitudeSeed * 0.15);
   return { x: clamp(x, margin, w - margin), y };
 }
@@ -27,7 +34,8 @@ export function spawnTargetForRank(rank, total, width, height) {
 export function stabilizeSpawnKite(kite, rank, total, width, height) {
   if (!kite || kite.spawnLayoutEligible === false) return false;
   if (!kite.isAscending || !(Number(kite.spawnProtection) > 0)) return false;
-  if (kite._spawnPhysicsInitialized) return false;
+  const layoutSignature = `${Math.floor(Number(rank)||0)}:${Math.max(1,Math.floor(Number(total)||1))}`;
+  if (kite._spawnLayoutSignature === layoutSignature) return false;
 
   const target = spawnTargetForRank(rank, total, width, height);
   kite.targetX = target.x;
@@ -38,6 +46,7 @@ export function stabilizeSpawnKite(kite, rank, total, width, height) {
   kite.vy = 0;
   kite.vz = Number.isFinite(kite.vz) ? kite.vz : 0;
   kite._spawnPhysicsInitialized = true;
+  kite._spawnLayoutSignature = layoutSignature;
 
   const handX = Number.isFinite(kite.line?.visualBaseX) ? kite.line.visualBaseX : kite.baseX;
   const handY = Number.isFinite(kite.line?.visualBaseY) ? kite.line.visualBaseY : kite.baseY;

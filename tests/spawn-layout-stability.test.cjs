@@ -74,3 +74,19 @@ test('GameApp aplica estabilização após ordenar bonecos e não em checkpoint 
   assert.match(source, /stabilizeSpawnKite\(kite,\s*index,\s*ordered\.length,\s*w,\s*h\)/);
   assert.match(source, /kite\.spawnLayoutEligible\s*=\s*!checkpoint/);
 });
+
+test('pipa ainda protegida acompanha mudança do total antes do combate', async () => {
+  const { stabilizeSpawnKite } = await import(`${spawnModule}?t=${Date.now()}-reflow`);
+  let resets=0;
+  const kite={isAscending:true,spawnProtection:3,spawnLayoutEligible:true,baseX:100,baseY:1800,baseZ:0,z:0,
+    rope:{resetPositions(){resets++;}},x:0,y:0,vx:0,vy:0};
+  assert.equal(stabilizeSpawnKite(kite,0,1,1080,1920),true);
+  const firstX=kite.x;
+  assert.equal(stabilizeSpawnKite(kite,0,4,1080,1920),true,'layout protegido deve acompanhar o total final');
+  assert.notEqual(kite.x,firstX);
+  assert.equal(resets,2);
+  assert.equal(stabilizeSpawnKite(kite,0,4,1080,1920),false,'mesma assinatura não deve teleportar de novo');
+  kite.spawnProtection=0;kite.isAscending=false;const x=kite.x;
+  assert.equal(stabilizeSpawnKite(kite,1,5,1080,1920),false);
+  assert.equal(kite.x,x);
+});

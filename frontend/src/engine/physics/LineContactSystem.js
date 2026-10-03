@@ -5,6 +5,7 @@ import { RopeCollision } from './RopeCollision.js';
 import { computeLineContactPhysics } from './LineContactPhysics.js';
 import { integrateLineAbrasion } from './LineAbrasionModel.js';
 import { applyLineWearAndEvaluateBreak } from './LineBreakSystem.js';
+import { contactScaleForPair } from './PhysicsScale.js';
 
 export class LineContactSystem {
   constructor(config = {}) {
@@ -24,6 +25,7 @@ export class LineContactSystem {
     this._candidateCursor = 0;
     this._cutLosers = new Set();
     this._metrics = {};
+    this._broadContactScale = 1;
     this._result = { contacts:this.manager.contacts, fxContacts:this._fxContacts, couplingJobs:this._couplingJobs, cuts:this._cuts, metrics:this._metrics };
   }
 
@@ -44,11 +46,12 @@ export class LineContactSystem {
   }
 
   _prepareEligible(kites,pendingCutIds) {
-    this._eligible.length=0; this._eligibleById.clear();
+    this._eligible.length=0; this._eligibleById.clear(); this._broadContactScale=1;
     for(const kite of (kites||[])){
       const id=String(kite?.userId??'');
-      if(!id||!kite?.rope||kite.isAscending||Number(kite.spawnProtection)>0||pendingCutIds?.has?.(id)) continue;
+      if(!id||!kite?.rope||pendingCutIds?.has?.(id)) continue;
       this._eligible.push(kite); this._eligibleById.set(id,kite);
+      this._broadContactScale=Math.max(this._broadContactScale,Math.max(.35,Number(kite.physicsScale)||1));
     }
   }
 
@@ -63,7 +66,7 @@ export class LineContactSystem {
       const a=this._eligibleById.get(contact.lineAId), b=this._eligibleById.get(contact.lineBId);
       if(!a||!b) continue;
       this._collisionOptions.hint={segmentIndexA:contact.segmentIndexA,segmentIndexB:contact.segmentIndexB};
-      const hit=RopeCollision.checkRopeCollision(a.rope,b.rope,8,this._collisionOptions,this._narrowOut);
+      const hit=RopeCollision.checkRopeCollision(a.rope,b.rope,8*contactScaleForPair(a,b),this._collisionOptions,this._narrowOut);
       checks++;
       if(hit.hit) this._touchFromHit(contact.pairKey,a,b,hit);
     }
@@ -72,7 +75,7 @@ export class LineContactSystem {
   }
 
   _discoverNew() {
-    const candidates=this.broadPhase.scan(this._eligible,16);
+    const candidates=this.broadPhase.scan(this._eligible,16*this._broadContactScale);
     const total=candidates.length;
     if(total===0) return {candidates:0,checks:0};
     const start=this._candidateCursor%total;
@@ -81,7 +84,7 @@ export class LineContactSystem {
     for(let offset=0;offset<total&&checks<cap;offset++){
       const candidate=candidates[(start+offset)%total];
       if(this.manager.contacts.has(candidate.pairKey)) continue;
-      const hit=RopeCollision.checkRopeCollision(candidate.kiteA.rope,candidate.kiteB.rope,8,this._collisionOptions,this._narrowOut);
+      const hit=RopeCollision.checkRopeCollision(candidate.kiteA.rope,candidate.kiteB.rope,8*contactScaleForPair(candidate.kiteA,candidate.kiteB),this._collisionOptions,this._narrowOut);
       checks++;
       if(hit.hit) this._touchFromHit(candidate.pairKey,candidate.kiteA,candidate.kiteB,hit);
     }
@@ -116,6 +119,9 @@ export class LineContactSystem {
     if(allowWear){
       for(const contact of this.manager.contacts.values()){
         if(!contact.active||contact.phase==='RELEASE') continue;
+        const protectedA=Boolean(contact.kiteA?.isAscending)||Number(contact.kiteA?.spawnProtection)>0;
+        const protectedB=Boolean(contact.kiteB?.isAscending)||Number(contact.kiteB?.spawnProtection)>0;
+        if(protectedA||protectedB) continue;
         if(this._cutLosers.has(contact.lineAId)||this._cutLosers.has(contact.lineBId)) continue;
         integrateLineAbrasion(contact,contact.kiteA,contact.kiteB,dt,this.config);
         abrasionUpdates++;

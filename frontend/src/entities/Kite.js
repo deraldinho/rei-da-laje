@@ -12,6 +12,7 @@ import { KiteDynamics } from '../engine/physics/KiteDynamics.js';
 import { PlayerIntentController } from '../engine/physics/PlayerIntentController.js';
 import { LiveInputBuffer } from '../engine/physics/LiveInputBuffer.js';
 import { ManeuverQueue } from '../engine/physics/ManeuverQueue.js';
+import { physicsWorldScale } from '../engine/physics/PhysicsScale.js';
 
 const isSafeAvatarUrl = value => {
   const url=String(value||'').trim();
@@ -98,6 +99,7 @@ export class Kite extends PIXI.Container {
     // Dimensões da tela e âncora na laje
     this.screenWidth = screenWidth;
     this.screenHeight = screenHeight;
+    this.physicsScale = physicsWorldScale(screenWidth, screenHeight);
     this.visualScale = liveVisualScale(screenWidth, screenHeight);
     this.baseX = screenWidth * (0.15 + Math.random() * 0.7);
     this.baseY = rooftopAnchorY(screenWidth, screenHeight); // âncora compartilhada com a laje
@@ -121,7 +123,8 @@ export class Kite extends PIXI.Container {
     this.windInfluence = 0.8 + Math.random() * 0.6; // sensibilidade ao vento
 
     // Componentes Visuais e Físicos
-    this.rope = new RopePhysics({ nodeCount: 12, lineType: this.lineType });
+    this.rope = new RopePhysics({ nodeCount: 12, lineType: this.lineType,
+      totalLineLength: 1800 * this.physicsScale, minSpoolLength: 80 * this.physicsScale, worldScale: this.physicsScale });
     this.intentController = new PlayerIntentController(this);
     this.inputBuffer = new LiveInputBuffer(this);
     this.maneuverQueue = new ManeuverQueue(this);
@@ -489,27 +492,25 @@ export class Kite extends PIXI.Container {
   }
 
   resize(width, height) {
+    const oldScale = this.physicsScale || physicsWorldScale(this.screenWidth, this.screenHeight);
+    const nextScale = physicsWorldScale(width, height);
     const sx = width / this.screenWidth, sy = height / this.screenHeight;
-    this.x *= sx; this.y *= sy; this.targetX *= sx; this.targetY *= sy;
-    this.baseX *= sx; this.baseY = rooftopAnchorY(width, height);
+    const sz = nextScale / Math.max(.001, oldScale);
+    this.x *= sx; this.y *= sy; this.z *= sz; this.targetX *= sx; this.targetY *= sy;
+    this.vx *= sx; this.vy *= sy; this.vz *= sz;
+    this.baseX *= sx; this.baseY = rooftopAnchorY(width, height); this.baseZ *= sz;
     this.line.baseX = this.baseX; this.line.baseY = this.baseY;
     if (this.rope) {
+      const releasedRatio = this.rope.totalLineLength > 0 ? this.rope.spoolLength / this.rope.totalLineLength : 1;
+      this.rope.totalLineLength = 1800 * nextScale; this.rope.spoolCapacity = this.rope.totalLineLength;
+      this.rope.minSpoolLength = 80 * nextScale; this.rope.worldScale = nextScale;
+      this.rope.spoolLength = Math.max(this.rope.minSpoolLength, Math.min(this.rope.totalLineLength, releasedRatio * this.rope.totalLineLength));
       if (this.rope.isInitialized && Array.isArray(this.rope.nodes)) {
-        for (const n of this.rope.nodes) {
-          n.x *= sx; n.prevX *= sx;
-          n.y *= sy; n.prevY *= sy;
-        }
-        const scaleFactor = (sx + sy) / 2;
-        this.rope.spoolLength *= scaleFactor;
+        for (const n of this.rope.nodes) { n.x *= sx; n.prevX *= sx; n.y *= sy; n.prevY *= sy; n.z *= sz; n.prevZ *= sz; }
         this.rope.updateAABB();
-      } else {
-        this.rope.resetPositions(
-          { x: this.baseX, y: this.baseY, z: 0 },
-          { x: this.x, y: this.y, z: 0 }
-        );
-      }
+      } else this.rope.resetPositions({ x:this.baseX,y:this.baseY,z:this.baseZ },{ x:this.x,y:this.y,z:this.z });
     }
-    this.screenWidth = width; this.screenHeight = height;
+    this.screenWidth = width; this.screenHeight = height; this.physicsScale = nextScale;
     this.visualScale = liveVisualScale(width, height);
   }
 

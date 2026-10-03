@@ -72,14 +72,16 @@ function ensureDepth(kite){
   const rank=Number(kite?.rooftopPlayer?.layoutIndex);
   const phase=Number(kite?.windPhase)||0;
   const seed=Number.isFinite(rank)?((rank*.61803398875+.217)%1+1)%1:(.5+.5*Math.sin(phase*1.37));
-  if(!Number.isFinite(kite.z)||Math.abs(kite.z)<1e-6) kite.z=(seed-.5)*320;
+  const worldScale=Math.max(.35,Number(kite?.physicsScale)||1);
+  if(!Number.isFinite(kite.z)||Math.abs(kite.z)<1e-6) kite.z=(seed-.5)*320*worldScale;
   kite.vz=Number.isFinite(kite.vz)?kite.vz:0;
   kite._physicsDepthInitialized=true;
 }
 
 function computeBodySeparation(kite,allKites,population){
   if(!Array.isArray(allKites)||allKites.length<2)return {fx:0,fy:0,fz:0};
-  const spacing=population>=30?58:population>=15?60:64;
+  const worldScale=Math.max(.35,Number(kite?.physicsScale)||1);
+  const spacing=(population>=30?58:population>=15?60:64)*worldScale;
   let fx=0,fy=0,fz=0;
   for(const other of allKites){
     if(!other||other===kite)continue;
@@ -93,13 +95,13 @@ function computeBodySeparation(kite,allKites,population){
       const angle=(Math.sin((Number(kite?.rooftopPlayer?.layoutIndex)||0)*2.31)*.5+.5)*Math.PI*.9+.2;
       dx=Math.cos(angle)*sign;dy=Math.sin(angle)*sign;planar=1;
     }
-    const strength=(spacing-planar)/spacing*(population>=30?16:12.5);
+    const strength=(spacing-planar)/spacing*(population>=30?16:12.5)*worldScale;
     fx+=dx/planar*strength;
     fy+=dy/planar*strength;
-    if(planar<40&&Math.abs(dz)<38)fz+=(dz===0?1:Math.sign(dz))*(1-Math.abs(dz)/38)*strength*.60;
+    if(planar<40*worldScale&&Math.abs(dz)<38*worldScale)fz+=(dz===0?1:Math.sign(dz))*(1-Math.abs(dz)/(38*worldScale))*strength*.60;
   }
   const mag=Math.hypot(fx,fy,fz);
-  if(mag>14){const s=14/mag;fx*=s;fy*=s;fz*=s;}
+  if(mag>14*worldScale){const s=14*worldScale/mag;fx*=s;fy*=s;fz*=s;}
   return {fx,fy,fz};
 }
 
@@ -138,7 +140,9 @@ export class KiteDynamics {
     const trimPitch=Number.isFinite(intent?.trimPitch)?intent.trimPitch:-legacyLift*.32;
 
     const rope=kite.rope;
-    if(rope&&!kite.spoolController)kite.spoolController=new SpoolController(rope);
+    const worldScale=Math.max(.35,Number(kite.physicsScale)||1);
+    if(rope&&!kite.spoolController)kite.spoolController=new SpoolController(rope,{pullSpeed:220*worldScale,releaseSpeed:280*worldScale});
+    if(kite.spoolController){kite.spoolController.pullSpeed=220*worldScale;kite.spoolController.releaseSpeed=280*worldScale;}
     kite.spoolController?.step(dt,spoolCommand);
 
     const handPos={x:Number(kite.baseX)||0,y:Number(kite.baseY)||0,z:Number(kite.baseZ)||0};
@@ -169,7 +173,7 @@ export class KiteDynamics {
       const dx=prev.x-top.x,dy=prev.y-top.y,dz=(prev.z||0)-(top.z||0);
       const dist=Math.hypot(dx,dy,dz)||1;
       const slackScale=clamp(1-(Number(ropeState.slackRatio)||0)*1.35,.12,1);
-      const magnitude=effectiveTension*38*slackScale;
+      const magnitude=effectiveTension*38*worldScale*slackScale;
       tensionFx=dx/dist*magnitude;
       tensionFy=dy/dist*magnitude;
       tensionFz=dz/dist*magnitude;
@@ -181,17 +185,17 @@ export class KiteDynamics {
     const strain=Number.isFinite(ropeState.strain)?ropeState.strain:tetherDist/Math.max(1,Number(rope?.spoolLength)||tetherDist);
     const tautness=clamp((strain-.88)/.12,0,1);
     const extension=Math.max(0,tetherDist-Math.max(1,Number(rope?.spoolLength)||tetherDist));
-    const chordMagnitude=effectiveTension*52*tautness+extension*.18;
+    const chordMagnitude=effectiveTension*52*worldScale*tautness+extension*.18;
     const chordFx=tetherX*chordMagnitude, chordFy=tetherY*chordMagnitude, chordFz=tetherZ*chordMagnitude;
-    const pull=Math.max(0,-spoolCommand)*(18+effectiveTension*16);
+    const pull=Math.max(0,-spoolCommand)*(18+effectiveTension*16)*worldScale;
 
     const bodySeparation=computeBodySeparation(kite,allKites,population);
 
     const aeroScale=3.15*((kite.likeBoostRemaining||0)>0?1.08:1);
-    const gravity=30*kite.mass;
-    const totalFx=aero.fx*1.05+tensionFx+chordFx+tetherX*pull-kite.vx*.62+bodySeparation.fx;
-    const totalFy=gravity+aero.fy*aeroScale+tensionFy+chordFy+tetherY*pull-kite.vy*.56+bodySeparation.fy;
-    const totalFz=aero.fz*2.35+tensionFz+chordFz+tetherZ*pull*.72-kite.vz*.58+bodySeparation.fz;
+    const gravity=30*kite.mass*worldScale;
+    const totalFx=aero.fx*1.05*worldScale+tensionFx+chordFx+tetherX*pull-kite.vx*.62+bodySeparation.fx;
+    const totalFy=gravity+aero.fy*aeroScale*worldScale+tensionFy+chordFy+tetherY*pull-kite.vy*.56+bodySeparation.fy;
+    const totalFz=aero.fz*2.35*worldScale+tensionFz+chordFz+tetherZ*pull*.72-kite.vz*.58+bodySeparation.fz;
 
     const cone=localWind.flightCone?flightConePlanes(kite):null;
     const force={x:totalFx,y:totalFy,z:totalFz};

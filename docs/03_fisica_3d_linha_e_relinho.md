@@ -92,3 +92,17 @@ O claim de corte agora envia `contactEvidence` com os dois IDs de linha, índice
 Isso elimina falsos `PHYSICAL_POINT_MISMATCH` causados por `cutX/cutY` defasados entre o frame do solver e o snapshot, sem liberar cortes impossíveis: segmentos separados continuam rejeitados como `PHYSICAL_SEGMENT_MISMATCH`.
 
 Regressão: `tests/p15-cut-continuity-multi-relinho.test.cjs` cobre aceitação de contato 3D real, rejeição de segmentos separados e presença da evidência no payload do frontend.
+
+## Auto size do mundo físico
+
+A física não é calibrada para uma resolução fixa. `PhysicsScale.physicsWorldScale()` calcula uma escala uniforme a partir da área atual do canvas/viewport; 1080×1920 permanece apenas como unidade interna de normalização.
+
+A mesma escala é aplicada a comprimento/capacidade do carretel, velocidade de puxar/soltar, profundidade Z, separação entre pipas, forças aerodinâmicas, gravidade, vento sobre a corda e raio físico de contato. A velocidade de deslizamento usada pela abrasão é normalizada pela escala, evitando que uma tela maior cause mais dano apenas por medir velocidades em mais pixels por segundo.
+
+Durante resize, posição, velocidade, nós XYZ e capacidade da corda acompanham a nova dimensão, preservando a fração de linha já liberada. Assim, trocar a dimensão do canvas não cria nem remove linha de forma artificial.
+
+Em arenas esparsas de 3–8 pipas, o spawn protegido pode ser recalculado enquanto novos participantes entram; após o fim da proteção, o layout nunca teleporta a pipa. Bots do Admin usam manobras físicas pelo mesmo motor de intenção, sem selecionar adversário ou aplicar dano artificial.
+
+### Checkpoint autosize — 03/10/2026
+
+Validação específica em 1432×2428: `physicsScale=1,2949`, capacidade de linha ~2331 unidades, quatro bots com autoridade física e corte canônico real. Regressão completa: 551/551 testes. Benchmark de 40 pipas: 40/40, `p95=20,8 ms`, `p99=28,9 ms`, zero exceções, `maxTracked=12`, `maxSolved=3` e `maxCold=91`.

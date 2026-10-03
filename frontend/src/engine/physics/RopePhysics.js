@@ -23,6 +23,7 @@ export class RopePhysics {
     this.material = getLineMaterial(options.lineType || 'algodao');
     this.nodes = [];
     this.segmentWear = new Float32Array(this.nodeCount - 1);
+    this.worldScale = Math.max(.35, Number(options.worldScale) || 1);
     this.spoolLength = 0;
     this.minSpoolLength = Math.max(20, Number(options.minSpoolLength) || 80);
     this.totalLineLength = Math.max(this.minSpoolLength, Number(options.totalLineLength) || Number(options.spoolCapacity) || 1800);
@@ -138,11 +139,11 @@ export class RopePhysics {
 
     // Forças ambientais
     const damping = this.material.damping;
-    const grav = 140 * this.material.linearDensity * 100; // gravidade relativa da linha
+    const grav = 140 * this.material.linearDensity * 100 * this.worldScale; // gravidade relativa da linha
     const gust = Math.max(.5, Number(wind?.gust) || 1);
-    const wX = Number.isFinite(wind?.x) ? wind.x * 28 * gust : 0;
-    const wY = Number.isFinite(wind?.y) ? wind.y * 14 * gust : 0;
-    const wZ = Number.isFinite(wind?.z) ? wind.z * 22 * gust : 0;
+    const wX = Number.isFinite(wind?.x) ? wind.x * 28 * gust * this.worldScale : 0;
+    const wY = Number.isFinite(wind?.y) ? wind.y * 14 * gust * this.worldScale : 0;
+    const wZ = Number.isFinite(wind?.z) ? wind.z * 22 * gust * this.worldScale : 0;
 
     // 1. Guarda prevX/prevY dos EXTREMOS a partir de suas posições do frame anterior
     // Antes da fixação com pinNode, n0.x e nEnd.x contêm as posições do passo anterior.

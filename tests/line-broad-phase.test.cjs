@@ -24,14 +24,16 @@ test('broad phase rejeita linhas separadas e emite apenas AABBs sobrepostos', as
   assert.equal(hits[0].pairKey, 'a|b');
 });
 
-test('broad phase exclui subida, proteção de spawn e corte pendente', async () => {
+test('broad phase mantém contato físico na proteção e exclui somente corte pendente', async () => {
   const { LineBroadPhase } = await import(`${moduleUrl}?t=${Date.now()}`);
   const broad = new LineBroadPhase();
   const normal = kite('ok',0,50,0,50);
   const ascending = kite('up',0,50,0,50,{ isAscending:true });
   const protectedKite = kite('safe',0,50,0,50,{ spawnProtection:1 });
   const pending = kite('cut',0,50,0,50,{ pendingCut:true });
-  assert.equal(broad.scan([normal, ascending, protectedKite, pending]).length, 0);
+  const hits=broad.scan([normal, ascending, protectedKite, pending]);
+  assert.equal(hits.length,3);
+  assert.equal(hits.some(hit=>hit.pairKey.includes('cut')),false);
 });
 
 test('40 linhas distribuídas geram muito menos candidatos que 780 pares', async () => {

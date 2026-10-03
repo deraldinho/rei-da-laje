@@ -41,15 +41,17 @@ test('helper ThreeKites também usa z físico e sem drift senoidal de posição'
   assert.match(block,/Number\.isFinite\(kite\.z\)/);
 });
 
-test('spawn layout inicializa uma única vez durante proteção',async()=>{
+test('spawn protegido acompanha mudança de composição e congela ao entrar em combate',async()=>{
   const {pathToFileURL}=require('node:url');
   const mod=await import(pathToFileURL(path.join(root,'frontend/src/engine/SpawnLayout.js')).href+'?t='+Date.now());
   const kite={isAscending:true,spawnProtection:3,spawnLayoutEligible:true,baseX:100,baseY:1800,baseZ:0,z:120,
     line:{visualBaseX:110,visualBaseY:1750},rope:{resetPositions(){}},x:900,y:900,targetX:900,targetY:400,vx:12,vy:-4};
-  assert.equal(mod.stabilizeSpawnKite(kite,0,40,1080,1920),true);
-  const first={x:kite.x,y:kite.y}; kite.x+=17;kite.y+=9;
-  assert.equal(mod.stabilizeSpawnKite(kite,1,40,1080,1920),false);
-  assert.deepEqual({x:kite.x,y:kite.y},{x:first.x+17,y:first.y+9});
+  assert.equal(mod.stabilizeSpawnKite(kite,0,1,1080,1920),true);
+  assert.equal(mod.stabilizeSpawnKite(kite,0,1,1080,1920),false);
+  assert.equal(mod.stabilizeSpawnKite(kite,1,4,1080,1920),true);
+  const settled={x:kite.x,y:kite.y}; kite.isAscending=false;kite.spawnProtection=0;
+  assert.equal(mod.stabilizeSpawnKite(kite,2,5,1080,1920),false);
+  assert.deepEqual({x:kite.x,y:kite.y},settled);
 });
 
 test('tamanho aparente vem da perspectiva e não de escala artificial por z',()=>{
