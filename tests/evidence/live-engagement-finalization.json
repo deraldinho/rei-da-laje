@@ -1,0 +1,70 @@
+﻿{
+    "generatedAt":  "2026-10-03T04:06:18.6100829Z",
+    "unit":  {
+                 "tests":  560,
+                 "pass":  560,
+                 "fail":  0
+             },
+    "build":  {
+                  "status":  "passed",
+                  "modules":  617
+              },
+    "genericPerf40":  {
+                          "passed":  true,
+                          "scenarios":  [
+                                            {
+                                                "name":  "zero",
+                                                "meanFps":  51.30735075864202,
+                                                "p95Ms":  29.5,
+                                                "p99Ms":  30.600000143051147,
+                                                "maxContacts":  12
+                                            },
+                                            {
+                                                "name":  "two",
+                                                "meanFps":  48.69369792374795,
+                                                "p95Ms":  26.399999856948853,
+                                                "p99Ms":  59.200000047683716,
+                                                "maxContacts":  12
+                                            },
+                                            {
+                                                "name":  "three",
+                                                "meanFps":  59.14804071473492,
+                                                "p95Ms":  21.799999952316284,
+                                                "p99Ms":  25,
+                                                "maxContacts":  12
+                                            },
+                                            {
+                                                "name":  "many",
+                                                "meanFps":  60.26190752281465,
+                                                "p95Ms":  21.899999856948853,
+                                                "p99Ms":  29.700000047683716,
+                                                "maxContacts":  12
+                                            }
+                                        ]
+                      },
+    "relinho40":  {
+                      "samples":  240,
+                      "p95Ms":  17,
+                      "p99Ms":  18.59999990463257,
+                      "maxMs":  24.800000190734863,
+                      "maxTracked":  12,
+                      "maxSolved":  3,
+                      "maxCold":  94,
+                      "uncaughtExceptions":  0
+                  },
+    "runtimeSmoke":  {
+                         "canonicalUsers":  5,
+                         "interactionTypes":  [
+                                                  "comment",
+                                                  "like",
+                                                  "share",
+                                                  "follow",
+                                                  "gift"
+                                              ],
+                         "giftLine":  "cerol",
+                         "activeAfterCleanup":  0,
+                         "queueAfterCleanup":  0,
+                         "tiktokConnected":  false,
+                         "lastTikTokError":  "LIVE_NOT_FOUND"
+                     }
+}

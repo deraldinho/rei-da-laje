@@ -319,7 +319,7 @@ class TikTokService {
       this.handleLike({...normalizeUser(data),likeCount,totalLikes:Number(data.totalLikes||likeCount)});
     });
 
-    this.connection.on('share',(event)=>{ const data=event.data||event; this.recordEvent('share'); this.handleShare(normalizeUser(data)); });
+    this.connection.on('share',(event)=>{ const data=event.data||event; this.recordEvent('share'); const share=normalizeUser(data); this.replayStore?.record('share',share); this.handleShare(share); });
 
     // 4. Novo seguidor
     this.connection.on('follow', (event) => {

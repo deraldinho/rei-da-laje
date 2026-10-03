@@ -206,10 +206,8 @@ app.post('/api/replays/:name/run', requireLocalControl, async (req,res) => {
     const result=await replayStore.replay(req.params.name,{
       chat:data=>tiktokService.handleChatMessage(data),
       gift:data=>tiktokService.handleGift(data),
-      like:data=>io.emit('likes:burst',{
-        userId:String(data.userId||''),uniqueId:String(data.uniqueId||''),nickname:String(data.nickname||''),
-        likeCount:Math.max(1,Number(data.count)||1),totalLikes:Math.max(1,Number(data.count)||1),despike:true
-      }),
+      like:data=>tiktokService.handleLike({...data,likeCount:Math.max(1,Number(data.count)||1),totalLikes:Math.max(1,Number(data.count)||1)}),
+      share:data=>tiktokService.handleShare(data),
       follow:data=>tiktokService.handleFollow(data)
     },{speed:Math.min(100,Math.max(1,Number(req.body?.speed)||20))});
     res.json(result);
@@ -306,13 +304,19 @@ app.post('/api/simulate/gift', requireLocalControl, requireSimulationEnabled, (r
 });
 
 app.post('/api/simulate/likes', requireLocalControl, requireSimulationEnabled, (req, res) => {
-  const count = req.body.count || 20;
-  io.emit('likes:burst', {
-    totalLikes: count,
-    speedBonusPercent: 25,
-    durationSeconds: 30
-  });
+  const count=Math.max(1,Math.min(1000,Number(req.body?.count)||20));
+  tiktokService.handleLike({...req.body,userId:String(req.body?.userId||'sim_like_admin'),nickname:String(req.body?.nickname||'TapTap_Admin'),likeCount:count,totalLikes:count,simulation:true});
   res.json({ success: true });
+});
+
+app.post('/api/simulate/share', requireLocalControl, requireSimulationEnabled, (req,res) => {
+  tiktokService.handleShare({...req.body,userId:String(req.body?.userId||'sim_share_admin'),nickname:String(req.body?.nickname||'Share_Admin'),simulation:true});
+  res.json({success:true});
+});
+
+app.post('/api/simulate/follow', requireLocalControl, requireSimulationEnabled, (req,res) => {
+  tiktokService.handleFollow({...req.body,userId:String(req.body?.userId||'sim_follow_admin'),nickname:String(req.body?.nickname||'Follow_Admin'),simulation:true});
+  res.json({success:true});
 });
 
 app.post('/api/competition/reset', requireLocalControl, async (req, res) => {
