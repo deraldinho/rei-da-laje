@@ -1993,10 +1993,15 @@
     const botNames = ['Pedrinho_Do_Cerol', 'Rei_Da_Laje', 'Lucas_Pipa_Sp', 'Biel_Do_Chile', 'Carioca_021', 'Menor_Do_Corte', 'Pipoca_Pipoca', 'Danilo_Voadora'];
     let botCounter = 1;
 
+    function simulationFetch(url, options = {}) {
+      const headers = { ...(options.headers || {}), 'X-Pipa-Simulation': 'admin' };
+      return fetch(url, { ...options, headers });
+    }
+
     function spawnBot(customName = null) {
       const name = customName || `${botNames[Math.floor(Math.random() * botNames.length)]}_${botCounter++}`;
       const randomAvatar = `https://i.pravatar.cc/150?u=${encodeURIComponent(name)}`;
-      fetch('/api/simulate/comment', {
+      simulationFetch('/api/simulate/comment', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -2031,7 +2036,7 @@
       const targetUser = activePlayers.find(p => p.userId === selectedUserId) || activePlayers[0];
       if (!targetUser) return;
 
-      fetch('/api/simulate/gift', {
+      simulationFetch('/api/simulate/gift', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -2046,7 +2051,7 @@
     window.simulateAction = function(action) {
       const targetUser = activePlayers.find(p => p.userId === selectedUserId) || activePlayers[0];
       const uid = targetUser ? targetUser.userId : 'sim_player';
-      fetch('/api/simulate/comment', {
+      simulationFetch('/api/simulate/comment', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -2057,7 +2062,7 @@
     };
 
     window.simulateCatch = function() {
-      fetch('/api/simulate/comment', {
+      simulationFetch('/api/simulate/comment', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -2069,7 +2074,7 @@
     };
 
     window.simulateLikes = function() {
-      fetch('/api/simulate/likes', {
+      simulationFetch('/api/simulate/likes', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ count: 50 })

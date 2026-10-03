@@ -29,6 +29,7 @@ class GameRules {
       const player=this.activePlayers.get(userId);
       if (userData.profilePictureUrl) player.profilePictureUrl=userData.profilePictureUrl;
       if (userData.nickname) player.nickname=userData.nickname;
+      if (userData.isSimulation) player.isSimulation=true;
       const stats=this.sessionStats.get(userId);
       if(stats){ if(userData.profilePictureUrl)stats.profilePictureUrl=userData.profilePictureUrl; if(userData.nickname)stats.nickname=userData.nickname; stats.lastSeenAt=Date.now(); }
       return { status: 'already_active', player };
@@ -39,6 +40,7 @@ class GameRules {
       const player=this.queue[queuedIndex];
       if (userData.profilePictureUrl) player.profilePictureUrl=userData.profilePictureUrl;
       if (userData.nickname) player.nickname=userData.nickname;
+      if (userData.isSimulation) player.isSimulation=true;
       const stats=this.sessionStats.get(userId);
       if(stats){ if(userData.profilePictureUrl)stats.profilePictureUrl=userData.profilePictureUrl; if(userData.nickname)stats.nickname=userData.nickname; stats.lastSeenAt=Date.now(); }
       return {status:'queued',position:queuedIndex+1,player};
@@ -61,7 +63,8 @@ class GameRules {
       score: 0,
       streak: 0,
       isKing: false,
-      joinedAt: Date.now()
+      joinedAt: Date.now(),
+      isSimulation: Boolean(userData.isSimulation)
     };
 
     // Verifica capacidade da tela

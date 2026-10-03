@@ -2,6 +2,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { randomUUID } = require('node:crypto');
 const { restorePlayerStates } = require('./arenaLiveState');
+const { isSimulationPlayer, isSimulationUserId } = require('./simulationGuard');
 const DEFAULT_PATH = path.join(__dirname, 'data', 'arena-state.json');
 const MAX_BYTES = 2 * 1024 * 1024;
 const compactStats = stats => ({
@@ -46,17 +47,19 @@ class ArenaStateStore {
     }
   }
   snapshot(rules, buffs) {
+    const players=[...rules.activePlayers.values()].filter(player=>!isSimulationPlayer(player));
+    const queue=rules.queue.filter(player=>!isSimulationPlayer(player));
     return {
       version: 1, sessionId: this.sessionId, savedAt: this.now(),
-      players: [...rules.activePlayers.values()].map(player => ({ ...player })),
-      queue: rules.queue.map(player => ({ ...player })),
+      players: players.map(player => ({ ...player })),
+      queue: queue.map(player => ({ ...player })),
       // A foto já existe em players/queue; não duplicar URLs longas no histórico.
-      stats: [...rules.sessionStats.entries()].map(([id, stats]) => [id, compactStats(stats)]),
-      leaderId: rules.leaderId,
-      kingId: rules.kingId,
-      buffs: [...buffs.activeBuffs.values()].map(({ timerId, ...buff }) => ({ ...buff })),
-      specials: [...buffs.activeSpecials.values()].map(({ timerId, ...special }) => ({ ...special })),
-      playerStates: [...this.playerStates.values()].filter(state => rules.activePlayers.has(state.userId))
+      stats: [...rules.sessionStats.entries()].filter(([id])=>!isSimulationUserId(id)).map(([id, stats]) => [id, compactStats(stats)]),
+      leaderId: isSimulationUserId(rules.leaderId) ? null : rules.leaderId,
+      kingId: isSimulationUserId(rules.kingId) ? null : rules.kingId,
+      buffs: [...buffs.activeBuffs.values()].filter(buff=>!isSimulationUserId(buff?.userId)).map(({ timerId, ...buff }) => ({ ...buff })),
+      specials: [...buffs.activeSpecials.values()].filter(special=>!isSimulationUserId(special?.userId)).map(({ timerId, ...special }) => ({ ...special })),
+      playerStates: [...this.playerStates.values()].filter(state => rules.activePlayers.has(state.userId) && !isSimulationUserId(state.userId))
     };
   }
   save(rules, buffs) {

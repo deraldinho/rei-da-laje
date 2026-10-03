@@ -411,6 +411,7 @@ class TikTokService {
    */
   handleChatMessage(data) {
     if (!data || typeof data.comment !== 'string') return;
+    const isSimulation=Boolean(data.simulation);
     const stableUserId=String(data.userId || '').trim().slice(0,128);
     const userId = stableUserId || String(data.uniqueId || '').trim().slice(0,128);
     if (!userId) return;
@@ -418,7 +419,7 @@ class TikTokService {
       uniqueId:String(data.uniqueId||'').slice(0,60),
       nickname: String(data.nickname || data.uniqueId || 'Espectador').slice(0, 60),
       profilePictureUrl:firstHttps(data.profilePictureUrl) };
-    const persistent=this.playerPlatform?.observeProfile?.({...data,userId:stableUserId,seenAt:Date.now()}) || null;
+    const persistent=isSimulation ? null : (this.playerPlatform?.observeProfile?.({...data,userId:stableUserId,seenAt:Date.now()}) || null);
     if(persistent?.profilePictureUrl) data.profilePictureUrl=persistent.profilePictureUrl;
     const command = this.gameRules.parseChatCommand?.(data.comment) || null;
     // Todo comentário continua servindo para entrar/reentrar; comandos exatos também controlam a própria pipa.
@@ -428,7 +429,8 @@ class TikTokService {
       uniqueId: data.uniqueId,
       nickname: data.nickname,
       profilePictureUrl: data.profilePictureUrl,
-      kiteType: ['peixinho','raiada','carrapeta'].includes(persistent?.loadout?.kiteKey) ? persistent.loadout.kiteKey : undefined
+      kiteType: ['peixinho','raiada','carrapeta'].includes(persistent?.loadout?.kiteKey) ? persistent.loadout.kiteKey : undefined,
+      isSimulation
     });
 
     if (result?.status === 'spawn' || result?.status === 'queued' || result?.status === 'already_active') this.onArenaMutation?.();
@@ -441,7 +443,7 @@ class TikTokService {
       });
     }
     if (result && result.status === 'spawn') {
-      const spawnPersistent=this.playerPlatform ? this.playerPlatform.spawnSnapshot(stableUserId) : persistent;
+      const spawnPersistent=!isSimulation && this.playerPlatform ? this.playerPlatform.spawnSnapshot(stableUserId) : persistent;
       this.io.emit('player:spawn', playerSpawnPayload(result.player,this.buffManager,undefined,spawnPersistent));
     }
     if (result && ['spawn','already_active','queued'].includes(result.status)) {
@@ -462,6 +464,7 @@ class TikTokService {
    */
   handleGift(data) {
     if (!data) return;
+    const isSimulation=Boolean(data.simulation);
     const stableUserId=String(data.userId || '').trim().slice(0,128);
     data = { ...data, userId: stableUserId || String(data.uniqueId || '').trim().slice(0,128),
       iconUrl:firstHttps(data.iconUrl) };
@@ -481,12 +484,14 @@ class TikTokService {
       && unitUpgrade.specialAbility===upgrade.specialAbility);
     const applicationCount=sameTier?count:1;
     const giftName=String(data.giftName || configuredUpgrade?.name || ('Presente #'+String(data.giftId||'?'))).slice(0,90);
-    this.playerPlatform?.observeProfile?.({
-      userId:stableUserId,uniqueId:data.uniqueId,nickname:data.nickname,
-      profilePictureUrl:firstHttps(data.profilePictureUrl),seenAt:Date.now()
-    });
-    this.giftCatalog?.observe({giftId:data.giftId,giftName,diamondCount:unitCoinValue,
-      repeatCount:count,iconUrl:data.iconUrl});
+    if (!isSimulation) {
+      this.playerPlatform?.observeProfile?.({
+        userId:stableUserId,uniqueId:data.uniqueId,nickname:data.nickname,
+        profilePictureUrl:firstHttps(data.profilePictureUrl),seenAt:Date.now()
+      });
+      this.giftCatalog?.observe({giftId:data.giftId,giftName,diamondCount:unitCoinValue,
+        repeatCount:count,iconUrl:data.iconUrl});
+    }
     this.io.emit('gift:celebration',{
       userId:data.userId,nickname:String(data.nickname||data.uniqueId||'Espectador').slice(0,60),
       giftId:String(data.giftId||''),giftName,diamondCount:unitCoinValue,repeatCount:count,
@@ -508,7 +513,7 @@ class TikTokService {
       });
       return buff;
     };
-    if(this.playerPlatform){
+    if(this.playerPlatform && !isSimulation){
       return this.playerPlatform.resolveGift({...data,userId:stableUserId},{
         unitCoinValue,totalCoinValue,tierKey:upgrade?.lineType||'',
         maneuverName:upgrade?.maneuverGiftName||upgrade?.name||'',

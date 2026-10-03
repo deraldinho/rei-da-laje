@@ -295,12 +295,12 @@ app.post('/api/tiktok/disconnect', requireLocalControl, async (req, res) => {
 });
 
 app.post('/api/simulate/comment', requireLocalControl, requireSimulationEnabled, (req, res) => {
-  tiktokService.handleChatMessage(req.body);
+  tiktokService.handleChatMessage({ ...req.body, simulation: true });
   res.json({ success: true });
 });
 
 app.post('/api/simulate/gift', requireLocalControl, requireSimulationEnabled, (req, res) => {
-  tiktokService.handleGift(req.body);
+  tiktokService.handleGift({ ...req.body, simulation: true });
   res.json({ success: true });
 });
 
