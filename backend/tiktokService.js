@@ -22,7 +22,7 @@ class TikTokService {
     this.connectionFailures = 0;
     this.lastConnectionError = null;
     this.lastEventAt = null;
-    this.eventCounts = { chat: 0, gift: 0, like: 0, follow: 0 };
+    this.eventCounts = { chat: 0, gift: 0, like: 0, follow: 0, share: 0 };
     this.lastRoomLocatedAt = null;
     this.roomFoundCount = 0;
     this.transportReconnecting = false;
@@ -244,21 +244,45 @@ class TikTokService {
     this.confirmLiveEvents();
   }
 
+  ensurePlayerForInteraction(raw = {}) {
+    const isSimulation=Boolean(raw.simulation);
+    const stableUserId=String(raw.userId || '').trim().slice(0,128);
+    const userId=stableUserId || String(raw.uniqueId || '').trim().slice(0,128);
+    if(!userId)return null;
+    const data={...raw,userId,uniqueId:String(raw.uniqueId||'').slice(0,60),nickname:String(raw.nickname||raw.uniqueId||'Espectador').slice(0,60),profilePictureUrl:firstHttps(raw.profilePictureUrl)};
+    const persistent=isSimulation?null:(this.playerPlatform?.observeProfile?.({...data,userId:stableUserId,seenAt:Date.now()})||null);
+    if(persistent?.profilePictureUrl)data.profilePictureUrl=persistent.profilePictureUrl;
+    const enter=this.gameRules.handlePlayerInteraction || this.gameRules.handlePlayerComment;
+    const result=enter?.call(this.gameRules,{userId:data.userId,uniqueId:data.uniqueId,nickname:data.nickname,profilePictureUrl:data.profilePictureUrl,kiteType:['peixinho','raiada','carrapeta'].includes(persistent?.loadout?.kiteKey)?persistent.loadout.kiteKey:undefined,isSimulation});
+    if(result?.status==='spawn'||result?.status==='queued'||result?.status==='already_active')this.onArenaMutation?.();
+    if(result?.status==='queued')this.io.emit('competition:queue',{length:this.gameRules.queue.length});
+    if(result?.status==='already_active'&&result?.player&&(data.profilePictureUrl||data.nickname))this.io.emit('player:profile_updated',{userId:data.userId,nickname:result.player.nickname,profilePictureUrl:result.player.profilePictureUrl||''});
+    if(result?.status==='spawn'){const snap=!isSimulation&&this.playerPlatform?this.playerPlatform.spawnSnapshot(stableUserId):persistent;this.io.emit('player:spawn',playerSpawnPayload(result.player,this.buffManager,undefined,snap));}
+    return {data,result,persistent,stableUserId,isSimulation};
+  }
+
+  emitLiveInteraction(entry,type,count=1,extra={}) {
+    if(!entry?.result||!['spawn','already_active'].includes(entry.result.status))return false;
+    this.io.emit('competition:interaction',{userId:entry.data.userId,nickname:entry.result.player?.nickname||entry.data.nickname,type:String(type||'interaction'),count:Math.max(1,Math.min(1000,Number(count)||1)),status:entry.result.status,...extra});
+    return true;
+  }
+
+  handleLike(data = {}) {
+    const entry=this.ensurePlayerForInteraction(data); if(!entry)return null;
+    const likeCount=Math.max(1,Number(data.likeCount||data.count||1));
+    this.io.emit('likes:burst',{userId:entry.data.userId,uniqueId:entry.data.uniqueId,nickname:entry.data.nickname,likeCount,totalLikes:Number(data.totalLikes||likeCount),despike:true});
+    this.emitLiveInteraction(entry,'like',likeCount); return entry.result;
+  }
+
+  handleShare(data = {}) {
+    const entry=this.ensurePlayerForInteraction(data); if(!entry)return null;
+    this.emitLiveInteraction(entry,'share',1); this.io.emit('share:new',{userId:entry.data.userId,nickname:entry.data.nickname}); return entry.result;
+  }
+
   handleFollow(data = {}) {
-    const follower = normalizeUser(data);
-    const stableUserId=String(follower.userId || '').trim().slice(0,128);
-    const payload = {
-      userId: stableUserId,
-      uniqueId: String(follower.uniqueId || ''),
-      nickname: String(follower.nickname || follower.uniqueId || 'Novo seguidor').slice(0,60),
-      profilePictureUrl: firstHttps(follower.profilePictureUrl) || null,
-      followedAt: Date.now()
-    };
-    if (!payload.userId && !payload.uniqueId) return null;
-    const persistent=this.playerPlatform?.observeProfile?.({...payload,seenAt:payload.followedAt});
-    if(persistent?.profilePictureUrl) payload.profilePictureUrl=persistent.profilePictureUrl;
-    this.io.emit('follow:new', payload);
-    return payload;
+    const entry=this.ensurePlayerForInteraction(data); if(!entry)return null;
+    const payload={userId:entry.data.userId,uniqueId:entry.data.uniqueId,nickname:entry.data.nickname,profilePictureUrl:entry.data.profilePictureUrl||null,followedAt:Date.now()};
+    this.emitLiveInteraction(entry,'follow',1); this.io.emit('follow:new',payload); return payload;
   }
   setupListeners() {
     if (!this.connection) return;
@@ -290,22 +314,12 @@ class TikTokService {
 
     // 3. Curtidas (Likes)
     this.connection.on('like', (event) => {
-      const data = event.data || event;
-      this.recordEvent('like');
-      const likeCount = Math.max(1, Number(data.likeCount || 1));
-      this.replayStore?.record('like', {
-        userId:String(data.userId || data.user?.userId || ''),
-        uniqueId:String(data.uniqueId || data.user?.uniqueId || ''),
-        nickname:String(data.nickname || data.user?.nickname || data.uniqueId || ''),
-        count:likeCount
-      });
-      this.io.emit('likes:burst', {
-        userId: String(data.userId || data.user?.userId || ''),
-        uniqueId: String(data.uniqueId || data.user?.uniqueId || ''),
-        nickname: String(data.nickname || data.user?.nickname || data.uniqueId || ''),
-        likeCount, totalLikes: Number(data.totalLikes || likeCount), despike: true
-      });
+      const data=event.data||event; this.recordEvent('like'); const likeCount=Math.max(1,Number(data.likeCount||1));
+      this.replayStore?.record('like',{userId:String(data.userId||data.user?.userId||''),uniqueId:String(data.uniqueId||data.user?.uniqueId||''),nickname:String(data.nickname||data.user?.nickname||data.uniqueId||''),count:likeCount});
+      this.handleLike({...normalizeUser(data),likeCount,totalLikes:Number(data.totalLikes||likeCount)});
     });
+
+    this.connection.on('share',(event)=>{ const data=event.data||event; this.recordEvent('share'); this.handleShare(normalizeUser(data)); });
 
     // 4. Novo seguidor
     this.connection.on('follow', (event) => {
@@ -424,7 +438,8 @@ class TikTokService {
     const command = this.gameRules.parseChatCommand?.(data.comment) || null;
     // Todo comentário continua servindo para entrar/reentrar; comandos exatos também controlam a própria pipa.
     // Comentário normal -> Tentativa de Spawn / Entrada no jogo
-    const result = this.gameRules.handlePlayerComment({
+    const enterPlayer=this.gameRules.handlePlayerInteraction || this.gameRules.handlePlayerComment;
+    const result = enterPlayer.call(this.gameRules,{
       userId: data.userId,
       uniqueId: data.uniqueId,
       nickname: data.nickname,
@@ -454,6 +469,7 @@ class TikTokService {
         status:result.status
       });
     }
+    if (result && ['spawn','already_active'].includes(result.status)) this.io.emit('competition:interaction',{userId:data.userId,nickname:result.player?.nickname||data.nickname,type:'comment',count:1,status:result.status,text:String(data.comment||'').slice(0,180)});
     if (this.chatActionsEnabled && command && result && (result.status === 'spawn' || result.status === 'already_active')) {
       this.emitChatActionThrottled(data.userId,result.player?.nickname || data.nickname,command);
     }
@@ -469,6 +485,8 @@ class TikTokService {
     data = { ...data, userId: stableUserId || String(data.uniqueId || '').trim().slice(0,128),
       iconUrl:firstHttps(data.iconUrl) };
     if (!data.userId) return;
+    const entry=this.ensurePlayerForInteraction({...data,userId:stableUserId});
+    if(entry)this.emitLiveInteraction(entry,'gift',Math.max(1,Number(data.repeatCount)||1),{giftName:String(data.giftName||'').slice(0,90)});
     const { getGiftUpgrade, getGiftUpgradeByValue } = require('./rules/giftConfig');
     const configuredUpgrade = getGiftUpgrade(data.giftId) || getGiftUpgrade(data.giftName);
 

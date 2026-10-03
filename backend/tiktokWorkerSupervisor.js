@@ -62,11 +62,11 @@ async function superviseTikTok({
       client=await createClient(username);
       setCurrentClient(client);
 
-      for(const name of ['chat','gift','like','follow']){
+      for(const name of ['chat','gift','like','follow','share']){
         client.on(name,data=>{markActivity();send(name,data);});
       }
       for(const name of ACTIVITY_EVENTS){
-        if(['chat','gift','like','follow'].includes(name)) continue;
+        if(['chat','gift','like','follow','share'].includes(name)) continue;
         client.on(name,()=>markActivity());
       }
       client.on('liveEnded',data=>{

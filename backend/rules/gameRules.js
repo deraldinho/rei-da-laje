@@ -20,7 +20,7 @@ class GameRules {
    * Processa uma tentativa de spawn/entrada por comentário
    * Retorna { status: 'spawn' | 'queued' | 'already_active', player }
    */
-  handlePlayerComment(userData) {
+  handlePlayerInteraction(userData) {
     const userId = userData.userId || userData.uniqueId;
     if (!userId) return null;
 
@@ -82,6 +82,10 @@ class GameRules {
       status: 'spawn',
       player
     };
+  }
+
+  handlePlayerComment(userData) {
+    return this.handlePlayerInteraction(userData);
   }
 
   ensureStatsCapacity() {

@@ -26,9 +26,9 @@ test('qualquer comentário entra e é encaminhado como gesto nativo da live', ()
   assert.equal(events.filter(e=>e.name==='competition:comment').at(-1).data.userId,'oi');
   assert.equal(rules.activePlayers.size,6);
 });
-test('presente não coloca pipa no céu sem comentário', () => {
-  const {service,rules,buffs}=setup();
-  try { service.handleGift({userId:'a',giftName:'Rosa'}); assert.equal(rules.activePlayers.size,0); }
+test('presente também coloca pipa no céu e gera interação', () => {
+  const {service,rules,buffs,events}=setup();
+  try { service.handleGift({userId:'a',giftName:'Rosa'}); assert.equal(rules.activePlayers.size,1); assert.ok(events.some(e=>e.name==='competition:interaction'&&e.data.type==='gift')); }
   finally {buffs.removePlayer('a');}
 });
 test('Perfume e Leão preservam linha e têm expiração independente', () => {
@@ -45,13 +45,13 @@ test('Perfume e Leão preservam linha e têm expiração independente', () => {
     assert.ok(events.some(e=>e.name==='player:special_applied'));
   } finally {buffs.removePlayer('a');}
 });
-test('spawn inclui presente recebido antes do comentário', () => {
-  const {service,buffs,events}=setup();
+test('presente aplica efeito logo após criar a pipa', () => {
+  const {service,buffs,events,rules}=setup();
   try {
     service.handleGift({userId:'a',giftName:'Leão'});
-    service.handleChatMessage({userId:'a',comment:'oi'});
-    const spawn=events.find(e=>e.name==='player:spawn');
-    assert.equal(spawn.data.specials[0].ability,'invulnerable');
+    assert.equal(rules.activePlayers.has('a'),true);
+    assert.ok(events.some(e=>e.name==='player:spawn'&&e.data.userId==='a'));
+    assert.ok(events.some(e=>e.name==='player:special_applied'&&e.data.userId==='a'));
   } finally {buffs.removePlayer('a');}
 });
 test('vento muda direção e movimenta pipas pela dinâmica física', async () => {

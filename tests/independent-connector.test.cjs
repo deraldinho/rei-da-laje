@@ -18,7 +18,7 @@ test('conector independente encaminha comentários, presentes, curtidas e novos 
   client.emit('chat', { data: { user: { userId: 123, uniqueId: 'ana', nickname: 'Ana' }, content: 'Oi' } });
   assert.equal(joined.length, 1);
   assert.equal(joined[0].userId, '123');
-  client.emit('like', { data: { totalLikes: 7 } });
+  client.emit('like', { data: { user: { userId: 777, uniqueId: 'leo', nickname: 'Leo' }, likeCount: 7, totalLikes: 7 } });
   assert.equal(events.find(([name]) => name === 'likes:burst')[1].totalLikes, 7);
   client.emit('follow', { data: { user: { userId: 321, uniqueId: 'bia', nickname: 'Bia', avatarThumb: { urlList: ['https://img.test/bia.jpg'] } } } });
   const follow=events.find(([name]) => name === 'follow:new');
