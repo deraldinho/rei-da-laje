@@ -33,7 +33,8 @@ function sanitizeRopeNodes(nodes, width, height) {
     // Pequena margem para permitir curvatura/overshoot sem aceitar coordenadas absurdas.
     safe.push({
       x: Math.max(-width * 0.25, Math.min(width * 1.25, x)),
-      y: Math.max(-height * 0.15, Math.min(height * 1.15, y))
+      y: Math.max(-height * 0.15, Math.min(height * 1.15, y)),
+      z: finite(node?.z,-4096,4096,0)
     });
   }
   return safe.length >= 2 ? safe : null;
@@ -51,8 +52,10 @@ function capturePlayerStates(payload, rules, buffs, now = Date.now()) {
     const maxHp = HP_BY_LINE[buff.lineType] || 100;
     if (![row.x,row.y,row.lineHP].every(Number.isFinite)) continue;
     states.set(userId, { userId, updatedAt:now, screenWidth:width, screenHeight:height,
-      x:finite(row.x,30,width-30), y:finite(row.y,40,height*0.65),
-      baseX:finite(row.baseX,30,width-30, width/2), baseY:finite(row.baseY,0,height,height*.9),
+      x:finite(row.x,30,width-30), y:finite(row.y,40,height*0.65), z:finite(row.z,-4096,4096,0),
+      baseX:finite(row.baseX,30,width-30, width/2), baseY:finite(row.baseY,0,height,height*.9), baseZ:finite(row.baseZ,-4096,4096,0),
+      vx:finite(row.vx,-5000,5000,0), vy:finite(row.vy,-5000,5000,0), vz:finite(row.vz,-5000,5000,0),
+      rotation:finite(row.rotation,-20,20,0), pitch:finite(row.pitch,-20,20,0), yaw:finite(row.yaw,-20,20,0), roll:finite(row.roll,-20,20,0), heading:finite(row.heading,-20,20,0),
       targetX:finite(row.targetX,30,width-30, width/2),
       targetY:finite(row.targetY,40,height*0.65, height*0.35),
       lineHP:finite(row.lineHP,1,maxHp,maxHp), maxLineHP:maxHp,
@@ -62,6 +65,8 @@ function capturePlayerStates(payload, rules, buffs, now = Date.now()) {
       likeSpool:finite(row.likeSpool,0,1), likeSpoolRemaining:finite(row.likeSpoolRemaining,0,3),
       defenseWindowRemaining:finite(row.defenseWindowRemaining,0,1),
       likeBoostRemaining:finite(row.likeBoostRemaining,0,30),
+      spoolLength:finite(row.spoolLength,10,5000,1800),
+      segmentWear:Array.isArray(row.segmentWear)?row.segmentWear.slice(0,24).map(v=>finite(v,0,1,0)):null,
       ropeNodes:sanitizeRopeNodes(row.ropeNodes,width,height),
       maneuver:sanitizeManeuver(row.maneuver,now) });
   }

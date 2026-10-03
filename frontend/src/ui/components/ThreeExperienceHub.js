@@ -1,3 +1,5 @@
+import { windSpeedKmh } from '../../engine/physics/ForwardWind.js';
+
 /**
  * ThreeExperienceHub.js
  * Arquitetura de UI/UX para Experiência 3D (/3d-web-experience)
@@ -117,8 +119,7 @@ export class ThreeExperienceHub {
     const angleDeg = (angleRad * (180 / Math.PI));
 
     // Intensidade calibrada
-    const rawSpeed = Math.hypot(wx, wy) * 35 * gust;
-    const speedKmh = Math.round(Math.max(5, Math.min(85, rawSpeed)));
+    const speedKmh = Math.round(windSpeedKmh(wind));
     const intensity = gust > 1.25 ? 'FORTE' : gust > 0.95 ? 'MODERADO' : 'SUAVE';
 
     if (this.compassNeedleEl) {

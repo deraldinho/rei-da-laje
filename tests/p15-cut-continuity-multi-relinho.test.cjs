@@ -124,6 +124,6 @@ test('P15.1: checkpoint backend preserva ropeNodes sanitizados para validação 
   }]}, rules, buffs, 12345);
   assert.ok(states instanceof Map);
   assert.deepEqual(states.get('A').ropeNodes, [
-    {x:200,y:1750},{x:480,y:900},{x:800,y:300}
+    {x:200,y:1750,z:0},{x:480,y:900,z:0},{x:800,y:300,z:0}
   ]);
 });

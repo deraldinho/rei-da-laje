@@ -8,7 +8,7 @@ const configUrl = pathToFileURL(path.resolve(__dirname, '../frontend/src/engine/
 const materialUrl = pathToFileURL(path.resolve(__dirname, '../frontend/src/engine/physics/LineMaterial.js')).href;
 
 const expectedDefaults = {
-  abrasionK: 0.025,
+  abrasionK: 0.10,
   frictionMultiplier: 1.0,
   contactDamageFloor: 0.004,
   minSlideSpeed: 0.75,
@@ -17,7 +17,7 @@ const expectedDefaults = {
   minContactTime: 0.08,
   engagementRampSec: 0.20,
   releaseGraceSec: 0.22,
-  maxWearPerTick: 0.012,
+  maxWearPerTick: 0.05,
   discoveryHz: 30,
   maxSolvedContacts: 3,
   maxContactsPerRope: 3,

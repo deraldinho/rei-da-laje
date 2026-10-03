@@ -528,6 +528,24 @@ io.on('connection', (socket) => {
     combatOwnerLastHeartbeatAt = Date.now();
     if (Number.isFinite(fps)) latestArenaFps = Math.round(Math.max(0, Math.min(240, fps)));
   });
+
+  // Estado vivo can?nico: o dono da simula??o publica em mem?ria e todos os
+  // outros navegadores espelham o mesmo HP/posi??o/corda sem gravar em disco.
+  socket.on('arena:live_state', payload => {
+    if (socket.id !== combatOwnerSocketId) return;
+    const updated = capturePlayerStates(payload, gameRules, buffManager);
+    if (!updated) return;
+    combatOwnerLastHeartbeatAt = Date.now();
+    arenaStore.playerStates = updated;
+    socket.broadcast.emit('arena:state', {
+      sessionId: arenaSessionId,
+      at: Date.now(),
+      width: Number(payload?.width) || 1080,
+      height: Number(payload?.height) || 1920,
+      kites: [...updated.values()]
+    });
+  });
+
   socket.on('arena:checkpoint', payload => {
     if (canClaimCombat(socket) && (!combatOwnerSocketId || !io.sockets.sockets.has(combatOwnerSocketId))) {
       combatOwnerSocketId = socket.id;

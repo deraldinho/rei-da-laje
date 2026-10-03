@@ -10,7 +10,8 @@ export function captureArena(kites, sessionId, now = Date.now()) {
     kites: players.map(k => ({
       screenWidth: k.screenWidth, screenHeight: k.screenHeight,
       userId: String(k.userId),
-      x: k.x, y: k.y, baseX: k.baseX, baseY:k.baseY, targetX: k.targetX, targetY: k.targetY,
+      x: k.x, y: k.y, z: k.z, baseX: k.baseX, baseY:k.baseY, baseZ:k.baseZ, targetX: k.targetX, targetY: k.targetY,
+      vx:k.vx, vy:k.vy, vz:k.vz, rotation:k.rotation, pitch:k.pitch, yaw:k.yaw, roll:k.roll, heading:k.heading,
       layoutIndex: Number.isInteger(k.rooftopPlayer?.layoutIndex) ? k.rooftopPlayer.layoutIndex : null,
       layoutTotal: Number.isInteger(k.rooftopPlayer?.layoutTotal) ? k.rooftopPlayer.layoutTotal : null,
       lineHP: k.lineHP, maxLineHP: k.maxLineHP,
@@ -34,7 +35,8 @@ export function captureArena(kites, sessionId, now = Date.now()) {
       ropeNodes: (k.rope && Array.isArray(k.rope.nodes) && k.rope.nodes.length > 0)
         ? k.rope.nodes.map(n => ({
             x: Math.round(n.x || 0),
-            y: Math.round(n.y || 0)
+            y: Math.round(n.y || 0),
+            z: Math.round(n.z || 0)
           }))
         : null
     }))
@@ -65,6 +67,13 @@ export function restoreKiteState(kite, state) {
   const sy = kite.screenHeight / sourceHeight;
   kite.x = clamp(state.x * sx, 30, kite.screenWidth - 30);
   kite.y = clamp(state.y * sy, 40, kite.screenHeight * 0.65);
+  const depthScale=(sx+sy)/2;
+  if (Number.isFinite(state.z)) kite.z = state.z * depthScale;
+  if (Number.isFinite(state.baseZ)) kite.baseZ = state.baseZ * depthScale;
+  if (Number.isFinite(state.vx)) kite.vx = state.vx * sx;
+  if (Number.isFinite(state.vy)) kite.vy = state.vy * sy;
+  if (Number.isFinite(state.vz)) kite.vz = state.vz * depthScale;
+  for (const key of ['rotation','pitch','yaw','roll','heading']) if (Number.isFinite(state[key])) kite[key]=state[key];
   if (Number.isFinite(state.baseX)) kite.baseX = clamp(state.baseX * sx, 30, kite.screenWidth - 30);
   if (Number.isFinite(state.baseY)) kite.baseY = clamp(state.baseY * sy, 0, kite.screenHeight);
   if (Number.isFinite(state.targetX)) kite.targetX = clamp(state.targetX * sx, 30, kite.screenWidth - 30);
@@ -117,8 +126,10 @@ export function restoreKiteState(kite, state) {
       n.prevX = saved.x * sx;
       n.y = saved.y * sy;
       n.prevY = saved.y * sy;
+      if (Number.isFinite(saved.z)) { n.z = saved.z * depthScale; n.prevZ = saved.z * depthScale; }
       n.vx = 0;
       n.vy = 0;
+      if ('vz' in n) n.vz = 0;
     }
     kite.rope.isInitialized = true;
     kite.rope.updateAABB();
@@ -126,4 +137,18 @@ export function restoreKiteState(kite, state) {
   kite.line.update(kite.x, kite.y, kite.visualScale);
   kite.tail.update(kite.x, kite.y + 30, 0, 0);
   return true;
+}
+
+export function applyArenaLiveState(kites, payload, sessionId = null) {
+  if (!kites || typeof kites.get !== 'function' || !payload || !Array.isArray(payload.kites)) return 0;
+  if (sessionId && payload.sessionId && String(payload.sessionId) !== String(sessionId)) return 0;
+  let applied=0;
+  for (const state of payload.kites) {
+    const id=String(state?.userId||'');
+    if (!id) continue;
+    const kite=kites.get(id) || kites.get(state.userId);
+    if (!kite) continue;
+    if (restoreKiteState(kite,state)) applied++;
+  }
+  return applied;
 }

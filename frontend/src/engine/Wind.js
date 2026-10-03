@@ -1,5 +1,6 @@
 import { sampleWindField } from './physics/WindField.js';
 import { SkyWindDirector } from './physics/SkyWindDirector.js';
+import { enforceForwardWind } from './physics/ForwardWind.js';
 
 /** Correntes compartilhadas: vento e fase de cada pipa conduzem o voo. */
 export class Wind {
@@ -34,7 +35,7 @@ export class Wind {
     const directed = Wind.director.sample(time, base, Wind.crowdEnergy);
     if (Wind.config.direction === 'left') directed.x = -Math.abs(directed.x);
     else if (Wind.config.direction === 'right') directed.x = Math.abs(directed.x);
-    return directed;
+    return enforceForwardWind(directed);
   }
 
   /**
@@ -46,12 +47,14 @@ export class Wind {
     const h = Number.isFinite(screenHeight) && screenHeight > 0 ? screenHeight : 1920;
     const altitudeRatio = Math.max(0, Math.min(1, (h - (Number.isFinite(y) ? y : 300)) / h));
     const altitudeFactor = 0.75 + altitudeRatio * 0.45; // 0.75 na base atÃ© 1.20 no alto
-    return {
+    return enforceForwardWind({
       ...base,
       x: base.x * altitudeFactor,
+      y: base.y * altitudeFactor,
+      z: base.z * altitudeFactor,
       gust: base.gust * altitudeFactor,
       altitudeRatio
-    };
+    });
   }
   static contactRadius(width, height) {
     const w = Number.isFinite(width) ? width : 1080;
@@ -81,7 +84,7 @@ export class Wind {
 
     const magnitude=Math.hypot(fx,fy,fz);
     if (magnitude>.85) { const scale=.85/magnitude; fx*=scale; fy*=scale; fz*=scale; }
-    return {
+    const local = {
       ...base,
       x:(Number(base.x)||0)+fx,
       y:(Number(base.y)||0)+fy,
@@ -90,6 +93,7 @@ export class Wind {
       turbulence:Math.max(0,Math.min(.65,(Number(base.turbulence)||0)+Math.min(.18,activity*.06))),
       localVortex:activity>0
     };
+    return base.flightCone ? enforceForwardWind(local) : local;
   }
 
 }

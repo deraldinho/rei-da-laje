@@ -16,7 +16,7 @@ import { liveVisualScale } from '../ui/LiveLayout.js';
 import { rooftopSlotOrder, rooftopPlayerLayout, rooftopHandAnchor, rooftopAnchorY } from '../ui/RooftopLayout.js';
 import { applyManeuverMovement, maneuverStats, selectGiftManeuver } from './Maneuvers.js';
 import { applyLikeSpool } from './RelinhoMechanics.js';
-import { CHECKPOINT_KEY, captureArena, readArenaCheckpoint, restoreKiteState } from './ArenaCheckpoint.js';
+import { CHECKPOINT_KEY, captureArena, readArenaCheckpoint, restoreKiteState, applyArenaLiveState } from './ArenaCheckpoint.js';
 import { startChatAction, applyChatAction } from './ChatControls.js';
 import { RopeCollision } from './physics/RopeCollision.js';
 import { PhysicsClock } from './physics/PhysicsClock.js'; // Passo 1
@@ -87,6 +87,7 @@ export class GameApp {
     this.syncArena();
     this.arenaSyncTimer = this._lifecycle.interval(() => this.syncArena(), 6000);
     this.checkpointTimer = this._lifecycle.interval(() => this.saveArenaCheckpoint(false), 3500);
+    this.liveStateTimer = this._lifecycle.interval(() => this.broadcastArenaLiveState(), 150);
     this.memoryGcTimer = this._lifecycle.interval(() => {
       try {
         if (this.app?.renderer?.textureGC) {
@@ -120,6 +121,17 @@ export class GameApp {
     }
   }
 
+  broadcastArenaLiveState() {
+    if (!this.socket?.connected || !this.isCombatAuthority || !this.arenaSessionId) return;
+    const snapshot = captureArena(this.kites.values(), this.arenaSessionId);
+    this.socket.emit('arena:live_state', {
+      sessionId:this.arenaSessionId,
+      width:this.app.screen.width,
+      height:this.app.screen.height,
+      kites:snapshot.kites
+    });
+  }
+
   async syncArena() {
     if (this.arenaSyncInProgress) return;
     this.arenaSyncInProgress = true;
@@ -145,6 +157,8 @@ export class GameApp {
           existing.score = player.score || 0;
           existing.streak = player.streak || 0;
           existing.isKing = Boolean(player.isKing);
+          const canonicalState = serverStates[pId];
+          if (canonicalState && !this.isCombatAuthority) restoreKiteState(existing, canonicalState);
           // A contagem dos benefícios deve refletir o relógio do servidor após uma reconexão.
           existing.setBuff(player.lineType || 'algodao', player.power || 1, player.color || '#ffffff',
             player.lineWidth || 1.2, player.shield || 0, player.buffExpiresAt);
@@ -705,6 +719,20 @@ export class GameApp {
       kite.setManeuver(stats);
       this.hud.showManeuver(kite.nickname, 'despicar');
     });
+    this._socketSubscriptions.on('arena:state', payload => {
+      if (this.isCombatAuthority || !payload || !Array.isArray(payload.kites)) return;
+      if (this.arenaSessionId && payload.sessionId && String(payload.sessionId) !== String(this.arenaSessionId)) {
+        this.syncArena();
+        return;
+      }
+      if (!this.arenaSessionId && payload.sessionId) this.arenaSessionId = String(payload.sessionId);
+      const applied = applyArenaLiveState(this.kites, payload, this.arenaSessionId);
+      if (applied > 0) {
+        this._sync3DDirty = true;
+        this.hud.updateLeaderboard([...this.kites.values()]);
+      }
+    });
+
     this._socketSubscriptions.on('arena:authority_revoked', () => {
       this.isCombatAuthority = false;
       this._pendingCutLosers.clear();

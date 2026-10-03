@@ -5,9 +5,11 @@ const clamp=(v,a,b)=>Math.max(a,Math.min(b,Number(v)||0));
 export function computeKiteAerodynamics(kite,wind={},ropeState={},control={}){
   const a=ensureKiteAttitude(kite);
   const gust=Math.max(.5,Number(wind?.gust)||1);
-  const windVx=(Number(wind?.x)||0)*34*gust;
-  const windVy=(Number(wind?.y)||0)*16;
-  const windVz=(Number(wind?.z)||0)*22;
+  // Forward flight uses the same scale on all three axes, so a steady wind
+  // still produces lift while its lateral component crosses zero.
+  const windVx=(Number(wind?.x)||0)*(wind.flightCone?48:34)*gust;
+  const windVy=(Number(wind?.y)||0)*(wind.flightCone?48*gust:16);
+  const windVz=(Number(wind?.z)||0)*(wind.flightCone?48*gust:22);
   const avx=windVx-(Number(kite?.vx)||0);
   const avy=windVy-(Number(kite?.vy)||0);
   const avz=windVz-(Number(kite?.vz)||0);

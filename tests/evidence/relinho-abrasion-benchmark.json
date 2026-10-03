@@ -222,21 +222,21 @@
     "dense40AvgMsMax": 4
   },
   "browser": {
-    "generatedAt": "2026-10-02T23:47:26.222Z",
+    "generatedAt": "2026-10-03T00:05:59.299Z",
     "samples": 240,
-    "p95Ms": 20.59999990463257,
-    "p99Ms": 23.5,
-    "maxMs": 25.199999809265137,
+    "p95Ms": 25.600000143051147,
+    "p99Ms": 32.5,
+    "maxMs": 36,
     "maxTracked": 12,
     "maxSolved": 3,
-    "maxCold": 96,
+    "maxCold": 94,
     "maxActive": 12,
     "manager": {
       "createdContacts": 12,
-      "reusedContacts": 47,
-      "droppedContacts": 3041,
-      "expiredContacts": 5,
-      "rotatedContacts": 42,
+      "reusedContacts": 88,
+      "droppedContacts": 1948,
+      "expiredContacts": 47,
+      "rotatedContacts": 41,
       "activeContacts": 12,
       "selectedContacts": 3,
       "trackedContacts": 12,
@@ -244,64 +244,64 @@
     },
     "profiler": {
       "samples": 240,
-      "fps": 61.31051216836364,
-      "quality": "high",
+      "fps": 53.07268749731243,
+      "quality": "medium",
       "frame": {
-        "avgMs": 16.310416674613954,
-        "maxMs": 24.799999952316284,
-        "p95Ms": 20.200000047683716,
-        "p99Ms": 23.09999990463257
+        "avgMs": 18.842083323001862,
+        "maxMs": 35.59999990463257,
+        "p95Ms": 25.09999990463257,
+        "p99Ms": 31.899999856948853
       },
       "sections": {
         "hud": {
-          "avgMs": 0.03666667342185974,
-          "maxMs": 0.20000004768371582,
+          "avgMs": 0.04541665613651276,
+          "maxMs": 0.2999999523162842,
           "p95Ms": 0.10000014305114746,
           "p99Ms": 0.20000004768371582
         },
         "render3d": {
-          "avgMs": 14.344583325584729,
-          "maxMs": 23,
-          "p95Ms": 17.799999952316284,
-          "p99Ms": 20.5
+          "avgMs": 16.58250000178814,
+          "maxMs": 31.300000190734863,
+          "p95Ms": 22.5,
+          "p99Ms": 28.899999856948853
         },
         "collision": {
-          "avgMs": 0.4608333339293798,
-          "maxMs": 1.7000000476837158,
-          "p95Ms": 0.8999998569488525,
-          "p99Ms": 1.2999999523162842
+          "avgMs": 0.5020833253860474,
+          "maxMs": 3,
+          "p95Ms": 1,
+          "p99Ms": 1.5
         },
         "physics": {
-          "avgMs": 1.5391666601101557,
-          "maxMs": 3.200000047683716,
-          "p95Ms": 2.3999998569488525,
-          "p99Ms": 3
+          "avgMs": 1.7820833335320154,
+          "maxMs": 5.700000047683716,
+          "p95Ms": 3,
+          "p99Ms": 3.9000000953674316
         },
         "render2d": {
-          "avgMs": 0.3033333311478297,
-          "maxMs": 0.6000001430511475,
-          "p95Ms": 0.40000009536743164,
+          "avgMs": 0.3191666712363561,
+          "maxMs": 0.8999998569488525,
+          "p95Ms": 0.5,
           "p99Ms": 0.5999999046325684
         },
         "serialization": {
-          "avgMs": 2.1000001430511475,
-          "maxMs": 2.1000001430511475,
-          "p95Ms": 2.1000001430511475,
-          "p99Ms": 2.1000001430511475
+          "avgMs": 1.1000001430511475,
+          "maxMs": 1.1000001430511475,
+          "p95Ms": 1.1000001430511475,
+          "p99Ms": 1.1000001430511475
         }
       },
       "gauges": {
-        "drawCalls": 1251,
-        "triangles": 45100,
+        "drawCalls": 1244,
+        "triangles": 45002,
         "staticSavedDraws": 890,
         "relinhoCandidates": 96,
-        "relinhoNarrowChecks": 104,
+        "relinhoNarrowChecks": 98,
         "relinhoContacts": 12,
         "relinhoSolved": 3
       }
     },
     "count": 40,
-    "drawCalls": 1251,
+    "drawCalls": 1244,
     "uncaughtExceptions": 0
   }
 }

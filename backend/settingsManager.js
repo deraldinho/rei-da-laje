@@ -2,9 +2,9 @@ const fs = require('fs');
 const path = require('path');
 
 const DEFAULT_RELINHO_PHYSICS_CONFIG = Object.freeze({
-  abrasionK: 0.04, frictionMultiplier: 1.0, contactDamageFloor: 0.004, minSlideSpeed: 0.75, tensionMultiplier: 1,
+  abrasionK: 0.10, frictionMultiplier: 1.0, contactDamageFloor: 0.004, minSlideSpeed: 0.75, tensionMultiplier: 1,
   angleExponent: 1, minContactTime: 0.08, engagementRampSec: 0.20, releaseGraceSec: 0.22,
-  maxWearPerTick: 0.012, discoveryHz: 30, maxSolvedContacts: 3, maxContactsPerRope: 3,
+  maxWearPerTick: 0.05, discoveryHz: 30, maxSolvedContacts: 3, maxContactsPerRope: 3,
   maxTrackedContacts: 12, maxDiscoveryChecksPerScan: 96
 });
 const RELINHO_LIMITS = Object.freeze({

@@ -18,10 +18,10 @@ export class SkyWindDirector {
     const baseX=Number(baseWind.x)||0;
     const baseZ=Number(baseWind.z)||0;
     const magnitude=clamp(Math.hypot(baseX,baseZ)||Math.abs(baseX)||1,.05,1.35);
-    const angle=2.05*Math.sin(t*.055+this._phase)+crowd*.08*Math.sin(t*.31+this._phase*.7);
+    const angle=.58*Math.sin(t*.055+this._phase)+crowd*.04*Math.sin(t*.31+this._phase*.7);
     const activity=1+crowd*.10;
-    const x=clamp(Math.cos(angle)*magnitude*activity,-1.65,1.65);
-    const z=clamp(baseZ*.35+Math.sin(angle)*magnitude*.58*activity,-1.25,1.25);
+    const x=Math.sin(angle)*magnitude*activity;
+    const z=Math.cos(angle)*magnitude*activity;
     const y=clamp((Number(baseWind.y)||0)*(1+crowd*.08)+Math.sin(t*.071+this._phase)*.025,-.42,.42);
     const gust=clamp((Number(baseWind.gust)||1)*(1+crowd*.14),.55,1.45);
     const turbulence=clamp((Number(baseWind.turbulence)||0)+crowd*.06*(.65+.35*Math.sin(t*.23+this._phase)), -.22,.22);

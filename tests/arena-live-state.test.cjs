@@ -71,3 +71,21 @@ test('checkpoint não reinicia os segundos de manobra ao reconectar',()=>{
  assert.equal(halfway.maneuver.expiresAt,now+9000);
  assert.equal(make(now-1).maneuver,null);
 });
+
+test('estado vivo sanitizado preserva profundidade, spool e desgaste para espelhar navegadores',()=>{
+  const rules=new GameRules(2),buffs=new BuffManager(null);
+  rules.handlePlayerComment({userId:'sync'});
+  const states=capturePlayerStates({width:1080,height:1920,kites:[{
+    userId:'sync',x:400,y:500,z:250,baseX:120,baseY:1700,baseZ:15,vx:3,vy:-2,vz:7,lineHP:62,
+    spawnProtection:0,isAscending:false,windPhase:1,windInfluence:1,likeBoostRemaining:0,
+    lineTension:.71,targetLineTension:.7,spoolLength:1320,segmentWear:[.1,.4,.75],
+    ropeNodes:[{x:120,y:1700,z:15},{x:240,y:1200,z:100},{x:400,y:500,z:250}]
+  }]},rules,buffs,5000);
+  const row=states.get('sync');
+  assert.equal(row.lineHP,62);
+  assert.equal(row.z,250);
+  assert.equal(row.vz,7);
+  assert.equal(row.spoolLength,1320);
+  assert.deepEqual(row.segmentWear,[.1,.4,.75]);
+  assert.deepEqual(row.ropeNodes.map(n=>n.z),[15,100,250]);
+});

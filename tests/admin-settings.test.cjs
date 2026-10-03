@@ -257,10 +257,10 @@ test('SettingsManager: sanitiza configuração física de relinho aninhada sem N
   const tmpFile = path.join(os.tmpdir(), `test-relinho-settings-${Date.now()}-${Math.random().toString(36).slice(2)}.json`);
   const mgr = new SettingsManager(tmpFile);
   const initial = mgr.getSettings().relinhoPhysics;
-  assert.equal(initial.abrasionK, 0.04);
+  assert.equal(initial.abrasionK, 0.10);
   assert.equal(initial.frictionMultiplier, 1);
   assert.equal(initial.minSlideSpeed, 0.75);
-  assert.equal(initial.maxWearPerTick, 0.012);
+  assert.equal(initial.maxWearPerTick, 0.05);
   assert.equal(initial.discoveryHz, 30);
   assert.equal(initial.maxSolvedContacts, 3);
 
