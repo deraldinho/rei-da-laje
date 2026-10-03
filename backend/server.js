@@ -13,6 +13,7 @@ const ArenaStateStore = require('./arenaStateStore');
 const GiftCatalog = require('./giftCatalog');
 const playerSpawnPayload = require('./playerSpawnPayload');
 const { requireLocalControl, canClaimCombat, isLoopbackOrigin } = require('./localControl');
+const { requireSimulationEnabled } = require('./simulationGuard');
 const { capturePlayerStates } = require('./arenaLiveState');
 const { validateCutClaim } = require('./cutClaimValidator');
 const { CatchClaimRegistry } = require('./catchClaimRegistry');
@@ -285,17 +286,17 @@ app.post('/api/tiktok/disconnect', requireLocalControl, async (req, res) => {
   res.json({ success: true });
 });
 
-app.post('/api/simulate/comment', requireLocalControl, (req, res) => {
+app.post('/api/simulate/comment', requireLocalControl, requireSimulationEnabled, (req, res) => {
   tiktokService.handleChatMessage(req.body);
   res.json({ success: true });
 });
 
-app.post('/api/simulate/gift', requireLocalControl, (req, res) => {
+app.post('/api/simulate/gift', requireLocalControl, requireSimulationEnabled, (req, res) => {
   tiktokService.handleGift(req.body);
   res.json({ success: true });
 });
 
-app.post('/api/simulate/likes', requireLocalControl, (req, res) => {
+app.post('/api/simulate/likes', requireLocalControl, requireSimulationEnabled, (req, res) => {
   const count = req.body.count || 20;
   io.emit('likes:burst', {
     totalLikes: count,

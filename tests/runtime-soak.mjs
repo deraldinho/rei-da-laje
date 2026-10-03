@@ -12,6 +12,7 @@ const durationMs=Math.max(5000,Number(process.env.PIPA_SOAK_MS)||(30*60*1000));
 const pause=ms=>new Promise(r=>setTimeout(r,ms));
 const server=spawn(process.execPath,['backend/server.js'],{cwd:root,env:{...process.env,
   PORT:String(port),PIPA_DISABLE_TIKTOK_AUTOCONNECT:'1',
+  PIPA_ENABLE_SIMULATION:'1',
   PIPA_ARENA_STATE_FILE:path.join(process.env.TEMP,'pipa-soak-'+Date.now()+'.json')},stdio:'ignore'});
 let browser,ws,seq=0;
 const pending=new Map(),errors=[];

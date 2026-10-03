@@ -14,6 +14,7 @@ const pause = ms => new Promise(resolve => setTimeout(resolve, ms));
 const server = spawn(process.execPath, ['backend/server.js'], {
   cwd: root,
   env: { ...process.env, PORT: String(port), PIPA_DISABLE_TIKTOK_AUTOCONNECT: '1',
+  PIPA_ENABLE_SIMULATION:'1',
     PIPA_ARENA_STATE_FILE: path.join(process.env.TEMP, 'pipa-perf-' + Date.now() + '.json') },
   stdio: 'ignore'
 });

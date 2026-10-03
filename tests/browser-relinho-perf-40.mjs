@@ -11,7 +11,8 @@ const evidenceFile=path.join(evidenceDir,'relinho-abrasion-benchmark.json');
 const port=3128,debugPort=9358;
 const pause=ms=>new Promise(r=>setTimeout(r,ms));
 const server=spawn(process.execPath,['backend/server.js'],{cwd:root,env:{...process.env,PORT:String(port),
-  PIPA_DISABLE_TIKTOK_AUTOCONNECT:'1',PIPA_ARENA_STATE_FILE:path.join(process.env.TEMP,`pipa-relinho40-${Date.now()}.json`)},stdio:'ignore'});
+  PIPA_DISABLE_TIKTOK_AUTOCONNECT:'1',
+  PIPA_ENABLE_SIMULATION:'1',PIPA_ARENA_STATE_FILE:path.join(process.env.TEMP,`pipa-relinho40-${Date.now()}.json`)},stdio:'ignore'});
 let browser,ws,seq=0,stage='init';
 const pending=new Map(),errors=[];
 async function waitFor(url){for(let i=0;i<100;i++){try{const r=await fetch(url);if(r.ok)return r;}catch{}await pause(150);}throw new Error(`Timeout ${url}`);}

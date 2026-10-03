@@ -9,6 +9,7 @@ await mkdir(evidence,{recursive:true});
 const port = 3107, debugPort = 9337;
 const server = spawn(process.execPath,['backend/server.js'],{cwd:root,env:{...process.env,
   PORT:String(port),PIPA_DISABLE_TIKTOK_AUTOCONNECT:'1',
+  PIPA_ENABLE_SIMULATION:'1',
   PIPA_FRONTEND_DIST:path.join(root,'frontend','dist'),
   PIPA_ARENA_STATE_FILE:path.join(process.env.TEMP,'pipa-browser-smoke-'+Date.now()+'.json')},stdio:'ignore'});
 let browser, ws;

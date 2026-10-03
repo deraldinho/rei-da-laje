@@ -13,6 +13,7 @@ const server = spawn(process.execPath, ['backend/server.js'], {
     ...process.env,
     PORT: String(port),
     PIPA_DISABLE_TIKTOK_AUTOCONNECT: '1',
+  PIPA_ENABLE_SIMULATION:'1',
     PIPA_ARENA_STATE_FILE: path.join(process.env.TEMP, `pipa-duel-${Date.now()}.json`)
   },
   stdio: 'ignore'
